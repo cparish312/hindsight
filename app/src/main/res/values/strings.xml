@@ -1,0 +1,17 @@
+<resources>
+    <string name="app_name">hindsight</string>
+    <string name="no_sufficient_permissions">No sufficient permissions to start recording</string>
+    <string name="active_recording">Active recording</string>
+    <string name="recording_finished">Recording finished</string>
+    <string name="share">Share</string>
+    <string name="stop">Stop</string>
+    <string name="open">Open</string>
+    <string name="audio">Audio</string>
+    <string name="video">Video</string>
+    <string name="pause">Pause</string>
+    <string name="resume">Resume</string>
+    <string name="delete">Delete</string>
+    <string name="recording_screen">Recording screen …</string>
+    <string name="record_screen">Record screen</string>
+    <string name="cant_access_selected_folder">Can\'t access selected folder!</string>
+</resources>

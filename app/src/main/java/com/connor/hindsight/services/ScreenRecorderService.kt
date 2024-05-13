@@ -1,0 +1,165 @@
+package com.connor.hindsight.services
+
+import android.app.Activity
+import android.content.ContentValues
+import android.content.Context
+import android.content.pm.ServiceInfo
+import android.graphics.Bitmap
+import android.graphics.PixelFormat
+import android.hardware.display.DisplayManager
+import android.hardware.display.VirtualDisplay
+import android.media.ImageReader
+import android.media.projection.MediaProjection
+import android.media.projection.MediaProjectionManager
+import android.os.Build
+import android.os.Environment
+import android.os.Handler
+import android.os.Looper
+import android.provider.MediaStore
+import android.util.DisplayMetrics
+import android.util.Log
+import android.view.Display
+import androidx.activity.result.ActivityResult
+import com.connor.hindsight.R
+import com.connor.hindsight.obj.VideoResolution
+import java.io.IOException
+import java.nio.ByteBuffer
+
+class ScreenRecorderService : RecorderService() {
+    override val notificationTitle: String
+        get() = getString(R.string.recording_screen)
+
+    private var virtualDisplay: VirtualDisplay? = null
+    private var mediaProjection: MediaProjection? = null
+    private var activityResult: ActivityResult? = null
+
+    private lateinit var imageReader: ImageReader
+    private var handler: Handler? = null
+    private var imageCaptureRunnable: Runnable? = null
+
+    override val fgServiceType: Int?
+        get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+        } else {
+            null
+        }
+
+    fun prepare(data: ActivityResult) {
+        this.activityResult = data
+        initMediaProjection()
+    }
+
+    private fun initMediaProjection() {
+        val mProjectionManager = getSystemService(
+            Context.MEDIA_PROJECTION_SERVICE
+        ) as MediaProjectionManager
+        try {
+            mediaProjection = mProjectionManager.getMediaProjection(
+                Activity.RESULT_OK,
+                activityResult?.data!!
+            )
+        } catch (e: Exception) {
+            Log.e("Media Projection Error", e.toString())
+            onDestroy()
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            mediaProjection!!.registerCallback(object : MediaProjection.Callback() {
+                override fun onStop() {
+                    onDestroy()
+                }
+            }, null)
+        }
+    }
+
+    override fun start() {
+        val resolution = getScreenResolution()
+        val density = resolution.density
+        val width = resolution.width
+        val height = resolution.height
+
+        mediaProjection?.let { mp ->
+
+            imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 20)
+            virtualDisplay = mp.createVirtualDisplay("ScreenRecordingService",
+                width, height, density,
+                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                imageReader.surface, object : VirtualDisplay.Callback() {
+                    override fun onStopped() {
+                        super.onStopped()
+                        // Handle the virtual display being stopped
+                        onDestroy()
+                    }
+                }, null)
+
+            handler = Handler(Looper.getMainLooper())
+            imageCaptureRunnable = object : Runnable {
+                override fun run() {
+                    val image = imageReader.acquireLatestImage()
+                    image?.let {
+                        val buffer = it.planes[0].buffer
+                        val data = ByteArray(buffer.capacity())
+                        buffer.get(data)
+                        buffer.rewind()
+                        saveImageData(data, this@ScreenRecorderService, width, height)
+                        it.close()
+                    }
+                    // Schedule the next capture
+                    handler?.postDelayed(this, 2000)
+                }
+            }
+            // Initial delay before starting the recurring task
+            handler?.postDelayed(imageCaptureRunnable!!, 2000)  // Start after a delay of 2 seconds
+        }
+    }
+
+    private fun saveImageData(data: ByteArray, context: Context, width: Int, height: Int) {
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val buffer = ByteBuffer.wrap(data)
+        bitmap.copyPixelsFromBuffer(buffer)
+
+        val contentValues = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, "screenshot_${System.currentTimeMillis()}.jpg")
+            put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/hindsight")
+        }
+
+        val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+        uri?.let {
+            try {
+                context.contentResolver.openOutputStream(it)?.use { outputStream ->
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
+                    Log.d("ScreenRecordingService", "Image saved to $uri")
+                }
+            } catch (e: IOException) {
+                Log.e("ScreenRecordingService", "Failed to save image", e)
+            }
+        }
+    }
+
+    private fun getScreenResolution(): VideoResolution {
+        val displayManager = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
+        val display = displayManager.getDisplay(Display.DEFAULT_DISPLAY)
+
+        // TODO Use the window API instead on newer devices
+        val metrics = DisplayMetrics()
+        display.getRealMetrics(metrics)
+
+        return VideoResolution(
+            metrics.widthPixels,
+            metrics.heightPixels,
+            metrics.densityDpi,
+            display.refreshRate.toInt()
+        )
+    }
+
+    override fun onDestroy() {
+        Log.d("ScreenRecordingService", "Destroying Screen Recording Service")
+        super.onDestroy()
+        handler?.removeCallbacks(imageCaptureRunnable!!)  // Stop the recurring image capture
+        imageReader.close()
+        virtualDisplay?.release()
+        mediaProjection?.stop()  // This will trigger the callback's onStop method
+    }
+
+    override fun getCurrentAmplitude() = recorder?.maxAmplitude
+}
