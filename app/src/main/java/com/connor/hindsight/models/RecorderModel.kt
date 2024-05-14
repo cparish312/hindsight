@@ -1,4 +1,4 @@
-package com.connor.hindsight.ui.models
+package com.connor.hindsight.models
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -7,15 +7,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.Build
-import android.os.Handler
 import android.os.IBinder
-import android.os.Looper
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.ActivityResult
-import androidx.annotation.RequiresApi
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
@@ -25,15 +21,11 @@ import com.connor.hindsight.enums.RecorderState
 import com.connor.hindsight.services.RecorderService
 import com.connor.hindsight.services.ScreenRecorderService
 import com.connor.hindsight.utils.PermissionHelper
-import com.connor.hindsight.utils.Preferences
 
 class RecorderModel : ViewModel() {
     var recorderState by mutableStateOf(RecorderState.IDLE)
     var recordedTime by mutableStateOf<Long?>(null)
-    val recordedAmplitudes = mutableStateListOf<Int>()
     private var activityResult: ActivityResult? = null
-
-    private val handler = Handler(Looper.getMainLooper())
 
     @SuppressLint("StaticFieldLeak")
     private var recorderService: RecorderService? = null
@@ -58,8 +50,6 @@ class RecorderModel : ViewModel() {
         activityResult = result
         val serviceIntent = Intent(context, ScreenRecorderService::class.java)
         startRecorderService(context, serviceIntent)
-        val showOverlayAnnotation =
-            Preferences.prefs.getBoolean(Preferences.showOverlayAnnotationToolKey, false)
     }
 
     private fun startRecorderService(context: Context, intent: Intent) {
@@ -77,49 +67,12 @@ class RecorderModel : ViewModel() {
         ContextCompat.startForegroundService(context, intent)
         context.bindService(intent, connection, Context.BIND_AUTO_CREATE)
 
-        startElapsedTimeCounter()
-        handler.postDelayed(this::updateAmplitude, 100)
         Log.d("RecorderModel", "Start Recorder Service")
     }
 
     fun stopRecording() {
         recorderService?.onDestroy()
         recordedTime = null
-        recordedAmplitudes.clear()
-    }
-
-    @RequiresApi(Build.VERSION_CODES.N)
-    fun pauseRecording() {
-        recorderService?.pause()
-    }
-
-    @RequiresApi(Build.VERSION_CODES.N)
-    fun resumeRecording() {
-        recorderService?.resume()
-        handler.postDelayed(this::updateTime, 1000)
-    }
-
-    private fun updateTime() {
-        if (recorderState != RecorderState.ACTIVE) return
-
-        recordedTime = recordedTime?.plus(1)
-        handler.postDelayed(this::updateTime, 100)
-    }
-
-    private fun updateAmplitude() {
-        if (recorderState != RecorderState.ACTIVE) return
-
-        recorderService?.getCurrentAmplitude()?.let {
-            if (recordedAmplitudes.size >= 90) recordedAmplitudes.removeAt(0)
-            recordedAmplitudes.add(it)
-        }
-
-        handler.postDelayed(this::updateAmplitude, 100)
-    }
-
-    private fun startElapsedTimeCounter() {
-        recordedTime = 0L
-        handler.postDelayed(this::updateTime, 100)
     }
 
     @SuppressLint("NewApi")

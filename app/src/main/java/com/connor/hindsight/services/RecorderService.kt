@@ -7,7 +7,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.media.AudioManager
 import android.media.MediaRecorder
 import android.os.Binder
 import android.os.Build
@@ -18,11 +17,9 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
-import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import com.connor.hindsight.R
-import com.connor.hindsight.receivers.FinishedNotificationReceiver
 import com.connor.hindsight.MainActivity
 import com.connor.hindsight.enums.RecorderState
 import com.connor.hindsight.utils.NotificationHelper
@@ -37,12 +34,10 @@ abstract class RecorderService : LifecycleService() {
     private val binder = LocalBinder()
     var recorder: MediaRecorder? = null
     var fileDescriptor: ParcelFileDescriptor? = null
-    var outputFile: DocumentFile? = null
 
     var onRecorderStateChanged: (RecorderState) -> Unit = {}
     open val fgServiceType: Int? = null
     var recorderState: RecorderState = RecorderState.IDLE
-    private lateinit var audioManager: AudioManager
 
     private val recorderReceiver = object : BroadcastReceiver() {
         @SuppressLint("NewApi")
@@ -51,16 +46,6 @@ abstract class RecorderService : LifecycleService() {
                 STOP_ACTION -> onDestroy()
                 PAUSE_RESUME_ACTION -> {
                     if (recorderState == RecorderState.ACTIVE) pause() else resume()
-                }
-            }
-        }
-    }
-
-    private val bluetoothReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            when (intent?.getIntExtra(AudioManager.EXTRA_SCO_AUDIO_STATE, -1)) {
-                AudioManager.SCO_AUDIO_STATE_CONNECTED -> {
-                    unregisterReceiver(this)
                 }
             }
         }
@@ -87,23 +72,11 @@ abstract class RecorderService : LifecycleService() {
         } else {
             startForeground(NotificationHelper.RECORDING_NOTIFICATION_ID, notification.build())
         }
-        audioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-
-        runCatching {
-            unregisterReceiver(bluetoothReceiver)
-        }
-        ContextCompat.registerReceiver(
-            this,
-            bluetoothReceiver,
-            IntentFilter(AudioManager.ACTION_SCO_AUDIO_STATE_UPDATED),
-            RECEIVER_EXPORTED
-        )
-        audioManager.startBluetoothSco()
 
         runCatching {
             unregisterReceiver(recorderReceiver)
         }
-        ContextCompat.registerReceiver(this, recorderReceiver, IntentFilter(RECORDER_INTENT_ACTION), RECEIVER_EXPORTED)
+        ContextCompat.registerReceiver(this, recorderReceiver, IntentFilter(RECORDER_INTENT_ACTION), ContextCompat.RECEIVER_EXPORTED)
 
         super.onCreate()
     }
@@ -216,16 +189,8 @@ abstract class RecorderService : LifecycleService() {
                 fileDescriptor?.close()
             }
 
-            createRecordingFinishedNotification()
-            outputFile = null
-
             runCatching {
                 unregisterReceiver(recorderReceiver)
-            }
-
-            runCatching {
-                audioManager.stopBluetoothSco()
-                unregisterReceiver(bluetoothReceiver)
             }
 
             ServiceCompat.stopForeground(this@RecorderService, ServiceCompat.STOP_FOREGROUND_REMOVE)
@@ -233,49 +198,6 @@ abstract class RecorderService : LifecycleService() {
 
             super.onDestroy()
         }
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun createRecordingFinishedNotification() {
-        if (outputFile == null) return
-
-        val deleteAction = NotificationCompat.Action.Builder(
-            null,
-            getString(R.string.delete),
-            getPendingIntent(
-                Intent(this, FinishedNotificationReceiver::class.java).putExtra(
-                    FILE_NAME_EXTRA_KEY,
-                    outputFile?.name.toString()
-                ).putExtra(ACTION_EXTRA_KEY, DELETE_ACTION),
-                4
-            )
-        )
-        val shareAction = NotificationCompat.Action.Builder(
-            null,
-            getString(R.string.share),
-            getPendingIntent(
-                Intent(this, FinishedNotificationReceiver::class.java).putExtra(
-                    FILE_NAME_EXTRA_KEY,
-                    outputFile?.name.toString()
-                ).putExtra(ACTION_EXTRA_KEY, SHARE_ACTION),
-                5
-            )
-        )
-
-        val notification = NotificationCompat.Builder(
-            this,
-            NotificationHelper.RECORDING_FINISHED_N_CHANNEL
-        )
-            .setContentTitle(getString(R.string.recording_finished))
-            .setContentText(outputFile?.name)
-            .setSmallIcon(R.drawable.ic_notification)
-            .addAction(deleteAction.build())
-            // / .addAction(shareAction.build())
-            .setContentIntent(getActivityIntent())
-            .setAutoCancel(true)
-
-        NotificationManagerCompat.from(this)
-            .notify(NotificationHelper.RECORDING_FINISHED_N_ID, notification.build())
     }
 
     private fun getActivityIntent(): PendingIntent {
@@ -286,8 +208,6 @@ abstract class RecorderService : LifecycleService() {
             PendingIntent.FLAG_IMMUTABLE
         )
     }
-
-    abstract fun getCurrentAmplitude(): Int?
 
     companion object {
         const val RECORDER_INTENT_ACTION = "com.connor.hindsight.RECORDER_ACTION"

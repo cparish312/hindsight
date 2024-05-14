@@ -8,7 +8,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 
-
 class MainViewModel : ViewModel() {
     private val _screenRecordingEnabled = MutableStateFlow(false)
     val screenRecordingEnabled = _screenRecordingEnabled.asStateFlow()

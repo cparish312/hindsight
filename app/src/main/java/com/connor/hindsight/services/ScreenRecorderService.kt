@@ -22,6 +22,8 @@ import android.view.Display
 import androidx.activity.result.ActivityResult
 import com.connor.hindsight.R
 import com.connor.hindsight.obj.VideoResolution
+import java.io.File
+import java.io.FileOutputStream
 import java.io.IOException
 import java.nio.ByteBuffer
 
@@ -76,10 +78,10 @@ class ScreenRecorderService : RecorderService() {
         val density = resolution.density
         val width = resolution.width
         val height = resolution.height
+        Log.d("ScreenRecordingService", "Screen resolution: $width x $height x $density")
 
         mediaProjection?.let { mp ->
-
-            imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 20)
+            imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
             virtualDisplay = mp.createVirtualDisplay("ScreenRecordingService",
                 width, height, density,
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
@@ -95,12 +97,18 @@ class ScreenRecorderService : RecorderService() {
             imageCaptureRunnable = object : Runnable {
                 override fun run() {
                     val image = imageReader.acquireLatestImage()
+                    Log.d("ScreenRecordingService", "Image Acquired")
                     image?.let {
                         val buffer = it.planes[0].buffer
-                        val data = ByteArray(buffer.capacity())
-                        buffer.get(data)
-                        buffer.rewind()
-                        saveImageData(data, this@ScreenRecorderService, width, height)
+                        val pixelStride = it.planes[0].pixelStride
+                        val rowStride = it.planes[0].rowStride
+
+                        val offset = (rowStride - pixelStride * width) / pixelStride
+                        val w = width + offset
+                        val bitmap = Bitmap.createBitmap(w, height, Bitmap.Config.ARGB_8888)
+                        bitmap.copyPixelsFromBuffer(buffer)
+
+                        saveImageData(bitmap, this@ScreenRecorderService)
                         it.close()
                     }
                     // Schedule the next capture
@@ -112,27 +120,39 @@ class ScreenRecorderService : RecorderService() {
         }
     }
 
-    private fun saveImageData(data: ByteArray, context: Context, width: Int, height: Int) {
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        val buffer = ByteBuffer.wrap(data)
-        bitmap.copyPixelsFromBuffer(buffer)
+//    private fun saveImageData(bitmap: Bitmap, context: Context) {
+//        val contentValues = ContentValues().apply {
+//            put(MediaStore.MediaColumns.DISPLAY_NAME, "screenshot_${System.currentTimeMillis()}.jpg")
+//            put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+//            put(MediaStore.MediaColumns.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/hindsight")
+//        }
+//
+//        val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+//        uri?.let {
+//            try {
+//                context.contentResolver.openOutputStream(it)?.use { outputStream ->
+//                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
+//                    Log.d("ScreenRecordingService", "Image saved to $uri")
+//                }
+//            } catch (e: IOException) {
+//                Log.e("ScreenRecordingService", "Failed to save image", e)
+//            }
+//        }
+//    }
 
-        val contentValues = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, "screenshot_${System.currentTimeMillis()}.jpg")
-            put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-            put(MediaStore.MediaColumns.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/hindsight")
-        }
+    private fun saveImageData(bitmap: Bitmap, context: Context) {
+        // Use the app's private storage directory
+        val directory = File(context.filesDir, "screenshot_images")
+        if (!directory.exists()) directory.mkdirs()  // Create the directory if it does not exist
 
-        val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
-        uri?.let {
-            try {
-                context.contentResolver.openOutputStream(it)?.use { outputStream ->
-                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
-                    Log.d("ScreenRecordingService", "Image saved to $uri")
-                }
-            } catch (e: IOException) {
-                Log.e("ScreenRecordingService", "Failed to save image", e)
+        val file = File(directory, "screenshot_${System.currentTimeMillis()}.jpg")
+        try {
+            FileOutputStream(file).use { fos ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos)
+                Log.d("ScreenRecordingService", "Image saved to ${file.absolutePath}")
             }
+        } catch (e: IOException) {
+            Log.e("ScreenRecordingService", "Failed to save image", e)
         }
     }
 
@@ -160,6 +180,4 @@ class ScreenRecorderService : RecorderService() {
         virtualDisplay?.release()
         mediaProjection?.stop()  // This will trigger the callback's onStop method
     }
-
-    override fun getCurrentAmplitude() = recorder?.maxAmplitude
 }
