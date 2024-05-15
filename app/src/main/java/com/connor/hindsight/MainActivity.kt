@@ -4,7 +4,9 @@ import android.app.Activity
 import androidx.activity.ComponentActivity
 import android.content.Context
 import android.content.Intent
+import android.media.projection.MediaProjectionConfig
 import android.media.projection.MediaProjectionManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -41,7 +43,14 @@ class MainActivity : ComponentActivity() {
     fun requestScreenCapturePermission() {
         if (recorderModel.hasScreenRecordingPermissions(this)) {
             Log.d("MainActivity", "hasScreenRecordingPermissions")
-            val captureIntent = mediaProjectionManager.createScreenCaptureIntent()
+            var captureIntent: Intent? = null
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                // So default val of prompt is entire screen
+                val config = MediaProjectionConfig.createConfigForDefaultDisplay()
+                captureIntent = mediaProjectionManager.createScreenCaptureIntent(config)
+            } else {
+                captureIntent = mediaProjectionManager.createScreenCaptureIntent()
+            }
             screenCaptureLauncher.launch(captureIntent)
         }
     }

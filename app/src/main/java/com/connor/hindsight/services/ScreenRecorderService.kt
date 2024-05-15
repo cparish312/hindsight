@@ -21,6 +21,7 @@ import android.util.Log
 import android.view.Display
 import androidx.activity.result.ActivityResult
 import com.connor.hindsight.R
+import com.connor.hindsight.enums.RecorderState
 import com.connor.hindsight.obj.VideoResolution
 import java.io.File
 import java.io.FileOutputStream
@@ -38,6 +39,8 @@ class ScreenRecorderService : RecorderService() {
     private lateinit var imageReader: ImageReader
     private var handler: Handler? = null
     private var imageCaptureRunnable: Runnable? = null
+
+    private var recorderLoopStopped: Boolean = false
 
     override val fgServiceType: Int?
         get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -74,6 +77,7 @@ class ScreenRecorderService : RecorderService() {
     }
 
     override fun start() {
+        super.start()
         val resolution = getScreenResolution()
         val density = resolution.density
         val width = resolution.width
@@ -112,7 +116,13 @@ class ScreenRecorderService : RecorderService() {
                         it.close()
                     }
                     // Schedule the next capture
-                    handler?.postDelayed(this, 2000)
+                    if (recorderState == RecorderState.ACTIVE){
+                        recorderLoopStopped = false
+                        handler?.postDelayed(this, 2000)
+                    }
+                    else {
+                        recorderLoopStopped = true
+                    }
                 }
             }
             // Initial delay before starting the recurring task
@@ -174,10 +184,18 @@ class ScreenRecorderService : RecorderService() {
 
     override fun onDestroy() {
         Log.d("ScreenRecordingService", "Destroying Screen Recording Service")
-        super.onDestroy()
         handler?.removeCallbacks(imageCaptureRunnable!!)  // Stop the recurring image capture
         imageReader.close()
         virtualDisplay?.release()
         mediaProjection?.stop()  // This will trigger the callback's onStop method
+        super.onDestroy()
+    }
+
+    override  fun resume(){
+        super.resume()
+        // recorderLoopStopped ensures that the previous image capture is stopped
+        if (recorderState == RecorderState.ACTIVE && recorderLoopStopped){
+            handler?.postDelayed(imageCaptureRunnable!!, 2000)
+        }
     }
 }

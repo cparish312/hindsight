@@ -32,7 +32,6 @@ class RecorderModel : ViewModel() {
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(className: ComponentName, service: IBinder) {
-            Log.d("RecorderModel", "Connection onServiceConnected")
             recorderService = (service as RecorderService.LocalBinder).getService()
             recorderService?.onRecorderStateChanged = {
                 recorderState = it

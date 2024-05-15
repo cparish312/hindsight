@@ -12,6 +12,7 @@ import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import android.os.ParcelFileDescriptor
+import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -48,6 +49,14 @@ abstract class RecorderService : LifecycleService() {
                     if (recorderState == RecorderState.ACTIVE) pause() else resume()
                 }
             }
+            when (intent?.action) {
+                Intent.ACTION_SCREEN_OFF -> {
+                    pause()
+                }
+                Intent.ACTION_SCREEN_ON -> {
+                    resume()
+                }
+            }
         }
     }
 
@@ -76,7 +85,12 @@ abstract class RecorderService : LifecycleService() {
         runCatching {
             unregisterReceiver(recorderReceiver)
         }
-        ContextCompat.registerReceiver(this, recorderReceiver, IntentFilter(RECORDER_INTENT_ACTION), ContextCompat.RECEIVER_EXPORTED)
+        val intentFilter = IntentFilter().apply {
+            addAction(RECORDER_INTENT_ACTION)
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SCREEN_ON)
+        }
+        ContextCompat.registerReceiver(this, recorderReceiver, intentFilter, ContextCompat.RECEIVER_EXPORTED)
 
         super.onCreate()
     }
@@ -152,6 +166,7 @@ abstract class RecorderService : LifecycleService() {
 
     @RequiresApi(Build.VERSION_CODES.N)
     open fun pause() {
+        Log.d("ScreenRecordingService", "Recorder paused")
         recorder?.pause()
         runCatching {
             recorderState = RecorderState.PAUSED
