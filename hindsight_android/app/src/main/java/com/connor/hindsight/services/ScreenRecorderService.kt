@@ -23,6 +23,7 @@ import androidx.activity.result.ActivityResult
 import com.connor.hindsight.R
 import com.connor.hindsight.enums.RecorderState
 import com.connor.hindsight.obj.VideoResolution
+import com.connor.hindsight.utils.getImageDirectory
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -152,8 +153,7 @@ class ScreenRecorderService : RecorderService() {
 
     private fun saveImageData(bitmap: Bitmap, context: Context) {
         // Use the app's private storage directory
-        val directory = File(context.filesDir, "screenshot_images")
-        if (!directory.exists()) directory.mkdirs()  // Create the directory if it does not exist
+        val directory = getImageDirectory(context)
 
         val file = File(directory, "screenshot_${System.currentTimeMillis()}.jpg")
         try {

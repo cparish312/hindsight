@@ -9,7 +9,7 @@ object NotificationHelper {
     const val RECORDING_NOTIFICATION_CHANNEL = "active_recording"
     const val RECORDING_FINISHED_N_CHANNEL = "recording_finished"
     const val RECORDING_NOTIFICATION_ID = 1
-    const val RECORDING_FINISHED_N_ID = 2
+    const val SERVER_UPLOAD_NOTIFICATION_ID = 2
 
     fun buildNotificationChannels(context: Context) {
         val notificationManager = NotificationManagerCompat.from(context)

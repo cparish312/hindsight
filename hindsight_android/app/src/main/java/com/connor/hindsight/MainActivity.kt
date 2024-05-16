@@ -4,6 +4,7 @@ import android.app.Activity
 import androidx.activity.ComponentActivity
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.media.projection.MediaProjectionConfig
 import android.media.projection.MediaProjectionManager
 import android.os.Build
@@ -16,8 +17,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.core.content.ContextCompat
 import com.connor.hindsight.ui.screens.MainScreen
 import com.connor.hindsight.models.RecorderModel
+import com.connor.hindsight.network.services.PostService
 
 class MainActivity : ComponentActivity() {
     private lateinit var mediaProjectionManager: MediaProjectionManager
@@ -57,6 +60,12 @@ class MainActivity : ComponentActivity() {
 
     fun stopScreenRecording() {
         recorderModel.stopRecording()
+    }
+
+    fun uploadToServer() {
+        Log.d("MainActivity", "uploadToServer")
+        val uploadIntent = Intent(this, PostService::class.java)
+        ContextCompat.startForegroundService(this, uploadIntent)
     }
 }
 
