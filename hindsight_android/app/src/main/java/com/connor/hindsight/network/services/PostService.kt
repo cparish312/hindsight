@@ -11,6 +11,7 @@ import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.ServiceCompat
@@ -26,6 +27,7 @@ import com.connor.hindsight.utils.NotificationHelper
 import com.connor.hindsight.utils.PermissionHelper
 import com.connor.hindsight.utils.getImageDirectory
 import com.connor.hindsight.utils.getImageFiles
+import com.connor.hindsight.utils.getSyncedImageDirectory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -38,10 +40,13 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.ResponseBody
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 
 class PostService : LifecycleService() {
     val notificationTitle: String = "Hindsight Server Upload"
-    private lateinit var screenShotDirectory: File
+    private lateinit var screenshotDirectory: File
+    private lateinit var syncedScreenshotDirectory: File
     private var stopUpload: Boolean = false
 
     private val uploaderReceiver = object : BroadcastReceiver() {
@@ -74,7 +79,8 @@ class PostService : LifecycleService() {
         }
         ContextCompat.registerReceiver(this, uploaderReceiver, intentFilter, ContextCompat.RECEIVER_EXPORTED)
 
-        screenShotDirectory = getImageDirectory(this)
+        screenshotDirectory = getImageDirectory(this)
+        syncedScreenshotDirectory = getSyncedImageDirectory(this)
 
         CoroutineScope(Dispatchers.IO).launch {
             postTestJson()
@@ -86,7 +92,7 @@ class PostService : LifecycleService() {
     }
 
     private suspend fun uploadAllImages() {
-        val files = getImageFiles(screenShotDirectory)
+        val files = getImageFiles(screenshotDirectory)
         files.forEach { file ->
             if (stopUpload) {
                 onDestroy()
@@ -108,9 +114,11 @@ class PostService : LifecycleService() {
         val call = client.uploadFile(body)
 
         call.enqueue(object : retrofit2.Callback<ResponseBody> {
+            @RequiresApi(Build.VERSION_CODES.O)
             override fun onResponse(call: retrofit2.Call<ResponseBody>, response: retrofit2.Response<ResponseBody>) {
                 if (response.isSuccessful) {
                     Log.d("Upload", "Upload successful: ${response.body()?.string()}")
+                    Files.move(file.toPath(), syncedScreenshotDirectory.toPath().resolve(file.name), StandardCopyOption.REPLACE_EXISTING)
 //                    if (file.delete()) {
 //                        Log.d("Upload", "Deleted file: ${file.name}")
 //                    } else {

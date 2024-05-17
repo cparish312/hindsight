@@ -4,6 +4,7 @@ import android.app.Activity
 import androidx.activity.ComponentActivity
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.ServiceInfo
 import android.media.projection.MediaProjectionConfig
 import android.media.projection.MediaProjectionManager
@@ -15,18 +16,21 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
 import com.connor.hindsight.ui.screens.MainScreen
 import com.connor.hindsight.models.RecorderModel
 import com.connor.hindsight.network.services.PostService
+import com.connor.hindsight.services.RecorderService
 
 class MainActivity : ComponentActivity() {
     private lateinit var mediaProjectionManager: MediaProjectionManager
     private lateinit var screenCaptureLauncher: ActivityResultLauncher<Intent>
     private val recorderModel: RecorderModel by viewModels()
 
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
@@ -40,6 +44,11 @@ class MainActivity : ComponentActivity() {
             } else {
                 Toast.makeText(this, "Permission Denied", Toast.LENGTH_SHORT).show()
             }
+        }
+
+        val prefs: SharedPreferences = application.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
+        if (prefs.getBoolean("ScreenRecordingEnabled", false)){
+            requestScreenCapturePermission()
         }
     }
 
@@ -69,6 +78,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Preview(showBackground = true)
 @Composable
 fun HindsightPreview() {

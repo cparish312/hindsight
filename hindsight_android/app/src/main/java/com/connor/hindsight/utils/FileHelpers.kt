@@ -12,3 +12,9 @@ fun getImageDirectory(context: Context): File {
     if (!directory.exists()) directory.mkdirs()  // Ensure the directory exists
     return directory
 }
+
+fun getSyncedImageDirectory(context: Context): File {
+    val directory = File(context.filesDir, "synced_screenshot_images")
+    if (!directory.exists()) directory.mkdirs()  // Ensure the directory exists
+    return directory
+}

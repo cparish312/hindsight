@@ -14,4 +14,5 @@
     <string name="recording_screen">Recording screen …</string>
     <string name="record_screen">Record screen</string>
     <string name="cant_access_selected_folder">Can\'t access selected folder!</string>
+    <string name="accessibility_service_description">Accessibility service for keylogging</string>
 </resources>

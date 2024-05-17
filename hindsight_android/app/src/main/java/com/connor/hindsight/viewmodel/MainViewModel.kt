@@ -24,6 +24,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import com.connor.hindsight.network.services.PostService
 import com.connor.hindsight.services.RecorderService
+import com.connor.hindsight.services.ScreenRecorderService
 
 @RequiresApi(Build.VERSION_CODES.O)
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -51,6 +52,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     Log.d("MainViewModel", "UPLOADER_FINISHED")
                     _isUploading.value = false
                 }
+                ScreenRecorderService.SCREEN_RECORDER_STOPPED -> {
+                    Log.d("MainViewModel", "SCREEN_RECORDER_STOPPED")
+                    _screenRecordingEnabled.value = false
+                    prefs.edit().putBoolean("ScreenRecordingEnabled", _screenRecordingEnabled.value).apply()
+                }
             }
         }
     }
@@ -58,6 +64,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     init {
         val intentFilter = IntentFilter().apply {
             addAction(PostService.UPLOADER_FINISHED)
+            addAction(ScreenRecorderService.SCREEN_RECORDER_STOPPED)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             getApplication<Application>().registerReceiver(broadcastReceiver, intentFilter, Context.RECEIVER_EXPORTED)

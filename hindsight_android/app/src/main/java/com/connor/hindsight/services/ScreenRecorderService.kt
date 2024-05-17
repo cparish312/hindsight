@@ -1,8 +1,13 @@
 package com.connor.hindsight.services
 
+import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.usage.UsageStatsManager
+import android.content.BroadcastReceiver
 import android.content.ContentValues
 import android.content.Context
+import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
 import android.graphics.PixelFormat
@@ -22,6 +27,8 @@ import android.view.Display
 import androidx.activity.result.ActivityResult
 import com.connor.hindsight.R
 import com.connor.hindsight.enums.RecorderState
+import com.connor.hindsight.network.services.PostService
+import com.connor.hindsight.obj.UserActivityState
 import com.connor.hindsight.obj.VideoResolution
 import com.connor.hindsight.utils.getImageDirectory
 import java.io.File
@@ -42,6 +49,7 @@ class ScreenRecorderService : RecorderService() {
     private var imageCaptureRunnable: Runnable? = null
 
     private var recorderLoopStopped: Boolean = false
+    private var actionSinceLastScreenshot: Boolean = true
 
     override val fgServiceType: Int?
         get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -71,6 +79,7 @@ class ScreenRecorderService : RecorderService() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             mediaProjection!!.registerCallback(object : MediaProjection.Callback() {
                 override fun onStop() {
+                    sendBroadcast(Intent(SCREEN_RECORDER_STOPPED))
                     onDestroy()
                 }
             }, null)
@@ -101,6 +110,11 @@ class ScreenRecorderService : RecorderService() {
             handler = Handler(Looper.getMainLooper())
             imageCaptureRunnable = object : Runnable {
                 override fun run() {
+                    if (!UserActivityState.userActive) {
+                        Log.d("ScreenRecordingService", "Skipping Screenshot as User has been inactive")
+                        postScreenshot(this)
+                        return
+                    }
                     val image = imageReader.acquireLatestImage()
                     Log.d("ScreenRecordingService", "Image Acquired")
                     image?.let {
@@ -117,17 +131,22 @@ class ScreenRecorderService : RecorderService() {
                         it.close()
                     }
                     // Schedule the next capture
-                    if (recorderState == RecorderState.ACTIVE){
-                        recorderLoopStopped = false
-                        handler?.postDelayed(this, 2000)
-                    }
-                    else {
-                        recorderLoopStopped = true
-                    }
+                    UserActivityState.userActive = false
+                    postScreenshot(this)
                 }
             }
             // Initial delay before starting the recurring task
             handler?.postDelayed(imageCaptureRunnable!!, 2000)  // Start after a delay of 2 seconds
+        }
+    }
+
+    private fun postScreenshot(runnable: Runnable) {
+        if (recorderState == RecorderState.ACTIVE){
+            recorderLoopStopped = false
+            handler?.postDelayed(runnable, 2000)
+        }
+        else {
+            recorderLoopStopped = true
         }
     }
 
@@ -197,5 +216,9 @@ class ScreenRecorderService : RecorderService() {
         if (recorderState == RecorderState.ACTIVE && recorderLoopStopped){
             handler?.postDelayed(imageCaptureRunnable!!, 2000)
         }
+    }
+
+    companion object {
+        const val SCREEN_RECORDER_STOPPED = "com.connor.hindsight.SCREEN_RECORDER_STOPPED"
     }
 }

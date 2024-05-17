@@ -1,14 +1,20 @@
 package com.connor.hindsight.models
 
 import android.Manifest
+import android.accessibilityservice.AccessibilityService
 import android.annotation.SuppressLint
+import android.app.AppOpsManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.Build
 import android.os.IBinder
+import android.os.Process
+import android.provider.Settings
+import android.text.TextUtils
 import android.util.Log
+import android.view.accessibility.AccessibilityManager
 import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.compose.runtime.getValue
@@ -18,6 +24,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import com.connor.hindsight.R
 import com.connor.hindsight.enums.RecorderState
+import com.connor.hindsight.services.KeyTrackingService
 import com.connor.hindsight.services.RecorderService
 import com.connor.hindsight.services.ScreenRecorderService
 import com.connor.hindsight.utils.PermissionHelper
@@ -58,6 +65,7 @@ class RecorderModel : ViewModel() {
 
         listOfNotNull(
             ScreenRecorderService::class.java,
+            KeyTrackingService::class.java
         ).forEach {
             runCatching {
                 context.stopService(Intent(context, it))
@@ -66,17 +74,51 @@ class RecorderModel : ViewModel() {
         ContextCompat.startForegroundService(context, intent)
         context.bindService(intent, connection, Context.BIND_AUTO_CREATE)
 
+        // Initialize KeyTracking to see when user active
+        val keyTrackingIntent = Intent(context, KeyTrackingService::class.java)
+        context.startService(keyTrackingIntent)
+
         Log.d("RecorderModel", "Start Recorder Service")
     }
 
     fun stopRecording() {
+        Log.d("RecorderModel", "Stop Recorder Service")
         recorderService?.onDestroy()
         recordedTime = null
+    }
+
+    fun isAccessibilityServiceEnabled(context: Context, service: Class<out AccessibilityService>): Boolean {
+        val am = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
+        val enabledServices = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+        val colonSplitter = TextUtils.SimpleStringSplitter(':')
+        try {
+            colonSplitter.setString(enabledServices)
+        } catch (e: Exception) {
+            return false
+        }
+        while (colonSplitter.hasNext()) {
+            val componentName = colonSplitter.next()
+            if (componentName.equals(ComponentName(context, service).flattenToString(), ignoreCase = true)) {
+                return true
+            }
+        }
+        return false
+    }
+
+    fun openAccessibilitySettings(context: Context) {
+        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        context.startActivity(intent)
+        Toast.makeText(context, "Please enable our accessibility service.", Toast.LENGTH_LONG).show()
     }
 
     @SuppressLint("NewApi")
     fun hasScreenRecordingPermissions(context: Context): Boolean {
         val requiredPermissions = arrayListOf<String>()
+
+        if (!isAccessibilityServiceEnabled(context, KeyTrackingService::class.java)){
+            openAccessibilitySettings(context)
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             requiredPermissions.add(Manifest.permission.POST_NOTIFICATIONS)

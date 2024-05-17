@@ -1,5 +1,6 @@
 package com.connor.hindsight.ui.screens
 import android.os.Build
+import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
@@ -32,6 +33,7 @@ fun MainScreen(mainViewModel: MainViewModel = viewModel()) {
                 }
                 MainViewModel.UIEvent.StopScreenRecording -> {
                     if (context is MainActivity) {
+                        Log.d("MainScreen", "Stopping screen recording")
                         context.stopScreenRecording()
                     }
                 }
