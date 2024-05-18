@@ -24,10 +24,12 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import com.connor.hindsight.R
 import com.connor.hindsight.enums.RecorderState
+import com.connor.hindsight.network.services.PostService
 import com.connor.hindsight.services.KeyTrackingService
 import com.connor.hindsight.services.RecorderService
 import com.connor.hindsight.services.ScreenRecorderService
 import com.connor.hindsight.utils.PermissionHelper
+import com.connor.hindsight.utils.Preferences
 
 class RecorderModel : ViewModel() {
     var recorderState by mutableStateOf(RecorderState.IDLE)
@@ -116,8 +118,17 @@ class RecorderModel : ViewModel() {
     fun hasScreenRecordingPermissions(context: Context): Boolean {
         val requiredPermissions = arrayListOf<String>()
 
-        if (!isAccessibilityServiceEnabled(context, KeyTrackingService::class.java)){
-            openAccessibilitySettings(context)
+        // Get Accessibility access if recordwhenactive
+        if (Preferences.prefs.getBoolean(Preferences.recordwhenactive, false)) {
+            if (!isAccessibilityServiceEnabled(context, KeyTrackingService::class.java)) {
+                Log.d("RecorderModel", "Accessibility Service Not Enabled")
+                openAccessibilitySettings(context)
+                Preferences.prefs.edit().putBoolean(Preferences.screenrecordingenabled, false).apply()
+                context.sendBroadcast(Intent(SCREEN_RECORDER_PERMISSION_DENIED))
+                return false
+            } else {
+                Log.d("RecorderModel", "Accessibility Service Enabled")
+            }
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -128,6 +139,7 @@ class RecorderModel : ViewModel() {
 
         val granted = PermissionHelper.checkPermissions(context, requiredPermissions.toTypedArray())
         if (!granted) {
+            context.sendBroadcast(Intent(SCREEN_RECORDER_PERMISSION_DENIED))
             Toast.makeText(
                 context,
                 context.getString(R.string.no_sufficient_permissions), Toast.LENGTH_SHORT
@@ -135,5 +147,9 @@ class RecorderModel : ViewModel() {
                 .show()
         }
         return granted
+    }
+
+    companion object {
+        const val SCREEN_RECORDER_PERMISSION_DENIED = "com.connor.hindsight.SCREEN_RECORDER_PERMISSION_DENIED"
     }
 }

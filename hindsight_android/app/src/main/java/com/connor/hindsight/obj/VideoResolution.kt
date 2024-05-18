@@ -1,6 +1,6 @@
 package com.connor.hindsight.obj
 
-data class VideoResolution(
+data class ImageResolution(
     val width: Int,
     val height: Int,
     val density: Int,

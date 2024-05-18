@@ -1,13 +1,8 @@
 package com.connor.hindsight.services
 
-import android.annotation.SuppressLint
 import android.app.Activity
-import android.app.usage.UsageStatsManager
-import android.content.BroadcastReceiver
-import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
 import android.graphics.PixelFormat
@@ -17,24 +12,21 @@ import android.media.ImageReader
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
-import android.os.Environment
 import android.os.Handler
 import android.os.Looper
-import android.provider.MediaStore
 import android.util.DisplayMetrics
 import android.util.Log
 import android.view.Display
 import androidx.activity.result.ActivityResult
-import com.connor.hindsight.R
-import com.connor.hindsight.enums.RecorderState
-import com.connor.hindsight.network.services.PostService
-import com.connor.hindsight.obj.UserActivityState
-import com.connor.hindsight.obj.VideoResolution
-import com.connor.hindsight.utils.getImageDirectory
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import java.nio.ByteBuffer
+import com.connor.hindsight.R
+import com.connor.hindsight.enums.RecorderState
+import com.connor.hindsight.obj.ImageResolution
+import com.connor.hindsight.obj.UserActivityState
+import com.connor.hindsight.utils.getImageDirectory
+import com.connor.hindsight.utils.Preferences
 
 class ScreenRecorderService : RecorderService() {
     override val notificationTitle: String
@@ -50,6 +42,8 @@ class ScreenRecorderService : RecorderService() {
 
     private var recorderLoopStopped: Boolean = false
     private var actionSinceLastScreenshot: Boolean = true
+
+    private var recordWhenActive: Boolean =  Preferences.prefs.getBoolean(Preferences.recordwhenactive, false)
 
     override val fgServiceType: Int?
         get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -110,7 +104,7 @@ class ScreenRecorderService : RecorderService() {
             handler = Handler(Looper.getMainLooper())
             imageCaptureRunnable = object : Runnable {
                 override fun run() {
-                    if (!UserActivityState.userActive) {
+                    if (recordWhenActive && !UserActivityState.userActive) {
                         Log.d("ScreenRecordingService", "Skipping Screenshot as User has been inactive")
                         postScreenshot(this)
                         return
@@ -185,7 +179,7 @@ class ScreenRecorderService : RecorderService() {
         }
     }
 
-    private fun getScreenResolution(): VideoResolution {
+    private fun getScreenResolution(): ImageResolution {
         val displayManager = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
         val display = displayManager.getDisplay(Display.DEFAULT_DISPLAY)
 
@@ -193,7 +187,7 @@ class ScreenRecorderService : RecorderService() {
         val metrics = DisplayMetrics()
         display.getRealMetrics(metrics)
 
-        return VideoResolution(
+        return ImageResolution(
             metrics.widthPixels,
             metrics.heightPixels,
             metrics.densityDpi,

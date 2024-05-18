@@ -97,7 +97,8 @@ abstract class RecorderService : LifecycleService() {
     }
 
     private fun buildNotification(): NotificationCompat.Builder {
-        val stopIntent = Intent(RECORDER_INTENT_ACTION).putExtra(ACTION_EXTRA_KEY, STOP_ACTION)
+        val stopIntent = Intent(RECORDER_INTENT_ACTION).putExtra(ACTION_EXTRA_KEY, STOP_ACTION).putExtra(
+            FROM_RECORDER_SERVICE, true)
         val stopAction = NotificationCompat.Action.Builder(
             null,
             getString(R.string.stop),
@@ -107,7 +108,8 @@ abstract class RecorderService : LifecycleService() {
         val resumeOrPauseIntent = Intent(RECORDER_INTENT_ACTION).putExtra(
             ACTION_EXTRA_KEY,
             PAUSE_RESUME_ACTION
-        )
+        ).putExtra(
+            FROM_RECORDER_SERVICE, true)
         val resumeOrPauseAction = NotificationCompat.Action.Builder(
             null,
             if (recorderState == RecorderState.ACTIVE) {
@@ -220,7 +222,7 @@ abstract class RecorderService : LifecycleService() {
         return PendingIntent.getActivity(
             this,
             6,
-            Intent(this, MainActivity::class.java),
+            Intent(this, MainActivity::class.java).putExtra(FROM_RECORDER_SERVICE, true),
             PendingIntent.FLAG_IMMUTABLE
         )
     }
@@ -230,5 +232,6 @@ abstract class RecorderService : LifecycleService() {
         const val ACTION_EXTRA_KEY = "action"
         const val STOP_ACTION = "STOP"
         const val PAUSE_RESUME_ACTION = "PR"
+        const val FROM_RECORDER_SERVICE = "FROM_RECORDER_SERVICE"
     }
 }

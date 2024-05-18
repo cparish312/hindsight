@@ -15,12 +15,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.connor.hindsight.MainActivity
-import com.connor.hindsight.viewmodel.MainViewModel
+import com.connor.hindsight.models.MainViewModel
 import com.connor.hindsight.ui.components.ToggleButton
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun MainScreen(mainViewModel: MainViewModel = viewModel()) {
+fun MainScreen(mainViewModel: MainViewModel = viewModel(), onNavigateToSettings: () -> Unit) {
     val context = LocalContext.current
 
     LaunchedEffect(key1 = mainViewModel) {
@@ -54,7 +54,7 @@ fun MainScreen(mainViewModel: MainViewModel = viewModel()) {
             text = "Screen Recording",
             onToggleOn = mainViewModel::toggleScreenRecording,
             onToggleOff = mainViewModel::toggleScreenRecording,
-            onClickSettings = { /* Open settings for screen recording */ }
+            onClickSettings = onNavigateToSettings
         )
 
         ToggleButton(

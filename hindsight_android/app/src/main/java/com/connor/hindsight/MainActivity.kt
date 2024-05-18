@@ -4,8 +4,6 @@ import android.app.Activity
 import androidx.activity.ComponentActivity
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
-import android.content.pm.ServiceInfo
 import android.media.projection.MediaProjectionConfig
 import android.media.projection.MediaProjectionManager
 import android.os.Build
@@ -24,6 +22,9 @@ import com.connor.hindsight.ui.screens.MainScreen
 import com.connor.hindsight.models.RecorderModel
 import com.connor.hindsight.network.services.PostService
 import com.connor.hindsight.services.RecorderService
+import com.connor.hindsight.ui.screens.AppNavigation
+import com.connor.hindsight.ui.theme.HindsightTheme
+import com.connor.hindsight.utils.Preferences
 
 class MainActivity : ComponentActivity() {
     private lateinit var mediaProjectionManager: MediaProjectionManager
@@ -34,7 +35,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MainScreen()
+            HindsightTheme {
+                AppNavigation()
+            }
         }
 
         mediaProjectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
@@ -46,9 +49,10 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        val prefs: SharedPreferences = application.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
-        if (prefs.getBoolean("ScreenRecordingEnabled", false)){
-            requestScreenCapturePermission()
+        if (!intent.getBooleanExtra(RecorderService.FROM_RECORDER_SERVICE, false)) {
+            if (Preferences.prefs.getBoolean(Preferences.screenrecordingenabled, false)) {
+                requestScreenCapturePermission()
+            }
         }
     }
 
@@ -82,5 +86,5 @@ class MainActivity : ComponentActivity() {
 @Preview(showBackground = true)
 @Composable
 fun HindsightPreview() {
-    MainScreen()
+    AppNavigation()
 }

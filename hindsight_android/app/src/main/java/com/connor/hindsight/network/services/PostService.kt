@@ -20,9 +20,7 @@ import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import com.connor.hindsight.MainActivity
 import com.connor.hindsight.R
-import com.connor.hindsight.enums.RecorderState
 import com.connor.hindsight.network.RetrofitClient
-import com.connor.hindsight.services.RecorderService
 import com.connor.hindsight.utils.NotificationHelper
 import com.connor.hindsight.utils.PermissionHelper
 import com.connor.hindsight.utils.getImageDirectory
@@ -32,7 +30,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -83,9 +80,6 @@ class PostService : LifecycleService() {
         syncedScreenshotDirectory = getSyncedImageDirectory(this)
 
         CoroutineScope(Dispatchers.IO).launch {
-            postTestJson()
-        }
-        CoroutineScope(Dispatchers.IO).launch {
             uploadAllImages()
         }
         super.onCreate()
@@ -135,29 +129,6 @@ class PostService : LifecycleService() {
         })
     }
 
-    private fun postTestJson() {
-        val jsonString = """{"Test_from_pixel" : "great success"}"""
-        val requestFile: RequestBody = jsonString.toRequestBody("application/json; charset=utf-8".toMediaTypeOrNull())
-
-        val retrofit = RetrofitClient.instance
-        val client = retrofit.create(ApiService::class.java)
-        val call = client.uploadJson(requestFile)
-
-        call.enqueue(object : retrofit2.Callback<ResponseBody> {
-            override fun onResponse(call: retrofit2.Call<ResponseBody>, response: retrofit2.Response<ResponseBody>) {
-                if (response.isSuccessful) {
-                    Log.d("Upload", "Upload successful: ${response.body()?.string()}")
-                } else {
-                    Log.e("Upload", "Upload failed: ${response.errorBody()?.string()}")
-                }
-            }
-
-            override fun onFailure(call: retrofit2.Call<ResponseBody>, t: Throwable) {
-                Log.e("Upload", "Error: ${t.message}")
-            }
-        })
-    }
-
     private fun getPendingIntent(intent: Intent, requestCode: Int): PendingIntent =
         PendingIntent.getBroadcast(
             this,
@@ -172,16 +143,6 @@ class PostService : LifecycleService() {
             6,
             Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE
-        )
-    }
-
-    @SuppressLint("MissingPermission")
-    fun updateNotification() {
-        if (!PermissionHelper.hasPermission(this, Manifest.permission.POST_NOTIFICATIONS)) return
-        val notification = buildNotification().build()
-        NotificationManagerCompat.from(this).notify(
-            NotificationHelper.SERVER_UPLOAD_NOTIFICATION_ID,
-            notification
         )
     }
 
