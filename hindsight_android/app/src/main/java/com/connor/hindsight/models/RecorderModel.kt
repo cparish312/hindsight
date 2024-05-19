@@ -3,14 +3,12 @@ package com.connor.hindsight.models
 import android.Manifest
 import android.accessibilityservice.AccessibilityService
 import android.annotation.SuppressLint
-import android.app.AppOpsManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.Build
 import android.os.IBinder
-import android.os.Process
 import android.provider.Settings
 import android.text.TextUtils
 import android.util.Log
@@ -24,7 +22,6 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import com.connor.hindsight.R
 import com.connor.hindsight.enums.RecorderState
-import com.connor.hindsight.network.services.PostService
 import com.connor.hindsight.services.KeyTrackingService
 import com.connor.hindsight.services.RecorderService
 import com.connor.hindsight.services.ScreenRecorderService
@@ -77,8 +74,10 @@ class RecorderModel : ViewModel() {
         context.bindService(intent, connection, Context.BIND_AUTO_CREATE)
 
         // Initialize KeyTracking to see when user active
-        val keyTrackingIntent = Intent(context, KeyTrackingService::class.java)
-        context.startService(keyTrackingIntent)
+        if (Preferences.prefs.getBoolean(Preferences.recordwhenactive, true)) {
+            val keyTrackingIntent = Intent(context, KeyTrackingService::class.java)
+            context.startService(keyTrackingIntent)
+        }
 
         Log.d("RecorderModel", "Start Recorder Service")
     }

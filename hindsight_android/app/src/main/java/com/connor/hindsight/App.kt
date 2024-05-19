@@ -8,6 +8,5 @@ class App : Application() {
     override fun onCreate() {
         super.onCreate()
         Preferences.init(this)
-        // NotificationHelper.buildNotificationChannels(this)
     }
 }

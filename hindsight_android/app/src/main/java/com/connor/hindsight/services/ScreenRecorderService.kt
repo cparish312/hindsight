@@ -144,26 +144,6 @@ class ScreenRecorderService : RecorderService() {
         }
     }
 
-//    private fun saveImageData(bitmap: Bitmap, context: Context) {
-//        val contentValues = ContentValues().apply {
-//            put(MediaStore.MediaColumns.DISPLAY_NAME, "screenshot_${System.currentTimeMillis()}.jpg")
-//            put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-//            put(MediaStore.MediaColumns.RELATIVE_PATH, "${Environment.DIRECTORY_PICTURES}/hindsight")
-//        }
-//
-//        val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
-//        uri?.let {
-//            try {
-//                context.contentResolver.openOutputStream(it)?.use { outputStream ->
-//                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, outputStream)
-//                    Log.d("ScreenRecordingService", "Image saved to $uri")
-//                }
-//            } catch (e: IOException) {
-//                Log.e("ScreenRecordingService", "Failed to save image", e)
-//            }
-//        }
-//    }
-
     private fun saveImageData(bitmap: Bitmap, context: Context) {
         // Use the app's private storage directory
         val directory = getImageDirectory(context)

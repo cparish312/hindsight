@@ -7,7 +7,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.SharedPreferences
 import android.media.MediaRecorder
 import android.os.Binder
 import android.os.Build
@@ -219,10 +218,12 @@ abstract class RecorderService : LifecycleService() {
     }
 
     private fun getActivityIntent(): PendingIntent {
+        Log.d("ScreenRecordingService", "Starting MainActivity from notification")
+        val intent = Intent(this, MainActivity::class.java).putExtra(FROM_RECORDER_SERVICE, true)
         return PendingIntent.getActivity(
             this,
             6,
-            Intent(this, MainActivity::class.java).putExtra(FROM_RECORDER_SERVICE, true),
+            intent,
             PendingIntent.FLAG_IMMUTABLE
         )
     }

@@ -18,7 +18,6 @@ import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
-import com.connor.hindsight.ui.screens.MainScreen
 import com.connor.hindsight.models.RecorderModel
 import com.connor.hindsight.network.services.PostService
 import com.connor.hindsight.services.RecorderService
@@ -51,6 +50,7 @@ class MainActivity : ComponentActivity() {
 
         if (!intent.getBooleanExtra(RecorderService.FROM_RECORDER_SERVICE, false)) {
             if (Preferences.prefs.getBoolean(Preferences.screenrecordingenabled, false)) {
+                Log.d("MainActivity", "Starting Recording From MainActivity")
                 requestScreenCapturePermission()
             }
         }

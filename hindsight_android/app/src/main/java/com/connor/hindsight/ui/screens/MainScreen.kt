@@ -11,12 +11,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.connor.hindsight.MainActivity
 import com.connor.hindsight.models.MainViewModel
 import com.connor.hindsight.ui.components.ToggleButton
+import com.connor.hindsight.ui.components.observeDirectory
+import com.connor.hindsight.utils.getImageDirectory
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -48,6 +53,13 @@ fun MainScreen(mainViewModel: MainViewModel = viewModel(), onNavigateToSettings:
         val isUploading = mainViewModel.isUploading.collectAsState()
         val locationTrackingEnabled = mainViewModel.locationTrackingEnabled.collectAsState()
         val keyloggingEnabled = mainViewModel.keyloggingEnabled.collectAsState()
+
+
+        val imageDir = getImageDirectory(context)
+        val fileCountFlow = remember { observeDirectory(imageDir) }
+
+        @OptIn(ExperimentalCoroutinesApi::class)
+        val fileCount = fileCountFlow.collectAsState(initial = 0).value
 
         ToggleButton(
             checked = screenRecordingEnabled.value,
@@ -88,5 +100,11 @@ fun MainScreen(mainViewModel: MainViewModel = viewModel(), onNavigateToSettings:
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterVertically).padding(top = 16.dp))
             }
         }
+
+        Text(
+            "Unsynced Screenshots: $fileCount",
+            modifier = Modifier.padding(16.dp)
+        )
     }
 }
+

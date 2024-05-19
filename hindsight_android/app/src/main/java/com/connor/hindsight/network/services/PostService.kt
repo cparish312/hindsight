@@ -1,7 +1,5 @@
 package com.connor.hindsight.network.services
 
-import ApiService
-import android.Manifest
 import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -22,10 +20,10 @@ import com.connor.hindsight.MainActivity
 import com.connor.hindsight.R
 import com.connor.hindsight.network.RetrofitClient
 import com.connor.hindsight.utils.NotificationHelper
-import com.connor.hindsight.utils.PermissionHelper
 import com.connor.hindsight.utils.getImageDirectory
 import com.connor.hindsight.utils.getImageFiles
 import com.connor.hindsight.utils.getSyncedImageDirectory
+import com.connor.hindsight.network.interfaces.ApiService
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -34,9 +32,9 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
-import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.ResponseBody
 import java.io.File
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 
@@ -111,7 +109,7 @@ class PostService : LifecycleService() {
             @RequiresApi(Build.VERSION_CODES.O)
             override fun onResponse(call: retrofit2.Call<ResponseBody>, response: retrofit2.Response<ResponseBody>) {
                 if (response.isSuccessful) {
-                    Log.d("Upload", "Upload successful: ${response.body()?.string()}")
+                    Log.d("PostService", "Upload successful: ${response.body()?.string()}")
                     Files.move(file.toPath(), syncedScreenshotDirectory.toPath().resolve(file.name), StandardCopyOption.REPLACE_EXISTING)
 //                    if (file.delete()) {
 //                        Log.d("Upload", "Deleted file: ${file.name}")
@@ -119,12 +117,17 @@ class PostService : LifecycleService() {
 //                        Log.e("Upload", "Failed to delete file: ${file.name}")
 //                    }
                 } else {
-                    Log.e("Upload", "Upload failed: ${response.errorBody()?.string()}")
+                    Log.e("PostService", "Upload failed: ${response.errorBody()?.string()}")
                 }
             }
 
             override fun onFailure(call: retrofit2.Call<ResponseBody>, t: Throwable) {
-                Log.e("Upload", "Error: ${t.message}")
+                if (t is IOException) {
+                    Log.e("PostService", "Could not connect to server")
+                    onDestroy()
+                } else {
+                    Log.e("PostService", "Failure in response parsing or serialization: ${t.message}")
+                }
             }
         })
     }
