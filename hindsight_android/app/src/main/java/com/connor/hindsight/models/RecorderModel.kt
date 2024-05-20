@@ -82,8 +82,15 @@ class RecorderModel : ViewModel() {
         Log.d("RecorderModel", "Start Recorder Service")
     }
 
-    fun stopRecording() {
+    fun stopRecording(context: Context) {
+        // Doesn't work if app is reopened through notification
         Log.d("RecorderModel", "Stop Recorder Service")
+        listOfNotNull(
+            ScreenRecorderService::class.java,
+            KeyTrackingService::class.java
+        ).forEach {
+            context.stopService(Intent(context, it))
+        }
         recorderService?.onDestroy()
         recordedTime = null
     }

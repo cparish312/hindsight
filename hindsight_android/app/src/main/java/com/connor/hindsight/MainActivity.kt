@@ -72,7 +72,7 @@ class MainActivity : ComponentActivity() {
     }
 
     fun stopScreenRecording() {
-        recorderModel.stopRecording()
+        recorderModel.stopRecording(this)
     }
 
     fun uploadToServer() {

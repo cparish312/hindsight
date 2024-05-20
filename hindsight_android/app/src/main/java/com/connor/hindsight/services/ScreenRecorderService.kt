@@ -44,6 +44,7 @@ class ScreenRecorderService : RecorderService() {
     private var actionSinceLastScreenshot: Boolean = true
 
     private var recordWhenActive: Boolean =  Preferences.prefs.getBoolean(Preferences.recordwhenactive, false)
+    private var screenshotApplication: String? = null
 
     override val fgServiceType: Int?
         get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -110,6 +111,7 @@ class ScreenRecorderService : RecorderService() {
                         return
                     }
                     val image = imageReader.acquireLatestImage()
+                    screenshotApplication = UserActivityState.currentApplication
                     Log.d("ScreenRecordingService", "Image Acquired")
                     image?.let {
                         val buffer = it.planes[0].buffer
@@ -148,7 +150,7 @@ class ScreenRecorderService : RecorderService() {
         // Use the app's private storage directory
         val directory = getImageDirectory(context)
 
-        val file = File(directory, "screenshot_${System.currentTimeMillis()}.jpg")
+        val file = File(directory, "${screenshotApplication}_${System.currentTimeMillis()}.jpg")
         try {
             FileOutputStream(file).use { fos ->
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos)
@@ -170,8 +172,7 @@ class ScreenRecorderService : RecorderService() {
         return ImageResolution(
             metrics.widthPixels,
             metrics.heightPixels,
-            metrics.densityDpi,
-            display.refreshRate.toInt()
+            metrics.densityDpi
         )
     }
 
