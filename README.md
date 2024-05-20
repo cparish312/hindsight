@@ -30,6 +30,7 @@ Hindsight is an android app that takes a screenshot every 2 seconds. The server 
 Currently the app has 2 "working" functionalities.
 1) **Screen Recording:** Toggle screen recording on or off.
 2) **Server Upload:** Upload screenshots directly to your server.
+* The screenshots timeline can be viewed by running `python timeline_view.py`
 
 ## Settings
 * **User Activity Detection:** This setting is recommended as, depending on your phone usage, it can signifantly save battery life. The app will only take a screenshot if the user has been active since the last screenshot.
@@ -43,6 +44,6 @@ Feedback and contributions are welcome! Please reach out if you have ideas or wa
 
 ## Considerations
 * **Security:** Lots of security concerns so would love feedback in that area!
-* **Battery Usage:** Currently it uses around 7% of my new google pixel8's battery. Hopefully this can be reduced even more and I'm very curious if battery life will be too big of a limitation for other phones.
+* **Battery Usage:** It uses around 7% of my new google pixel8's battery. Hopefully this can be reduced even more and I'm very curious if battery life will be too big of a limitation for other phones.
 * **iPhone:** Unfortunetly, this would not work on iPhone as the broadcast functionality would require user permission each time the phone screen turns off.
 * **Testing:** This has only been tested on a Pixel 8 and Mac M3
