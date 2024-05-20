@@ -1,0 +1,25 @@
+[ req ]
+default_bits       = 2048
+prompt             = no
+default_md         = sha256
+req_extensions     = req_ext
+distinguished_name = dn
+
+[ dn ]
+C=${example_country}
+ST=${example_state}
+L=${example_city}
+O=${example_org}
+OU=${name}
+emailAddress=example.gmail.com
+CN = ${computer_ip}
+
+[ req_ext ]
+subjectAltName = @alt_names
+
+[ alt_names ]
+IP.1 = ${computer_ip}
+
+[ v3_ca ]
+subjectAltName = @alt_names
+

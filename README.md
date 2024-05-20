@@ -20,7 +20,7 @@ Hindsight is an android app that takes a screenshot every 2 seconds. The server 
 
 ### App
 1) Open `hindsight_android` in Android Studio.
-2) In `hindsight_android/app/src/main/java/com/connor/hindsight/network/RetrofitClient.kt` change `BASE_URL` to the base url of your server. This should be printed out when `python hindsight_server.py` is run and should also be the ip of `${computer ip}` in the `san.cnf`.
+2) In `hindsight_android/app/src/main/java/com/connor/hindsight/network/RetrofitClient.kt` change `BASE_URL` to the base url of your server including the port. This should be printed out when `python hindsight_server.py` is run and should also be the ip of `${computer_ip}` in the `san.cnf`.
 3) Move `hindsight_server.der` into `hindsight_android/app/src/main/res/raw/`
 4) You should be good to run the app on your device!
 
@@ -30,7 +30,7 @@ Currently the app has 2 "working" functionalities.
 2) **Server Upload:** Upload screenshots directly to your server.
 
 ## Settings
-* **User Activity Detection:** This setting is recommended as (depending on your phone usage) it can signifantly save battery life. When active, the app will only take a screenshot if the user has been active since the last screenshot.
+* **User Activity Detection:** This setting is recommended as, depending on your phone usage, it can signifantly save battery life. The app will only take a screenshot if the user has been active since the last screenshot.
 
 ## Permissions
 * **Screen Broadcasting:** The App requires screen broadcasting each time recording is started. Ideally this is only needed if the phone is turned off or if the user intentionally stops recording (pausing is available as well). However, the app is very buggy so it may be required more often.
