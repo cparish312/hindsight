@@ -5,7 +5,7 @@
             <!-- Trust preinstalled CAs -->
             <certificates src="system" />
             <!-- Additionally trust user added CAs -->
-            <certificates src="@raw/connor_hindsight_server" />
+            <certificates src="@raw/hindsight_server" />
         </trust-anchors>
     </base-config>
 </network-security-config>
