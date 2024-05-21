@@ -1,4 +1,4 @@
-# Hindsight <img src="https://github.com/cparish312/hindsight/blob/main/assets/hindsight_icon.png" width="100">
+# Hindsight <img src="https://github.com/cparish312/hindsight/blob/main/assets/hindsight_icon.png" width=40">
 
 Look back on your digital experience with Hindsight! (very alpha)
 
