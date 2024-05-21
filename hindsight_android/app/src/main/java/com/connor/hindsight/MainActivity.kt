@@ -1,6 +1,7 @@
 package com.connor.hindsight
 
 import android.app.Activity
+import android.app.ActivityManager
 import androidx.activity.ComponentActivity
 import android.content.Context
 import android.content.Intent
@@ -21,6 +22,7 @@ import androidx.core.content.ContextCompat
 import com.connor.hindsight.models.RecorderModel
 import com.connor.hindsight.network.services.PostService
 import com.connor.hindsight.services.RecorderService
+import com.connor.hindsight.services.ScreenRecorderService
 import com.connor.hindsight.ui.screens.AppNavigation
 import com.connor.hindsight.ui.theme.HindsightTheme
 import com.connor.hindsight.utils.Preferences
@@ -48,8 +50,8 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        if (!intent.getBooleanExtra(RecorderService.FROM_RECORDER_SERVICE, false)) {
-            if (Preferences.prefs.getBoolean(Preferences.screenrecordingenabled, false)) {
+        if (Preferences.prefs.getBoolean(Preferences.screenrecordingenabled, false)) {
+            if (!intent.getBooleanExtra(RecorderService.FROM_RECORDER_SERVICE, false)) {
                 Log.d("MainActivity", "Starting Recording From MainActivity")
                 requestScreenCapturePermission()
             }
@@ -57,6 +59,10 @@ class MainActivity : ComponentActivity() {
     }
 
     fun requestScreenCapturePermission() {
+        if (ScreenRecorderService.isRunning) {
+            Log.d("MainActivity", "Ran requestScreenCapturePermission but ScreenRecorderService is running")
+            return
+        }
         if (recorderModel.hasScreenRecordingPermissions(this)) {
             Log.d("MainActivity", "hasScreenRecordingPermissions")
             var captureIntent: Intent? = null

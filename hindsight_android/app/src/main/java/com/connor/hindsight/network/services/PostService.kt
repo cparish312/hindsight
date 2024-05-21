@@ -110,12 +110,12 @@ class PostService : LifecycleService() {
             override fun onResponse(call: retrofit2.Call<ResponseBody>, response: retrofit2.Response<ResponseBody>) {
                 if (response.isSuccessful) {
                     Log.d("PostService", "Upload successful: ${response.body()?.string()}")
-                    Files.move(file.toPath(), syncedScreenshotDirectory.toPath().resolve(file.name), StandardCopyOption.REPLACE_EXISTING)
-//                    if (file.delete()) {
-//                        Log.d("Upload", "Deleted file: ${file.name}")
-//                    } else {
-//                        Log.e("Upload", "Failed to delete file: ${file.name}")
-//                    }
+                    // Files.move(file.toPath(), syncedScreenshotDirectory.toPath().resolve(file.name), StandardCopyOption.REPLACE_EXISTING)
+                    if (file.delete()) {
+                        Log.d("Upload", "Deleted file: ${file.name}")
+                    } else {
+                        Log.e("Upload", "Failed to delete file: ${file.name}")
+                    }
                 } else {
                     Log.e("PostService", "Upload failed: ${response.errorBody()?.string()}")
                 }

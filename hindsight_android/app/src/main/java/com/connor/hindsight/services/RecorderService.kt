@@ -233,6 +233,6 @@ abstract class RecorderService : LifecycleService() {
         const val ACTION_EXTRA_KEY = "action"
         const val STOP_ACTION = "STOP"
         const val PAUSE_RESUME_ACTION = "PR"
-        const val FROM_RECORDER_SERVICE = "FROM_RECORDER_SERVICE"
+        const val FROM_RECORDER_SERVICE = "com.connor.hindsight.FROM_RECORDER_SERVICE"
     }
 }

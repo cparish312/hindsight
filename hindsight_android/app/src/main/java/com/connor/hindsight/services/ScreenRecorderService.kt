@@ -41,7 +41,6 @@ class ScreenRecorderService : RecorderService() {
     private var imageCaptureRunnable: Runnable? = null
 
     private var recorderLoopStopped: Boolean = false
-    private var actionSinceLastScreenshot: Boolean = true
 
     private var recordWhenActive: Boolean =  Preferences.prefs.getBoolean(Preferences.recordwhenactive, false)
     private var screenshotApplication: String? = null
@@ -83,6 +82,7 @@ class ScreenRecorderService : RecorderService() {
 
     override fun start() {
         super.start()
+        isRunning = true
         val resolution = getScreenResolution()
         val density = resolution.density
         val width = resolution.width
@@ -178,6 +178,7 @@ class ScreenRecorderService : RecorderService() {
 
     override fun onDestroy() {
         Log.d("ScreenRecordingService", "Destroying Screen Recording Service")
+        isRunning = false
         handler?.removeCallbacks(imageCaptureRunnable!!)  // Stop the recurring image capture
         imageReader.close()
         virtualDisplay?.release()
@@ -194,6 +195,7 @@ class ScreenRecorderService : RecorderService() {
     }
 
     companion object {
+        var isRunning = false
         const val SCREEN_RECORDER_STOPPED = "com.connor.hindsight.SCREEN_RECORDER_STOPPED"
     }
 }
