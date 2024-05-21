@@ -1,4 +1,4 @@
-# Hindsight
+# Hindsight ![image](https://github.com/connor/hindsight/assets/hindsight_icon.png)
 
 Look back on your digital experience with Hindsight! (very alpha)
 
