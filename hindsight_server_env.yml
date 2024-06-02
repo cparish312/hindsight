@@ -1,0 +1,14 @@
+name: hindsight_server
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - flask=3.0.3
+  - numpy=1.26.4
+  - pandas=2.2.2
+  - pillow=10.3.0
+  - pip=24.0
+  - python=3.9.18
+  - tzlocal=5.2
+  - pip:
+      - opencv-python==4.9.0.80
