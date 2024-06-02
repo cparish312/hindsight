@@ -10,7 +10,7 @@ Hindsight is an android app that takes a screenshot every 2 seconds. The server 
 ## Setup
 ### Server
 1) **Conda Environment:**
-*   Install conda if you don't have it already
+*   Install [conda](https://docs.anaconda.com/free/miniconda/miniconda-install/) if you don't have it already
 *   Create the conda environment: `conda env create -f hindsight_server_env.yml`
 *   Activate the env using: `conda activate hindsight_server`
 2) **SSL Configuration:**
