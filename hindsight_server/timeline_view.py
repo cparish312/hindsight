@@ -6,13 +6,14 @@ import numpy as np
 import pandas as pd
 import tkinter as tk
 from tkinter import ttk
+from tkinter import messagebox
 from PIL import Image, ImageTk
 
 import tzlocal
 from zoneinfo import ZoneInfo
 from dataclasses import dataclass
 
-from hindsight_server import RAW_SCREENSHOTS_DIR
+from db import HindsightDB
 
 local_timezone = tzlocal.get_localzone()
 video_timezone = ZoneInfo("UTC")
@@ -20,53 +21,42 @@ video_timezone = ZoneInfo("UTC")
 @dataclass
 class Screenshot:
     image: np.array
+    text_df: pd.DataFrame
     timestamp: datetime.timestamp
 
 class TimelineViewer:
-    def __init__(self, master, screenshots_dir, max_width=1536, max_height=800):
+    def __init__(self, master, max_width=1536, max_height=800):
         self.master = master
-        self.screenshots_dir = screenshots_dir
-        self.images_df = self.get_images_df(screenshots_dir)
+        self.db = HindsightDB()
+        self.images_df = self.get_images_df()
         self.max_width = max_width
         self.max_height = max_height
         self.scroll_frame_num = 0
         self.scroll_frame_num_var = tk.StringVar()
 
+        # For mouse dragging
+        self.dragging = False
+        self.drag_start = None
+        self.drag_end = None
+
         self.setup_gui()
 
         self.exit_flag = False
 
-    def get_images_df(self, screenshots_dir):
-        images_l = list()
-        for f in glob.glob(f"{screenshots_dir}/*/*/*/*/*.jpg"):
-            filename = f.split('/')[-1]
-            filename_s = filename.replace(".jpg", "").split("_")
-            application = filename_s[0]
-            timestamp = int(filename_s[1])
-            images_l.append({"path" : f, "timestamp" : timestamp, "app" : application})
-        images_df = pd.DataFrame(images_l)
+    def get_images_df(self):
+        images_df = self.db.get_frames()
         images_df['datetime_utc'] = pd.to_datetime(images_df['timestamp'] / 1000, unit='s', utc=True)
         images_df['datetime_local'] = images_df['datetime_utc'].apply(lambda x: x.replace(tzinfo=video_timezone).astimezone(local_timezone))
         return images_df.sort_values(by='datetime_local', ascending=False)
     
-    def resize_screenshot(self, image, max_width, max_height):
-        height, width, _ = image.shape
-        if width > max_width or height > max_height:
-            scaling_factor = min(max_width / width, max_height / height)
-            new_size = (int(width * scaling_factor), int(height * scaling_factor))
-            return cv2.resize(image, new_size, interpolation=cv2.INTER_AREA)
-
-    def get_screenshot(self, i):
-        im_row = self.images_df.iloc[i]
-        image = cv2.imread(im_row['path'])
-        image_resized = self.resize_screenshot(image, self.max_width, self.max_height)
-        return Screenshot(image=image_resized, timestamp=im_row['datetime_local'])
-        
     def setup_gui(self):
         self.master.title("Trackpad-Controlled Video Timeline")
         
         self.video_label = ttk.Label(self.master)
         self.video_label.pack()
+        self.video_label.bind("<Button-1>", self.start_drag)
+        self.video_label.bind("<B1-Motion>", self.on_drag)
+        self.video_label.bind("<ButtonRelease-1>", self.end_drag)
 
         self.time_label = ttk.Label(self.master, textvariable=str(self.scroll_frame_num_var), font=("Arial", 24), anchor="e")
         self.time_label.pack()
@@ -76,6 +66,30 @@ class TimelineViewer:
         screenshot = self.get_screenshot(self.displayed_frame_num)
         self.display_frame(screenshot, self.displayed_frame_num)
         self.master.after(40, self.update_frame_periodically)
+    
+    def resize_screenshot(self, screenshot, max_width, max_height):
+        height, width, _ = screenshot.image.shape
+        if width > max_width or height > max_height:
+            scaling_factor = min(max_width / width, max_height / height)
+            new_size = (int(width * scaling_factor), int(height * scaling_factor))
+            screenshot.image = cv2.resize(screenshot.image, new_size, interpolation=cv2.INTER_AREA)
+            if screenshot.text_df is not None:
+                screenshot.text_df.loc[:, 'x'] = screenshot.text_df['x'] * scaling_factor
+                screenshot.text_df.loc[:, 'y'] = screenshot.text_df['y'] * scaling_factor
+                screenshot.text_df.loc[:, 'w'] = screenshot.text_df['w'] * scaling_factor
+                screenshot.text_df.loc[:, 'h'] = screenshot.text_df['h'] * scaling_factor
+        return screenshot
+
+
+    def get_screenshot(self, i):
+        im_row = self.images_df.iloc[i]
+        image = cv2.imread(im_row['path'])
+        text_df = self.db.get_ocr_results(frame_id=im_row['id'])
+        if set(text_df['text']) == {None}:
+            text_df = None
+        screenshot = Screenshot(image=image, text_df=text_df, timestamp=im_row['datetime_local'])
+        screenshot_resized = self.resize_screenshot(screenshot, self.max_width, self.max_height)
+        return screenshot_resized
 
     def update_frame_periodically(self):
         # Check if the current scroll position has a preloaded frame
@@ -95,7 +109,7 @@ class TimelineViewer:
         self.video_label.imgtk = imgtk
         self.video_label.configure(image=imgtk)
         self.scroll_frame_num_var.set(f"Time: {screenshot.timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
-        self.displayed_videoframe = screenshot
+        self.displayed_image = screenshot
         self.displayed_frame_num = frame_num
     
     def bind_scroll_event(self):
@@ -126,6 +140,50 @@ class TimelineViewer:
         # Linux scroll down
         self.scroll_frame_num += 1
 
+    def start_drag(self, event):
+        self.dragging = True
+        self.drag_start = (event.x, event.y)
+
+    def on_drag(self, event):
+        if self.dragging:
+            self.drag_end = (event.x, event.y)
+
+    def end_drag(self, event):
+        if not self.dragging:
+            return
+        self.dragging = False
+        self.copy_texts_within_drag_area()
+
+    def rectangles_overlap(self, rect1, rect2):
+        """Check if two rectangles overlap. Rectangles are defined as (x1, y1, x2, y2)."""
+        x1, y1, x2, y2 = rect1
+        rx1, ry1, rx2, ry2 = rect2
+        return not (rx1 > x2 or rx2 < x1 or ry1 > y2 or ry2 < y1)
+
+    def copy_texts_within_drag_area(self):
+        x1 = min(self.drag_start[0], self.drag_end[0]) 
+        y1 = min(self.drag_start[1], self.drag_end[1])
+        x2 = max(self.drag_start[0], self.drag_end[0]) 
+        y2 = max(self.drag_start[1], self.drag_end[1])
+
+        text_df = self.displayed_image.text_df
+        selected_texts = []
+        if text_df is not None:
+            texts_in_area = text_df.apply(lambda row: self.rectangles_overlap((x1, y1, x2, y2), (row['x'], row['y'], row['x'] + row['w'], row['y'] + row['h'])), axis=1)
+            overlapping_texts = text_df[texts_in_area]
+            selected_texts.extend(overlapping_texts['text'].tolist())
+        
+        if selected_texts:
+            self.copy_to_clipboard("\n".join(selected_texts))
+        else:
+            messagebox.showinfo("No Text Selected", "No text found within the selected area.")
+
+    def copy_to_clipboard(self, text):
+        """Copy provided text to clipboard."""
+        self.master.clipboard_clear()
+        self.master.clipboard_append(text)
+        messagebox.showinfo("Text Copied", f"Text has been copied to clipboard:\n{text}")
+
     # When the window is closed, you should also gracefully exit the preload thread
     def on_window_close(self):
         self.exit_flag = True
@@ -136,7 +194,7 @@ class TimelineViewer:
 
 def main():
     root = tk.Tk()
-    app = TimelineViewer(root, screenshots_dir=RAW_SCREENSHOTS_DIR)
+    app = TimelineViewer(root)
     root.protocol("WM_DELETE_WINDOW", app.on_window_close)  # Handle window close event
     root.mainloop()
 

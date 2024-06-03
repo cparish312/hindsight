@@ -9,10 +9,12 @@ import pandas as pd
 
 app = Flask(__name__)
 
-RAW_SCREENSHOTS_DIR = "./data/raw_screenshots"
-SCREENSHOTS_TMP_DIR = "./data/raw_screenshots_tmp"
+base_dir = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(base_dir, "data")
+RAW_SCREENSHOTS_DIR = os.path.join(DATA_DIR, "raw_screenshots")
 
 HOME = Path.home()
+SCREENSHOTS_TMP_DIR = HOME / ".hindsight_server/raw_screenshots_tmp"
 SSL_CERT = HOME / ".hindsight_server/server.crt"
 SSL_KEY = HOME / ".hindsight_server/server.key"
 
