@@ -205,7 +205,6 @@ class TimelineViewer:
     # When the window is closed, you should also gracefully exit the preload thread
     def on_window_close(self):
         self.exit_flag = True
-        self.preload_thread.join()
         for _, video_manager in self.video_timeline_manager.video_managers:
             video_manager.cap.release()
         self.master.destroy()

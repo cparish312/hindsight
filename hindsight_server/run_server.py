@@ -43,7 +43,7 @@ def process_image_queue():
             timestamp_obj = pd.to_datetime(timestamp / 1000, unit='s', utc=True)
             destdir = os.path.join(RAW_SCREENSHOTS_DIR, f"{timestamp_obj.strftime('%Y/%m/%d')}/{application}/")
             make_dir(destdir)
-            filepath = os.path.join(destdir, filename)
+            filepath = os.path.abspath(os.path.join(destdir, filename))
             shutil.move(tmp_file, filepath)
             print(f"File saved to {filepath}")
 
