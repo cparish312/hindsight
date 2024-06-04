@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import tkinter as tk
 from tkinter import ttk
+from datetime import timedelta
 from PIL import Image, ImageTk
 from tkcalendar import DateEntry
 
@@ -15,9 +16,10 @@ local_timezone = tzlocal.get_localzone()
 video_timezone = ZoneInfo("UTC")
 
 class SearchViewer:
-    def __init__(self, master, db = None, num_images_per_row=6):
+    def __init__(self, master, max_results=200):
         self.master = master
-        self.db = db if db is not None else HindsightDB()
+        self.db = HindsightDB()
+        self.max_results = max_results
         self.images_df = self.get_images_df()
         self.first_date = min(self.images_df['datetime_local'])
         self.screen_width = self.master.winfo_screenwidth()
@@ -75,7 +77,7 @@ class SearchViewer:
         # Create applications selection option
         self.app_list = tk.Listbox(self.search_frame, selectmode = "multiple", width=len(longest_app)) 
         self.app_list.pack(side=tk.LEFT, padx=(0, 5)) 
-        for app in set(self.images_df['application']):
+        for app in sorted(list(set(self.images_df['application']))):
             self.app_list.insert(tk.END, app)
 
         self.search_button = ttk.Button(self.search_frame, text="Search", command=self.get_search_results)
@@ -133,16 +135,16 @@ class SearchViewer:
     def get_search_results(self):
         search_text = self.search_entry.get()
         start_date =pd.to_datetime(self.start_date_entry.get_date()).tz_localize(tzlocal.get_localzone())
-        end_date = pd.to_datetime(self.end_date_entry.get_date()).tz_localize(tzlocal.get_localzone())
+        # Want to include all times within the end date
+        end_date = pd.to_datetime(self.end_date_entry.get_date() + timedelta(hours=24)).tz_localize(tzlocal.get_localzone())
         selected_apps = set()
         for i in self.app_list.curselection():
             selected_apps.add(self.app_list.get(i))
         selected_apps = selected_apps if len(selected_apps) > 0 else None
 
-        if search_text:
-            search_results = self.db.search_text(text=search_text, start_date=start_date, end_date=end_date, apps=selected_apps, n_seconds=300)
-            self.search_results = search_results
-            self.display_frames()
+        search_results = self.db.search(text=search_text, start_date=start_date, end_date=end_date, apps=selected_apps, n_seconds=300)
+        self.search_results = search_results.iloc[:self.max_results]
+        self.display_frames()
 
     def display_frames(self):
         """Displays all frames in self.search_results in grid format"""

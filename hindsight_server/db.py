@@ -132,7 +132,7 @@ class HindsightDB:
             df = pd.read_sql_query(query, conn)
             return df
     
-    def search_text(self, text, start_date=None, end_date=None, apps=None, n_seconds=None):
+    def search(self, text=None, start_date=None, end_date=None, apps=None, n_seconds=None):
         """Search for frames with OCR results containing the specified text. If n_seconds
         is provided it will only return 1 result within each n_seconds period.
         Bonus:
@@ -140,15 +140,24 @@ class HindsightDB:
         an issue so leaning towards simplicity.
         """
         with self.get_connection() as conn:
-            # Query to get the combined OCR text for each frame_id
-            query = '''
+            if text is None:
+                query = '''
                 SELECT frames.id, frames.path, frames.timestamp, frames.application, GROUP_CONCAT(ocr_results.text, ' ') AS combined_text
                 FROM frames
                 INNER JOIN ocr_results ON frames.id = ocr_results.frame_id
                 GROUP BY frames.id
-                HAVING combined_text LIKE ?
-            '''
-            df = pd.read_sql_query(query, conn, params=('%' + text + '%',))
+                '''
+                df = pd.read_sql_query(query, conn)
+            else:
+                # Query to get the combined OCR text for each frame_id
+                query = '''
+                    SELECT frames.id, frames.path, frames.timestamp, frames.application, GROUP_CONCAT(ocr_results.text, ' ') AS combined_text
+                    FROM frames
+                    INNER JOIN ocr_results ON frames.id = ocr_results.frame_id
+                    GROUP BY frames.id
+                    HAVING combined_text LIKE ?
+                '''
+                df = pd.read_sql_query(query, conn, params=('%' + text + '%',))
 
             if apps:
                 df = df.loc[df['application'].isin(apps)]
