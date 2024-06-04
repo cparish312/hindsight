@@ -6,7 +6,7 @@ from datetime import timedelta
 import tzlocal
 from zoneinfo import ZoneInfo
 
-from hindsight_server import DATA_DIR
+from config import DATA_DIR
 
 local_timezone = tzlocal.get_localzone()
 video_timezone = ZoneInfo("UTC")

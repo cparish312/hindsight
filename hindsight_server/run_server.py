@@ -9,7 +9,7 @@ from flask import Flask, request, jsonify
 import pandas as pd
 
 from db import HindsightDB
-from hindsight_server import RAW_SCREENSHOTS_DIR
+from config import RAW_SCREENSHOTS_DIR
 
 if platform.system() == 'Darwin': # OCR only available for MAC currently
     import run_ocr

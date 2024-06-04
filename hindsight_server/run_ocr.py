@@ -9,7 +9,7 @@ from PIL import Image
 import tzlocal
 from zoneinfo import ZoneInfo
 
-from hindsight_server import RAW_SCREENSHOTS_DIR
+from config import RAW_SCREENSHOTS_DIR
 from db import HindsightDB
 
 local_timezone = tzlocal.get_localzone()
