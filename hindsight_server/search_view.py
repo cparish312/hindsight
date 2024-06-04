@@ -71,9 +71,10 @@ class SearchViewer:
         self.end_date_entry = DateEntry(self.search_frame)
         self.end_date_entry.pack(side=tk.LEFT, padx=(0, 5))
 
+        longest_app = max(self.images_df['application'], key=len)
         # Create applications selection option
-        self.app_list = tk.Listbox(self.search_frame, selectmode = "multiple") 
-        self.app_list.pack(fill = "both") 
+        self.app_list = tk.Listbox(self.search_frame, selectmode = "multiple", width=len(longest_app)) 
+        self.app_list.pack(side=tk.LEFT, padx=(0, 5)) 
         for app in set(self.images_df['application']):
             self.app_list.insert(tk.END, app)
 

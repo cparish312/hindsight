@@ -3,6 +3,7 @@ import platform
 import shutil
 import queue
 import threading
+from threading import Lock
 from pathlib import Path
 from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify

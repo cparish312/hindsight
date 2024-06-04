@@ -2,6 +2,7 @@ import os
 import sqlite3
 import pandas as pd
 from datetime import timedelta
+from threading import Lock
 
 import tzlocal
 from zoneinfo import ZoneInfo
@@ -16,6 +17,7 @@ DB_FILE = os.path.join(DATA_DIR, "hindsight.db")
 class HindsightDB:
     def __init__(self, db_file=DB_FILE):
         self.db_file = db_file
+        self.db_lock = Lock()
         self.create_tables()
 
     def get_connection(self):
@@ -55,41 +57,43 @@ class HindsightDB:
             conn.commit()
 
     def insert_frame(self, timestamp, path, application):
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            try:
-                cursor.execute('''
-                    INSERT INTO frames (timestamp, path, application)
-                    VALUES (?, ?, ?)
-                ''', (timestamp, path, application))
+        with self.db_lock:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                try:
+                    cursor.execute('''
+                        INSERT INTO frames (timestamp, path, application)
+                        VALUES (?, ?, ?)
+                    ''', (timestamp, path, application))
+                    
+                    # Get the last inserted frame_id
+                    frame_id = cursor.lastrowid
+                    conn.commit()
+                    print(f"Frame added successfully with frame_id: {frame_id}")
+                except sqlite3.IntegrityError:
+                    # Frame already exists, get the existing frame_id
+                    cursor.execute('''
+                        SELECT id FROM frames
+                        WHERE timestamp = ? AND path = ?
+                    ''', (timestamp, path))
+                    frame_id = cursor.fetchone()[0]
+                    print(f"Frame already exists with frame_id: {frame_id}")
                 
-                # Get the last inserted frame_id
-                frame_id = cursor.lastrowid
-                conn.commit()
-                print(f"Frame added successfully with frame_id: {frame_id}")
-            except sqlite3.IntegrityError:
-                # Frame already exists, get the existing frame_id
-                cursor.execute('''
-                    SELECT id FROM frames
-                    WHERE timestamp = ? AND path = ?
-                ''', (timestamp, path))
-                frame_id = cursor.fetchone()[0]
-                print(f"Frame already exists with frame_id: {frame_id}")
-            
-            return frame_id
+                return frame_id
 
     def insert_ocr_results(self, frame_id, ocr_results):
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            # Insert multiple OCR results
-            cursor.executemany('''
-                INSERT INTO ocr_results (frame_id, x, y, w, h, text, conf)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', [(frame_id, x, y, w, h, text, conf) for x, y, w, h, text, conf in ocr_results])
-            
-            conn.commit()
-            
-            print(f"{len(ocr_results)} OCR results added successfully.")
+        with self.db_lock:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                # Insert multiple OCR results
+                cursor.executemany('''
+                    INSERT INTO ocr_results (frame_id, x, y, w, h, text, conf)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', [(frame_id, x, y, w, h, text, conf) for x, y, w, h, text, conf in ocr_results])
+                
+                conn.commit()
+                
+                print(f"{len(ocr_results)} OCR results added successfully.")
 
     def get_frames(self, frame_id=None):
         """Select frames with associated OCR results."""
