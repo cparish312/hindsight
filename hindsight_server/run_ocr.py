@@ -1,3 +1,4 @@
+import os
 import glob
 import multiprocessing
 from ocrmac import ocrmac
@@ -8,8 +9,8 @@ from PIL import Image
 import tzlocal
 from zoneinfo import ZoneInfo
 
-from db import HindsightDB
 from hindsight_server import RAW_SCREENSHOTS_DIR
+from db import HindsightDB
 
 local_timezone = tzlocal.get_localzone()
 video_timezone = ZoneInfo("UTC")
@@ -37,7 +38,8 @@ def extract_text_from_frame(path):
         ocr_res = [[0, 0, 0, 0, None, 0]]
     return ocr_res
 
-def run_ocr(frame_id, path):
+def run_ocr(frame_id):
+    path = db.get_frames(frame_id=frame_id).iloc[0]['path']
     ocr_res = extract_text_from_frame(path)
     db.insert_ocr_results(frame_id, ocr_res)
     print(f"Inserted ocr results for {path}")
@@ -60,7 +62,7 @@ if __name__ == "__main__":
     print("Images without OCR:", len(images_without_ocr_df))
     path_to_run_ocr = list()
     for i, row in images_without_ocr_df.iterrows():
-        path_to_run_ocr.append((row['id'], row['path']))
+        path_to_run_ocr.append(row['id'])
 
-    with multiprocessing.Pool(8) as p:
-        p.starmap(run_ocr, path_to_run_ocr)
+    with multiprocessing.Pool(os.cpu_count() - 2) as p:
+        p.map(run_ocr, path_to_run_ocr)

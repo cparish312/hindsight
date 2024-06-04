@@ -13,12 +13,13 @@ Hindsight is an android app that takes a screenshot every 2 seconds. The server 
 *   Install [conda](https://docs.anaconda.com/free/miniconda/miniconda-install/) if you don't have it already
 *   Create the conda environment: `conda env create -f hindsight_server_env.yml`
 *   Activate the env using: `conda activate hindsight_server`
+*   If running on a Mac run `conda install -c conda-forge ocrmac` to utilize OCR
 2) **SSL Configuration:**
-*   Openssl is used to create ssl keys for running the server over Https. The keys are expected in `$Home/.hindsight_server` but that can be changed in `hindsight_server/hindsight_server.py`. Copy `hindsight_server/template_san.cnf` to `$Home/.hindsight_server/san.cnf` and fill in the `${}` sections. 
+*   Openssl is used to create ssl keys for running the server over Https. The keys are expected in `$Home/.hindsight_server` but that can be changed in `hindsight_server/run_server.py`. Copy `hindsight_server/template_san.cnf` to `$Home/.hindsight_server/san.cnf` and fill in the `${}` sections. 
 *   Run `openssl req -new -nodes -keyout server.key -out server.csr -config san.cnf`
 *   Run `openssl x509 -req -days 365 -in server.csr -signkey server.key -out server.crt -extensions v3_ca -extfile san.cnf`. You now have the public and private keys for running the server.
 *   You need to generate a `.der` file for the app to authenticate the identify of the server. Run `openssl x509 -outform der -in server.crt -out hindsight_server.der`
-*   You can change the directory that images are stored in by modifying `RAW_SCREENSHOTS_DIR` at the top of `hindsight_server/hindsight_server.py`
+*   You can change the directory that images are stored in by modifying `RAW_SCREENSHOTS_DIR` at the top of `hindsight_server/__init__.py`
 3) **Start the server:** `python hindsight_server.py`
 
 ### App
