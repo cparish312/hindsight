@@ -1,16 +1,25 @@
 import platform
 import cv2
+import tzlocal
+from zoneinfo import ZoneInfo
+import pandas as pd
 import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk
+from tkcalendar import DateEntry
 
 from db import HindsightDB
 from timeline_view import Screenshot, TimelineViewer
+
+local_timezone = tzlocal.get_localzone()
+video_timezone = ZoneInfo("UTC")
 
 class SearchViewer:
     def __init__(self, master, db = None, num_images_per_row=6):
         self.master = master
         self.db = db if db is not None else HindsightDB()
+        self.images_df = self.get_images_df()
+        self.first_date = min(self.images_df['datetime_local'])
         self.screen_width = self.master.winfo_screenwidth()
         self.screen_height = self.master.winfo_screenheight()
 
@@ -23,6 +32,13 @@ class SearchViewer:
 
         self.search_results = None
         self.setup_gui()
+
+    def get_images_df(self):
+        """Gets a DataFrame of all images at the time of inititation"""
+        images_df = self.db.get_frames()
+        images_df['datetime_utc'] = pd.to_datetime(images_df['timestamp'] / 1000, unit='s', utc=True)
+        images_df['datetime_local'] = images_df['datetime_utc'].apply(lambda x: x.replace(tzinfo=video_timezone).astimezone(local_timezone))
+        return images_df.sort_values(by='datetime_local', ascending=False)
 
     def calculate_num_images_per_row(self):
         # Assuming each image takes 300 pixels width including padding
@@ -40,6 +56,26 @@ class SearchViewer:
         self.search_entry = ttk.Entry(self.search_frame)
         self.search_entry.pack(fill=tk.X, expand=True, side=tk.LEFT, padx=(0, 5))
         self.search_entry.bind("<Return>", lambda event: self.get_search_results())
+
+        self.date_range_label = ttk.Label(self.search_frame, text="Date Range:")
+        self.date_range_label.pack(side=tk.LEFT, padx=(20, 5))
+
+        # Bug with blank calendar https://github.com/j4321/tkcalendar/issues/41
+        self.start_date_entry = DateEntry(self.search_frame)
+        self.start_date_entry.set_date(self.first_date)
+        self.start_date_entry.pack(side=tk.LEFT, padx=(0, 5))
+
+        self.end_date_label = ttk.Label(self.search_frame, text="to")
+        self.end_date_label.pack(side=tk.LEFT, padx=(0, 5))
+
+        self.end_date_entry = DateEntry(self.search_frame)
+        self.end_date_entry.pack(side=tk.LEFT, padx=(0, 5))
+
+        # Create applications selection option
+        self.app_list = tk.Listbox(self.search_frame, selectmode = "multiple") 
+        self.app_list.pack(fill = "both") 
+        for app in set(self.images_df['application']):
+            self.app_list.insert(tk.END, app)
 
         self.search_button = ttk.Button(self.search_frame, text="Search", command=self.get_search_results)
         self.search_button.pack(side=tk.LEFT)
@@ -95,8 +131,15 @@ class SearchViewer:
 
     def get_search_results(self):
         search_text = self.search_entry.get()
+        start_date =pd.to_datetime(self.start_date_entry.get_date()).tz_localize(tzlocal.get_localzone())
+        end_date = pd.to_datetime(self.end_date_entry.get_date()).tz_localize(tzlocal.get_localzone())
+        selected_apps = set()
+        for i in self.app_list.curselection():
+            selected_apps.add(self.app_list.get(i))
+        selected_apps = selected_apps if len(selected_apps) > 0 else None
+
         if search_text:
-            search_results = self.db.search_text(search_text,  n_seconds=300)
+            search_results = self.db.search_text(text=search_text, start_date=start_date, end_date=end_date, apps=selected_apps, n_seconds=300)
             self.search_results = search_results
             self.display_frames()
 
@@ -105,7 +148,7 @@ class SearchViewer:
         for widget in self.scroll_frame.winfo_children():
             widget.destroy()
 
-        if self.search_results is None:
+        if self.search_results is None or len(self.search_results) == 0:
             return
 
         row = 0

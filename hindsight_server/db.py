@@ -128,30 +128,42 @@ class HindsightDB:
             df = pd.read_sql_query(query, conn)
             return df
     
-    def search_text(self, text, n_seconds=None):
+    def search_text(self, text, start_date=None, end_date=None, apps=None, n_seconds=None):
         """Search for frames with OCR results containing the specified text. If n_seconds
-        is provided it will only return 1 result within each n_seconds period"""
+        is provided it will only return 1 result within each n_seconds period.
+        Bonus:
+        Date and app filtering could be done in query to optimize but perfomance isn't currently
+        an issue so leaning towards simplicity.
+        """
         with self.get_connection() as conn:
             # Query to get the combined OCR text for each frame_id
             query = '''
-                SELECT frames.id, frames.path, frames.timestamp, GROUP_CONCAT(ocr_results.text, ' ') AS combined_text
+                SELECT frames.id, frames.path, frames.timestamp, frames.application, GROUP_CONCAT(ocr_results.text, ' ') AS combined_text
                 FROM frames
                 INNER JOIN ocr_results ON frames.id = ocr_results.frame_id
                 GROUP BY frames.id
                 HAVING combined_text LIKE ?
             '''
-            
-            # Use pandas to read the SQL query result into a DataFrame
             df = pd.read_sql_query(query, conn, params=('%' + text + '%',))
-            if n_seconds is None:
-                return df
+
+            if apps:
+                df = df.loc[df['application'].isin(apps)]
 
             # Convert timestamp to datetime
             df['datetime_utc'] = pd.to_datetime(df['timestamp'] / 1000, unit='s', utc=True)
+            df['datetime_local'] = df['datetime_utc'].apply(lambda x: x.replace(tzinfo=video_timezone).astimezone(local_timezone))
+            if start_date:
+                df = df.loc[df['datetime_local'] >= start_date]
+
+            if end_date:
+                df = df.loc[df['datetime_local'] <= end_date]
 
             # Sort by timestamp
             df = df.sort_values(by='datetime_utc', ascending=False)
 
+            if n_seconds is None:
+                return df
+            
             # Select the most recent frame per N minutes
             result = []
             last_time = None
@@ -162,6 +174,5 @@ class HindsightDB:
 
             # Convert result to DataFrame
             result_df = pd.DataFrame(result)
-            result_df['datetime_local'] = result_df['datetime_utc'].apply(lambda x: x.replace(tzinfo=video_timezone).astimezone(local_timezone))
             
             return result_df
