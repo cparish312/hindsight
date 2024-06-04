@@ -6,19 +6,19 @@ req_extensions     = req_ext
 distinguished_name = dn
 
 [ dn ]
-C=${example_country}
-ST=${example_state}
-L=${example_city}
-O=${example_org}
-OU=${name}
-emailAddress=example.gmail.com
-CN = ${computer_ip}
+C=${example_country} # US
+ST=${example_state} # MA
+L=${example_city} # Cambridge
+O=${example_org} # Hindsight
+OU=${name} # connor
+emailAddress=${example.gmail.com}
+CN = ${computer_ip} # 192.168.1.225
 
 [ req_ext ]
 subjectAltName = @alt_names
 
 [ alt_names ]
-IP.1 = ${computer_ip}
+IP.1 = ${computer_ip} # 192.168.1.225
 
 [ v3_ca ]
 subjectAltName = @alt_names
