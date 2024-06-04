@@ -50,7 +50,7 @@ def process_image_queue():
             # Insert into db and run OCR
             frame_id = db.insert_frame(timestamp, filepath, application)
             if platform.system() == 'Darwin':
-                run_ocr.run_ocr(frame_id=frame_id)
+                run_ocr.run_ocr(frame_id=frame_id) # run_ocr inserts results into db
         except queue.Empty:
             continue
         except Exception as e:

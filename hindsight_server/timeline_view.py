@@ -1,5 +1,4 @@
 import cv2
-import glob
 from datetime import datetime
 import platform
 import numpy as np
@@ -25,13 +24,16 @@ class Screenshot:
     timestamp: datetime.timestamp
 
 class TimelineViewer:
-    def __init__(self, master, max_width=1536, max_height=800):
+    def __init__(self, master, frame_id = None, max_width=1536, max_height=800):
         self.master = master
         self.db = HindsightDB()
         self.images_df = self.get_images_df()
         self.max_width = max_width
         self.max_height = max_height
-        self.scroll_frame_num = 0
+        if frame_id is None:
+            self.scroll_frame_num = 0
+        else:
+            self.scroll_frame_num = self.images_df.index.get_loc(self.images_df[self.images_df['id'] == frame_id].index[0])
         self.scroll_frame_num_var = tk.StringVar()
 
         # For mouse dragging
@@ -44,6 +46,7 @@ class TimelineViewer:
         self.exit_flag = False
 
     def get_images_df(self):
+        """Gets a DataFrame of all images at the time of inititation"""
         images_df = self.db.get_frames()
         images_df['datetime_utc'] = pd.to_datetime(images_df['timestamp'] / 1000, unit='s', utc=True)
         images_df['datetime_local'] = images_df['datetime_utc'].apply(lambda x: x.replace(tzinfo=video_timezone).astimezone(local_timezone))
@@ -51,6 +54,12 @@ class TimelineViewer:
     
     def setup_gui(self):
         self.master.title("Trackpad-Controlled Video Timeline")
+
+        self.top_frame = ttk.Frame(self.master)
+        self.top_frame.pack(fill=tk.X, padx=5, pady=5)
+
+        self.search_button = ttk.Button(self.top_frame, text="Search", command=self.open_search_view)
+        self.search_button.pack(side=tk.RIGHT)
         
         self.video_label = ttk.Label(self.master)
         self.video_label.pack()
@@ -62,7 +71,7 @@ class TimelineViewer:
         self.time_label.pack()
         self.bind_scroll_event()
         
-        self.displayed_frame_num = 0
+        self.displayed_frame_num = self.scroll_frame_num
         screenshot = self.get_screenshot(self.displayed_frame_num)
         self.display_frame(screenshot, self.displayed_frame_num)
         self.master.after(40, self.update_frame_periodically)
@@ -82,6 +91,7 @@ class TimelineViewer:
 
 
     def get_screenshot(self, i):
+        """Loads and resizes the screenshot."""
         im_row = self.images_df.iloc[i]
         image = cv2.imread(im_row['path'])
         text_df = self.db.get_ocr_results(frame_id=im_row['id'])
@@ -161,6 +171,7 @@ class TimelineViewer:
         return not (rx1 > x2 or rx2 < x1 or ry1 > y2 or ry2 < y1)
 
     def copy_texts_within_drag_area(self):
+        """Gets all text in the area the user has dragged"""
         x1 = min(self.drag_start[0], self.drag_end[0]) 
         y1 = min(self.drag_start[1], self.drag_end[1])
         x2 = max(self.drag_start[0], self.drag_end[0]) 
@@ -183,6 +194,13 @@ class TimelineViewer:
         self.master.clipboard_clear()
         self.master.clipboard_append(text)
         messagebox.showinfo("Text Copied", f"Text has been copied to clipboard:\n{text}")
+
+    def open_search_view(self):
+        # Import SearchViewer here to avoid circular import issues
+        from search_view import SearchViewer
+
+        search_window = tk.Toplevel(self.master)
+        SearchViewer(search_window)
 
     # When the window is closed, you should also gracefully exit the preload thread
     def on_window_close(self):

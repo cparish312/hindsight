@@ -5,7 +5,7 @@ from tkinter import ttk
 from PIL import Image, ImageTk
 
 from db import HindsightDB
-from timeline_view import Screenshot
+from timeline_view import Screenshot, TimelineViewer
 
 class SearchViewer:
     def __init__(self, master, db = None, num_images_per_row=6):
@@ -19,14 +19,13 @@ class SearchViewer:
 
         self.num_images_per_row = self.calculate_num_images_per_row()
 
-        self.scroll_frame_num = 0
-        self.scroll_frame_num_var = tk.StringVar()
+        self.timeline_viewer = None
 
         self.search_results = None
         self.setup_gui()
 
     def calculate_num_images_per_row(self):
-        # Assuming each image takes 200 pixels width including padding
+        # Assuming each image takes 300 pixels width including padding
         return max(1, self.screen_width // 300)
     
     def setup_gui(self):
@@ -75,7 +74,6 @@ class SearchViewer:
     
     def on_mouse_wheel(self, event):
         # Windows and macOS handle scroll direction differently
-        print(event.delta)
         if platform.system() == "Windows":
             if event.delta > 0:
                 self.canvas.yview_scroll(1, "units")
@@ -103,6 +101,7 @@ class SearchViewer:
             self.display_frames()
 
     def display_frames(self):
+        """Displays all frames in self.search_results in grid format"""
         for widget in self.scroll_frame.winfo_children():
             widget.destroy()
 
@@ -113,7 +112,7 @@ class SearchViewer:
         col = 0
         for i, im_row in self.search_results.iterrows():
             screenshot = self.get_screenshot(im_row)
-            self.display_frame(screenshot, row, col)
+            self.display_frame(screenshot, im_row, row, col)
             col += 1
             if col >= self.num_images_per_row:
                 col = 0
@@ -145,7 +144,7 @@ class SearchViewer:
         screenshot_resized = self.resize_screenshot(screenshot, self.max_width // self.num_images_per_row, self.max_height // self.num_images_per_row)
         return screenshot_resized
 
-    def display_frame(self, screenshot, row, col):
+    def display_frame(self, screenshot, im_row, row, col):
         cv2image = cv2.cvtColor(screenshot.image, cv2.COLOR_BGR2RGB)
         img = Image.fromarray(cv2image)
         imgtk = ImageTk.PhotoImage(image=img)
@@ -156,9 +155,20 @@ class SearchViewer:
         label = ttk.Label(frame, image=imgtk)
         label.image = imgtk  # Keep a reference to avoid garbage collection
         label.pack()
+
+        # Bind the click event to open the timeline view
+        label.bind("<Button-1>", lambda e, frame_id=im_row['id']: self.open_timeline_view(frame_id))
         
         timestamp_label = ttk.Label(frame, text=f"Time: {screenshot.timestamp.strftime('%Y-%m-%d %H:%M:%S')}", font=("Arial", 16))
         timestamp_label.pack()
+
+    def open_timeline_view(self, frame_id):
+        """Opens timeline view at the clicked frame"""
+        if self.timeline_viewer is not None:
+            self.timeline_viewer.master.destroy()
+        
+        timeline_window = tk.Toplevel(self.master)
+        self.timeline_viewer = TimelineViewer(timeline_window, frame_id=frame_id)
 
     def on_window_close(self):
         self.master.destroy()
