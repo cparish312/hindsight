@@ -20,7 +20,7 @@ Hindsight is an android app that takes a screenshot every 2 seconds. The server 
 *   Run `openssl x509 -req -days 365 -in server.csr -signkey server.key -out server.crt -extensions v3_ca -extfile san.cnf`. You now have the public and private keys for running the server.
 *   You need to generate a `.der` file for the app to authenticate the identify of the server. Run `openssl x509 -outform der -in server.crt -out hindsight_server.der`
 *   You can change the directory that images are stored in by modifying `RAW_SCREENSHOTS_DIR` at the top of `hindsight_server/__init__.py`
-3) **Start the server:** `python hindsight_server.py`
+3) **Start the server:** `python hindsight_server/run_server.py`
 
 ### App
 1) Open `hindsight_android` in Android Studio.
@@ -32,7 +32,7 @@ Hindsight is an android app that takes a screenshot every 2 seconds. The server 
 Currently the app has 2 "working" functionalities.
 1) **Screen Recording:** Toggle screen recording on or off.
 2) **Server Upload:** Upload screenshots directly to your server.
-* The screenshots timeline can be viewed by running `python timeline_view.py`
+* The screenshots timeline can be viewed and searched by running `python timeline_view.py`
 
 ## Settings
 * **User Activity Detection:** This setting is recommended as, depending on your phone usage, it can signifantly save battery life. The app will only take a screenshot if the user has been active since the last screenshot.
