@@ -19,7 +19,7 @@ Hindsight is an android app that takes a screenshot every 2 seconds. The server 
 *   Run `openssl req -new -nodes -keyout server.key -out server.csr -config san.cnf`
 *   Run `openssl x509 -req -days 365 -in server.csr -signkey server.key -out server.crt -extensions v3_ca -extfile san.cnf`. You now have the public and private keys for running the server.
 *   You need to generate a `.der` file for the app to authenticate the identify of the server. Run `openssl x509 -outform der -in server.crt -out hindsight_server.der`
-*   You can change the directory that images are stored in by modifying `RAW_SCREENSHOTS_DIR` at the top of `hindsight_server/__init__.py`
+*   You can change the directory that images are stored in by modifying `RAW_SCREENSHOTS_DIR` within `hindsight_server/config.py`
 3) **Start the server:** `python hindsight_server/run_server.py`
 
 ### App
