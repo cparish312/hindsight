@@ -30,6 +30,7 @@ class TimelineViewer:
         self.master = master
         self.db = HindsightDB()
         self.images_df = self.get_images_df()
+        self.num_frames = len(self.images_df)
         self.app_color_map = self.get_app_color_map()
         self.max_width = max_width
         self.max_height = max_height - 200
@@ -146,7 +147,6 @@ class TimelineViewer:
         self.timeline_canvas.delete("all")  # Clear existing drawings
         width = self.timeline_canvas.winfo_width()
         apps_before, apps_after = self.get_apps_near(current_frame_num)  # Implement this function
-        print(len(apps_before), len(apps_after))
 
         timeline_screenshot_width = width / self.screenshots_on_timeline
 
@@ -198,6 +198,9 @@ class TimelineViewer:
 
         if self.scroll_frame_num < 0:
             self.scroll_frame_num = 0
+        
+        if self.scroll_frame_num > self.num_frames:
+            self.scroll_frame_num = self.num_frames
 
     def on_scroll_up(self, event):
         # Linux scroll up
@@ -207,6 +210,8 @@ class TimelineViewer:
     def on_scroll_down(self, event):
         # Linux scroll down
         self.scroll_frame_num += 1
+        if self.scroll_frame_num > self.num_frames:
+            self.scroll_frame_num = self.num_frames
 
     def start_drag(self, event):
         self.dragging = True
