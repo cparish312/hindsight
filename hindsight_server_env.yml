@@ -10,5 +10,8 @@ dependencies:
   - pip=24.0
   - python=3.9.18
   - tzlocal=5.2
+  - colorcet
+  - matplotlib
   - pip:
       - opencv-python==4.9.0.80
+      - tkcalendar
