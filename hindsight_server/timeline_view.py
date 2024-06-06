@@ -1,9 +1,11 @@
 import cv2
 from datetime import datetime
 import platform
+import matplotlib
 import numpy as np
 import pandas as pd
 import tkinter as tk
+import colorcet as cc
 from tkinter import ttk
 from tkinter import messagebox
 from PIL import Image, ImageTk
@@ -28,8 +30,12 @@ class TimelineViewer:
         self.master = master
         self.db = HindsightDB()
         self.images_df = self.get_images_df()
+        self.app_color_map = self.get_app_color_map()
         self.max_width = max_width
-        self.max_height = max_height
+        self.max_height = max_height - 200
+
+        self.screenshots_on_timeline = 40 
+
         if frame_id is None:
             self.scroll_frame_num = 0
         else:
@@ -52,6 +58,21 @@ class TimelineViewer:
         images_df['datetime_local'] = images_df['datetime_utc'].apply(lambda x: x.replace(tzinfo=video_timezone).astimezone(local_timezone))
         return images_df.sort_values(by='datetime_local', ascending=False)
     
+    def get_app_color_map(self):
+        # Generate a color map for each app, ensuring colors are distinguishable
+        unique_apps = self.images_df['application'].unique()
+        num_apps = len(unique_apps)
+        
+        # Choose a colormap with a sufficient number of colors
+        cmap = cc.cm['rainbow']  # 'rainbow', 'colorwheel', etc., could also be good choices
+        
+        # Generate color indices spaced evenly throughout the colormap
+        colors = [cmap(i / (num_apps - 1)) if num_apps > 1 else cmap(0.5) for i in range(num_apps)]
+
+        hex_colors = [matplotlib.colors.to_hex(color) for color in colors]
+        
+        return {app: hex_colors[i] for i, app in enumerate(unique_apps)}
+    
     def setup_gui(self):
         self.master.title("Trackpad-Controlled Video Timeline")
 
@@ -70,6 +91,10 @@ class TimelineViewer:
         self.time_label = ttk.Label(self.master, textvariable=str(self.scroll_frame_num_var), font=("Arial", 24), anchor="e")
         self.time_label.pack()
         self.bind_scroll_event()
+
+        self.timeline_canvas = tk.Canvas(self.master, height=50)
+        self.timeline_canvas.pack(fill=tk.X, padx=5, pady=5)
+        self.master.bind('<Configure>', lambda e: self.update_timeline(self.displayed_frame_num)) # Update timeline when frame changed
         
         self.displayed_frame_num = self.scroll_frame_num
         screenshot = self.get_screenshot(self.displayed_frame_num)
@@ -111,6 +136,38 @@ class TimelineViewer:
         if not self.exit_flag:
             self.master.after(10, self.update_frame_periodically)
 
+    def get_apps_near(self, current_frame_num):
+        timeline_border = self.screenshots_on_timeline // 2
+        apps_before = self.images_df.iloc[current_frame_num+1:current_frame_num+timeline_border+1]['application']
+        apps_after = self.images_df.iloc[max(current_frame_num-timeline_border, 0):current_frame_num]['application']
+        return apps_before, apps_after
+
+    def update_timeline(self, current_frame_num):
+        self.timeline_canvas.delete("all")  # Clear existing drawings
+        width = self.timeline_canvas.winfo_width()
+        apps_before, apps_after = self.get_apps_near(current_frame_num)  # Implement this function
+        print(len(apps_before), len(apps_after))
+
+        timeline_screenshot_width = width / self.screenshots_on_timeline
+
+        start_pos = width / 2 # start in the middle of the timeline
+        for app in apps_before: # Reverse order of list to start at current screenshot
+            color = self.app_color_map[app]
+            self.timeline_canvas.create_rectangle(start_pos, 0, start_pos-timeline_screenshot_width, 50, fill=color, outline='')
+            start_pos -= timeline_screenshot_width
+
+        start_pos = (width / 2)  + timeline_screenshot_width # start in the middle of the timeline
+        for app in apps_after[::-1]: # Reverse order of list to start at current screenshot
+            color = self.app_color_map[app]
+            self.timeline_canvas.create_rectangle(start_pos, 0, start_pos+timeline_screenshot_width, 50, fill=color, outline='')
+            start_pos += timeline_screenshot_width
+
+        # Draw current app
+        start_pos = width / 2 # start in the middle of the timeline
+        current_app = self.images_df.iloc[current_frame_num]['application']
+        color = self.app_color_map[current_app]
+        self.timeline_canvas.create_rectangle(start_pos, 0, start_pos+timeline_screenshot_width, 50, fill=color, outline="black")
+
     def display_frame(self, screenshot, frame_num):
         print(frame_num)
         cv2image = cv2.cvtColor(screenshot.image, cv2.COLOR_BGR2RGB)
@@ -119,6 +176,7 @@ class TimelineViewer:
         self.video_label.imgtk = imgtk
         self.video_label.configure(image=imgtk)
         self.scroll_frame_num_var.set(f"Time: {screenshot.timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
+        self.update_timeline(frame_num)
         self.displayed_image = screenshot
         self.displayed_frame_num = frame_num
     
@@ -205,8 +263,6 @@ class TimelineViewer:
     # When the window is closed, you should also gracefully exit the preload thread
     def on_window_close(self):
         self.exit_flag = True
-        for _, video_manager in self.video_timeline_manager.video_managers:
-            video_manager.cap.release()
         self.master.destroy()
 
 def main():
