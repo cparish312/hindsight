@@ -13,7 +13,7 @@ Hindsight is an android app that takes a screenshot every 2 seconds. The server 
 *   Install [conda](https://docs.anaconda.com/free/miniconda/miniconda-install/) if you don't have it already
 *   Create the conda environment: `conda env create -f hindsight_server_env.yml`
 *   Activate the env using: `conda activate hindsight_server`
-*   If running on a Mac run `conda install -c conda-forge ocrmac` to utilize OCR
+*   If running on a Mac run `pip install ocrmac` to utilize OCR
 2) **SSL Configuration:**
 *   Openssl is used to create ssl keys for running the server over Https. The keys are expected in `$Home/.hindsight_server` but that can be changed in `hindsight_server/run_server.py`. Copy `hindsight_server/template_san.cnf` to `$Home/.hindsight_server/san.cnf` and replace the `${}` sections. 
 *   Run `openssl req -new -nodes -keyout server.key -out server.csr -config san.cnf`
