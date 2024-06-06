@@ -28,6 +28,11 @@ Hindsight is an android app that takes a screenshot every 2 seconds. The server 
 3) Move `hindsight_server.der` into `hindsight_android/app/src/main/res/raw/`
 4) You should be good to run the app on your device!
 
+### Demo
+<a href="https://www.loom.com/share/669eecf3c04648d4aae1565ead56273f">
+    <img style="max-width:300px;" src="https://cdn.loom.com/sessions/thumbnails/669eecf3c04648d4aae1565ead56273f-with-play.gif">
+</a>
+
 ## Features
 Currently the app has 2 "working" functionalities.
 1) **Screen Recording:** Toggle screen recording on or off.
