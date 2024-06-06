@@ -7,6 +7,11 @@ Look back on your digital experience with Hindsight! (very alpha)
 ## Overview
 Hindsight is an android app that takes a screenshot every 2 seconds. The server upload functionality allows a user to upload the screenshots to a server running on their personal computer.
 
+### Demo
+<a href="https://www.loom.com/share/669eecf3c04648d4aae1565ead56273f">
+    <img style="max-width:300px;" src="https://cdn.loom.com/sessions/thumbnails/669eecf3c04648d4aae1565ead56273f-with-play.gif">
+</a>
+
 ## Setup
 ### Server
 1) **Conda Environment:**
@@ -27,11 +32,6 @@ Hindsight is an android app that takes a screenshot every 2 seconds. The server 
 2) In `hindsight_android/app/src/main/java/com/connor/hindsight/network/RetrofitClient.kt` change `BASE_URL` to the base url of your server including the port. This should be printed out when `python hindsight_server.py` is run and should also be the ip of `${computer_ip}` in the `san.cnf`.
 3) Move `hindsight_server.der` into `hindsight_android/app/src/main/res/raw/`
 4) You should be good to run the app on your device!
-
-### Demo
-<a href="https://www.loom.com/share/669eecf3c04648d4aae1565ead56273f">
-    <img style="max-width:300px;" src="https://cdn.loom.com/sessions/thumbnails/669eecf3c04648d4aae1565ead56273f-with-play.gif">
-</a>
 
 ## Features
 Currently the app has 2 "working" functionalities.
