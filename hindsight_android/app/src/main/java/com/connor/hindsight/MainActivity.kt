@@ -1,8 +1,6 @@
 package com.connor.hindsight
 
 import android.app.Activity
-import android.app.ActivityManager
-import androidx.activity.ComponentActivity
 import android.content.Context
 import android.content.Intent
 import android.media.projection.MediaProjectionConfig
@@ -11,6 +9,7 @@ import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -41,8 +40,11 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        mediaProjectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-        screenCaptureLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        mediaProjectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE)
+            as MediaProjectionManager
+        screenCaptureLauncher = registerForActivityResult(
+            ActivityResultContracts.StartActivityForResult()
+        ) { result ->
             if (result.resultCode == Activity.RESULT_OK && result.data != null) {
                 recorderModel.startVideoRecorder(this, result)
             } else {
@@ -60,7 +62,10 @@ class MainActivity : ComponentActivity() {
 
     fun requestScreenCapturePermission() {
         if (ScreenRecorderService.isRunning) {
-            Log.d("MainActivity", "Ran requestScreenCapturePermission but ScreenRecorderService is running")
+            Log.d(
+                "MainActivity",
+                "Ran requestScreenCapturePermission but ScreenRecorderService is running"
+            )
             return
         }
         if (recorderModel.hasScreenRecordingPermissions(this)) {

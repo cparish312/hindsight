@@ -11,7 +11,6 @@ object NotificationHelper {
     const val RECORDING_NOTIFICATION_ID = 1
     const val SERVER_UPLOAD_NOTIFICATION_ID = 2
 
-
     fun buildNotificationChannels(context: Context) {
         val notificationManager = NotificationManagerCompat.from(context)
 

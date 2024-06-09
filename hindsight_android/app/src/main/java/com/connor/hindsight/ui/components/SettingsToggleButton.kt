@@ -16,7 +16,7 @@ fun SettingsToggleButton(
     checked: Boolean,
     text: String,
     onToggleOn: () -> Unit,
-    onToggleOff: () -> Unit,
+    onToggleOff: () -> Unit
 ) {
     Row(
         modifier = Modifier

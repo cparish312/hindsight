@@ -95,9 +95,15 @@ class RecorderModel : ViewModel() {
         recordedTime = null
     }
 
-    fun isAccessibilityServiceEnabled(context: Context, service: Class<out AccessibilityService>): Boolean {
+    fun isAccessibilityServiceEnabled(
+        context: Context,
+        service: Class<out AccessibilityService>
+    ): Boolean {
         val am = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
-        val enabledServices = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+        val enabledServices = Settings.Secure.getString(
+            context.contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        )
         val colonSplitter = TextUtils.SimpleStringSplitter(':')
         try {
             colonSplitter.setString(enabledServices)
@@ -106,7 +112,11 @@ class RecorderModel : ViewModel() {
         }
         while (colonSplitter.hasNext()) {
             val componentName = colonSplitter.next()
-            if (componentName.equals(ComponentName(context, service).flattenToString(), ignoreCase = true)) {
+            if (componentName.equals(
+                    ComponentName(context, service).flattenToString(),
+                    ignoreCase = true
+                )
+            ) {
                 return true
             }
         }
@@ -117,7 +127,11 @@ class RecorderModel : ViewModel() {
         val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
         context.startActivity(intent)
-        Toast.makeText(context, "Please enable our accessibility service.", Toast.LENGTH_LONG).show()
+        Toast.makeText(
+            context,
+            "Please enable our accessibility service.",
+            Toast.LENGTH_LONG
+        ).show()
     }
 
     @SuppressLint("NewApi")
@@ -129,7 +143,8 @@ class RecorderModel : ViewModel() {
             if (!isAccessibilityServiceEnabled(context, KeyTrackingService::class.java)) {
                 Log.d("RecorderModel", "Accessibility Service Not Enabled")
                 openAccessibilitySettings(context)
-                Preferences.prefs.edit().putBoolean(Preferences.screenrecordingenabled, false).apply()
+                Preferences.prefs.edit().putBoolean(Preferences.screenrecordingenabled, false)
+                    .apply()
                 context.sendBroadcast(Intent(SCREEN_RECORDER_PERMISSION_DENIED))
                 return false
             } else {
@@ -148,7 +163,8 @@ class RecorderModel : ViewModel() {
             context.sendBroadcast(Intent(SCREEN_RECORDER_PERMISSION_DENIED))
             Toast.makeText(
                 context,
-                context.getString(R.string.no_sufficient_permissions), Toast.LENGTH_SHORT
+                context.getString(R.string.no_sufficient_permissions),
+                Toast.LENGTH_SHORT
             )
                 .show()
         }
@@ -156,6 +172,7 @@ class RecorderModel : ViewModel() {
     }
 
     companion object {
-        const val SCREEN_RECORDER_PERMISSION_DENIED = "com.connor.hindsight.SCREEN_RECORDER_PERMISSION_DENIED"
+        const val SCREEN_RECORDER_PERMISSION_DENIED =
+            "com.connor.hindsight.SCREEN_RECORDER_PERMISSION_DENIED"
     }
 }

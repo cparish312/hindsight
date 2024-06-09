@@ -7,7 +7,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 
-
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun AppNavigation() {

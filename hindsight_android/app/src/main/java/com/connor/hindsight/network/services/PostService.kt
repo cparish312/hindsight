@@ -19,11 +19,13 @@ import androidx.lifecycle.lifecycleScope
 import com.connor.hindsight.MainActivity
 import com.connor.hindsight.R
 import com.connor.hindsight.network.RetrofitClient
+import com.connor.hindsight.network.interfaces.ApiService
 import com.connor.hindsight.utils.NotificationHelper
 import com.connor.hindsight.utils.getImageDirectory
 import com.connor.hindsight.utils.getImageFiles
 import com.connor.hindsight.utils.getSyncedImageDirectory
-import com.connor.hindsight.network.interfaces.ApiService
+import java.io.File
+import java.io.IOException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -33,10 +35,6 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.ResponseBody
-import java.io.File
-import java.io.IOException
-import java.nio.file.Files
-import java.nio.file.StandardCopyOption
 
 class PostService : LifecycleService() {
     val notificationTitle: String = "Hindsight Server Upload"
@@ -62,7 +60,10 @@ class PostService : LifecycleService() {
                 ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
             )
         } else {
-            startForeground(NotificationHelper.SERVER_UPLOAD_NOTIFICATION_ID, buildNotification().build())
+            startForeground(
+                NotificationHelper.SERVER_UPLOAD_NOTIFICATION_ID,
+                buildNotification().build()
+            )
         }
 
         runCatching {
@@ -72,7 +73,12 @@ class PostService : LifecycleService() {
         val intentFilter = IntentFilter().apply {
             addAction(PostService.UPLOADER_INTENT_ACTION)
         }
-        ContextCompat.registerReceiver(this, uploaderReceiver, intentFilter, ContextCompat.RECEIVER_EXPORTED)
+        ContextCompat.registerReceiver(
+            this,
+            uploaderReceiver,
+            intentFilter,
+            ContextCompat.RECEIVER_EXPORTED
+        )
 
         screenshotDirectory = getImageDirectory(this)
         syncedScreenshotDirectory = getSyncedImageDirectory(this)
@@ -99,7 +105,11 @@ class PostService : LifecycleService() {
 
     private fun uploadImageFile(file: File) {
         val requestFile: RequestBody = file.asRequestBody("image/jpeg".toMediaTypeOrNull())
-        val body: MultipartBody.Part = MultipartBody.Part.createFormData("file", file.name, requestFile)
+        val body: MultipartBody.Part = MultipartBody.Part.createFormData(
+            "file",
+            file.name,
+            requestFile
+        )
 
         val retrofit = RetrofitClient.instance
         val client = retrofit.create(ApiService::class.java)
@@ -107,7 +117,10 @@ class PostService : LifecycleService() {
 
         call.enqueue(object : retrofit2.Callback<ResponseBody> {
             @RequiresApi(Build.VERSION_CODES.O)
-            override fun onResponse(call: retrofit2.Call<ResponseBody>, response: retrofit2.Response<ResponseBody>) {
+            override fun onResponse(
+                call: retrofit2.Call<ResponseBody>,
+                response: retrofit2.Response<ResponseBody>
+            ) {
                 if (response.isSuccessful) {
                     Log.d("PostService", "Upload successful: ${response.body()?.string()}")
                     // Files.move(file.toPath(), syncedScreenshotDirectory.toPath().resolve(file.name), StandardCopyOption.REPLACE_EXISTING)
@@ -126,7 +139,10 @@ class PostService : LifecycleService() {
                     Log.e("PostService", "Could not connect to server")
                     onDestroy()
                 } else {
-                    Log.e("PostService", "Failure in response parsing or serialization: ${t.message}")
+                    Log.e(
+                        "PostService",
+                        "Failure in response parsing or serialization: ${t.message}"
+                    )
                 }
             }
         })

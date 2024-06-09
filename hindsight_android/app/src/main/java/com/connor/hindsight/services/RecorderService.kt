@@ -20,8 +20,8 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
-import com.connor.hindsight.R
 import com.connor.hindsight.MainActivity
+import com.connor.hindsight.R
 import com.connor.hindsight.enums.RecorderState
 import com.connor.hindsight.utils.NotificationHelper
 import com.connor.hindsight.utils.PermissionHelper
@@ -90,14 +90,22 @@ abstract class RecorderService : LifecycleService() {
             addAction(Intent.ACTION_SCREEN_OFF)
             addAction(Intent.ACTION_SCREEN_ON)
         }
-        ContextCompat.registerReceiver(this, recorderReceiver, intentFilter, ContextCompat.RECEIVER_EXPORTED)
+        ContextCompat.registerReceiver(
+            this,
+            recorderReceiver,
+            intentFilter,
+            ContextCompat.RECEIVER_EXPORTED
+        )
 
         super.onCreate()
     }
 
     private fun buildNotification(): NotificationCompat.Builder {
-        val stopIntent = Intent(RECORDER_INTENT_ACTION).putExtra(ACTION_EXTRA_KEY, STOP_ACTION).putExtra(
-            FROM_RECORDER_SERVICE, true)
+        val stopIntent = Intent(RECORDER_INTENT_ACTION).putExtra(ACTION_EXTRA_KEY, STOP_ACTION)
+            .putExtra(
+                FROM_RECORDER_SERVICE,
+                true
+            )
         val stopAction = NotificationCompat.Action.Builder(
             null,
             getString(R.string.stop),
@@ -108,7 +116,9 @@ abstract class RecorderService : LifecycleService() {
             ACTION_EXTRA_KEY,
             PAUSE_RESUME_ACTION
         ).putExtra(
-            FROM_RECORDER_SERVICE, true)
+            FROM_RECORDER_SERVICE,
+            true
+        )
         val resumeOrPauseAction = NotificationCompat.Action.Builder(
             null,
             if (recorderState == RecorderState.ACTIVE) {
@@ -142,7 +152,9 @@ abstract class RecorderService : LifecycleService() {
 
     @SuppressLint("MissingPermission")
     fun updateNotification() {
-        if (!PermissionHelper.hasPermission(this, Manifest.permission.POST_NOTIFICATIONS)) return
+        if (!PermissionHelper.hasPermission(this, Manifest.permission.POST_NOTIFICATIONS)) {
+            return
+        }
         val notification = buildNotification().build()
         NotificationManagerCompat.from(this).notify(
             NotificationHelper.RECORDING_NOTIFICATION_ID,
@@ -210,7 +222,10 @@ abstract class RecorderService : LifecycleService() {
                 unregisterReceiver(recorderReceiver)
             }
 
-            ServiceCompat.stopForeground(this@RecorderService, ServiceCompat.STOP_FOREGROUND_REMOVE)
+            ServiceCompat.stopForeground(
+                this@RecorderService,
+                ServiceCompat.STOP_FOREGROUND_REMOVE
+            )
             stopSelf()
 
             super.onDestroy()

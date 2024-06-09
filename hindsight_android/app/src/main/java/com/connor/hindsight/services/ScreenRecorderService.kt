@@ -18,15 +18,15 @@ import android.util.DisplayMetrics
 import android.util.Log
 import android.view.Display
 import androidx.activity.result.ActivityResult
-import java.io.File
-import java.io.FileOutputStream
-import java.io.IOException
 import com.connor.hindsight.R
 import com.connor.hindsight.enums.RecorderState
 import com.connor.hindsight.obj.ImageResolution
 import com.connor.hindsight.obj.UserActivityState
-import com.connor.hindsight.utils.getImageDirectory
 import com.connor.hindsight.utils.Preferences
+import com.connor.hindsight.utils.getImageDirectory
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 
 class ScreenRecorderService : RecorderService() {
     override val notificationTitle: String
@@ -36,13 +36,16 @@ class ScreenRecorderService : RecorderService() {
     private var mediaProjection: MediaProjection? = null
     private var activityResult: ActivityResult? = null
 
-    private lateinit var imageReader: ImageReader
+    private var imageReader: ImageReader? = null
     private var handler: Handler? = null
     private var imageCaptureRunnable: Runnable? = null
 
     private var recorderLoopStopped: Boolean = false
 
-    private var recordWhenActive: Boolean =  Preferences.prefs.getBoolean(Preferences.recordwhenactive, false)
+    private var recordWhenActive: Boolean = Preferences.prefs.getBoolean(
+        Preferences.recordwhenactive,
+        false
+    )
     private var screenshotApplication: String? = null
 
     override val fgServiceType: Int?
@@ -71,12 +74,15 @@ class ScreenRecorderService : RecorderService() {
             onDestroy()
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            mediaProjection!!.registerCallback(object : MediaProjection.Callback() {
-                override fun onStop() {
-                    sendBroadcast(Intent(SCREEN_RECORDER_STOPPED))
-                    onDestroy()
-                }
-            }, null)
+            mediaProjection!!.registerCallback(
+                object : MediaProjection.Callback() {
+                    override fun onStop() {
+                        sendBroadcast(Intent(SCREEN_RECORDER_STOPPED))
+                        onDestroy()
+                    }
+                },
+                null
+            )
         }
     }
 
@@ -91,26 +97,35 @@ class ScreenRecorderService : RecorderService() {
 
         mediaProjection?.let { mp ->
             imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
-            virtualDisplay = mp.createVirtualDisplay("ScreenRecordingService",
-                width, height, density,
+            virtualDisplay = mp.createVirtualDisplay(
+                "ScreenRecordingService",
+                width,
+                height,
+                density,
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                imageReader.surface, object : VirtualDisplay.Callback() {
+                imageReader!!.surface,
+                object : VirtualDisplay.Callback() {
                     override fun onStopped() {
                         super.onStopped()
                         // Handle the virtual display being stopped
                         onDestroy()
                     }
-                }, null)
+                },
+                null
+            )
 
             handler = Handler(Looper.getMainLooper())
             imageCaptureRunnable = object : Runnable {
                 override fun run() {
                     if (recordWhenActive && !UserActivityState.userActive) {
-                        Log.d("ScreenRecordingService", "Skipping Screenshot as User has been inactive")
+                        Log.d(
+                            "ScreenRecordingService",
+                            "Skipping Screenshot as User has been inactive"
+                        )
                         postScreenshot(this)
                         return
                     }
-                    val image = imageReader.acquireLatestImage()
+                    val image = imageReader!!.acquireLatestImage()
                     screenshotApplication = UserActivityState.currentApplication
                     Log.d("ScreenRecordingService", "Image Acquired")
                     image?.let {
@@ -132,16 +147,15 @@ class ScreenRecorderService : RecorderService() {
                 }
             }
             // Initial delay before starting the recurring task
-            handler?.postDelayed(imageCaptureRunnable!!, 2000)  // Start after a delay of 2 seconds
+            handler?.postDelayed(imageCaptureRunnable!!, 2000) // Start after a delay of 2 seconds
         }
     }
 
     private fun postScreenshot(runnable: Runnable) {
-        if (recorderState == RecorderState.ACTIVE){
+        if (recorderState == RecorderState.ACTIVE) {
             recorderLoopStopped = false
             handler?.postDelayed(runnable, 2000)
-        }
-        else {
+        } else {
             recorderLoopStopped = true
         }
     }
@@ -179,17 +193,17 @@ class ScreenRecorderService : RecorderService() {
     override fun onDestroy() {
         Log.d("ScreenRecordingService", "Destroying Screen Recording Service")
         isRunning = false
-        handler?.removeCallbacks(imageCaptureRunnable!!)  // Stop the recurring image capture
-        imageReader.close()
+        handler?.removeCallbacks(imageCaptureRunnable!!) // Stop the recurring image capture
+        imageReader?.close()
         virtualDisplay?.release()
-        mediaProjection?.stop()  // This will trigger the callback's onStop method
+        mediaProjection?.stop() // This will trigger the callback's onStop method
         super.onDestroy()
     }
 
-    override  fun resume(){
+    override fun resume() {
         super.resume()
         // recorderLoopStopped ensures that the previous image capture is stopped
-        if (recorderState == RecorderState.ACTIVE && recorderLoopStopped){
+        if (recorderState == RecorderState.ACTIVE && recorderLoopStopped) {
             handler?.postDelayed(imageCaptureRunnable!!, 2000)
         }
     }

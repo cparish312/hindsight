@@ -18,7 +18,11 @@ import com.connor.hindsight.utils.Preferences
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun ScreenRecorderSettingsScreen(navController: NavController) {
-    val recordWhenActive = remember { mutableStateOf(Preferences.prefs.getBoolean(Preferences.recordwhenactive, false)) }
+    val recordWhenActive = remember {
+        mutableStateOf(
+            Preferences.prefs.getBoolean(Preferences.recordwhenactive, false)
+        )
+    }
 
     Column(
         modifier = Modifier.padding(16.dp)
@@ -26,10 +30,14 @@ fun ScreenRecorderSettingsScreen(navController: NavController) {
         SettingsToggleButton(
             checked = recordWhenActive.value,
             text = "Only Take Screenshot when User is Active (requires Accessibility API)",
-            onToggleOn = {Preferences.prefs.edit().putBoolean(Preferences.recordwhenactive, true).apply()
-                recordWhenActive.value = true },
-            onToggleOff = {Preferences.prefs.edit().putBoolean(Preferences.recordwhenactive, false).apply()
-                recordWhenActive.value = false},
+            onToggleOn = {
+                Preferences.prefs.edit().putBoolean(Preferences.recordwhenactive, true).apply()
+                recordWhenActive.value = true
+            },
+            onToggleOff = {
+                Preferences.prefs.edit().putBoolean(Preferences.recordwhenactive, false).apply()
+                recordWhenActive.value = false
+            }
         )
         Button(
             onClick = {
@@ -41,4 +49,3 @@ fun ScreenRecorderSettingsScreen(navController: NavController) {
         }
     }
 }
-

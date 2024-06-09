@@ -10,19 +10,21 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.receiveAsFlow
 import com.connor.hindsight.network.services.PostService
 import com.connor.hindsight.services.ScreenRecorderService
 import com.connor.hindsight.utils.Preferences
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.launch
 
 @RequiresApi(Build.VERSION_CODES.O)
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val _screenRecordingEnabled = MutableStateFlow(Preferences.prefs.getBoolean(Preferences.screenrecordingenabled, false))
+    private val _screenRecordingEnabled = MutableStateFlow(
+        Preferences.prefs.getBoolean(Preferences.screenrecordingenabled, false)
+    )
     val screenRecordingEnabled = _screenRecordingEnabled.asStateFlow()
 
     private val _isUploading = MutableStateFlow(false)
@@ -47,12 +49,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 ScreenRecorderService.SCREEN_RECORDER_STOPPED -> {
                     Log.d("MainViewModel", "SCREEN_RECORDER_STOPPED")
                     _screenRecordingEnabled.value = false
-                    Preferences.prefs.edit().putBoolean(Preferences.screenrecordingenabled, _screenRecordingEnabled.value).apply()
+                    Preferences.prefs.edit().putBoolean(
+                        Preferences.screenrecordingenabled,
+                        _screenRecordingEnabled.value
+                    ).apply()
                 }
                 RecorderModel.SCREEN_RECORDER_PERMISSION_DENIED -> {
                     Log.d("MainViewModel", RecorderModel.SCREEN_RECORDER_PERMISSION_DENIED)
                     _screenRecordingEnabled.value = false
-                    Preferences.prefs.edit().putBoolean(Preferences.screenrecordingenabled, _screenRecordingEnabled.value).apply()
+                    Preferences.prefs.edit().putBoolean(
+                        Preferences.screenrecordingenabled,
+                        _screenRecordingEnabled.value
+                    ).apply()
                 }
             }
         }
@@ -65,7 +73,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             addAction(RecorderModel.SCREEN_RECORDER_PERMISSION_DENIED)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            getApplication<Application>().registerReceiver(broadcastReceiver, intentFilter, Context.RECEIVER_EXPORTED)
+            getApplication<Application>().registerReceiver(
+                broadcastReceiver,
+                intentFilter,
+                Context.RECEIVER_EXPORTED
+            )
         } else {
             getApplication<Application>().registerReceiver(broadcastReceiver, intentFilter)
         }
@@ -73,7 +85,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun toggleScreenRecording() {
         _screenRecordingEnabled.value = !_screenRecordingEnabled.value
-        Preferences.prefs.edit().putBoolean("ScreenRecordingEnabled", _screenRecordingEnabled.value).apply()
+        Preferences.prefs.edit().putBoolean("ScreenRecordingEnabled", _screenRecordingEnabled.value)
+            .apply()
 
         viewModelScope.launch {
             if (_screenRecordingEnabled.value) {
@@ -105,5 +118,4 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         object RequestScreenCapturePermission : UIEvent()
         object StopScreenRecording : UIEvent()
     }
-
 }
