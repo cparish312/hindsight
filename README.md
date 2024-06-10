@@ -40,7 +40,7 @@ Currently the app has 2 "working" functionalities.
 * The screenshots timeline can be viewed and searched by running `python timeline_view.py`
 
 ## Developing
-You can easily access and build applications on top of Hindsight.
+You can easily build applications on top of Hindsight.
 To access the database you can use the functions within `hindsight_server/db.py`:
 ```python
 from db import HindsightDB
