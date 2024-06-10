@@ -39,6 +39,19 @@ Currently the app has 2 "working" functionalities.
 2) **Server Upload:** Upload screenshots directly to your server.
 * The screenshots timeline can be viewed and searched by running `python timeline_view.py`
 
+## Developing
+You can easily access and build applications on top of Hindsight.
+To access the database you can use the functions within `hindsight_server/db.py`:
+```
+from db import HindsightDB
+
+db = HindsightDB()
+
+frames_df = db.get_frames()
+
+search_results = db.search(text="hindsight")
+```
+
 ## Settings
 * **User Activity Detection:** This setting is recommended as, depending on your phone usage, it can signifantly save battery life. The app will only take a screenshot if the user has been active since the last screenshot.
 
