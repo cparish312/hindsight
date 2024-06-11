@@ -47,6 +47,11 @@ class ScreenRecorderService : RecorderService() {
         false
     )
     private var screenshotApplication: String? = null
+    private var screenShotsSinceAutoUpload: Int = 0
+    private var screenShotsPerAutoUpload: Int = Preferences.prefs.getInt(
+        Preferences.screenshotsperautoupload,
+        50
+    )
 
     override val fgServiceType: Int?
         get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -169,6 +174,11 @@ class ScreenRecorderService : RecorderService() {
             FileOutputStream(file).use { fos ->
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos)
                 Log.d("ScreenRecordingService", "Image saved to ${file.absolutePath}")
+            }
+            screenShotsSinceAutoUpload += 1
+            if (screenShotsSinceAutoUpload >= screenShotsPerAutoUpload) {
+                screenShotsSinceAutoUpload = 0
+                uploadToServer()
             }
         } catch (e: IOException) {
             Log.e("ScreenRecordingService", "Failed to save image", e)

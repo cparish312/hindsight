@@ -6,8 +6,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -27,7 +31,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun MainScreen(mainViewModel: MainViewModel = viewModel(), onNavigateToSettings: () -> Unit) {
+fun MainScreen(mainViewModel: MainViewModel = viewModel(), onNavigateToScreenRecordingSettings: () -> Unit,
+               onNavigateToUploadSettings: () -> Unit) {
     val context = LocalContext.current
 
     LaunchedEffect(key1 = mainViewModel) {
@@ -67,7 +72,7 @@ fun MainScreen(mainViewModel: MainViewModel = viewModel(), onNavigateToSettings:
             text = "Screen Recording",
             onToggleOn = mainViewModel::toggleScreenRecording,
             onToggleOff = mainViewModel::toggleScreenRecording,
-            onClickSettings = onNavigateToSettings
+            onClickSettings = onNavigateToScreenRecordingSettings
         )
 
         ToggleButton(
@@ -110,6 +115,14 @@ fun MainScreen(mainViewModel: MainViewModel = viewModel(), onNavigateToSettings:
                 CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.CenterVertically).padding(top = 16.dp)
                 )
+            }
+            IconButton(onClick = onNavigateToUploadSettings) {
+                Icon(
+                    imageVector = Icons.Filled.Settings,
+                    contentDescription = "Settings",
+                    modifier = Modifier.align(Alignment.CenterVertically).padding(top = 16.dp)
+                )
+
             }
         }
 

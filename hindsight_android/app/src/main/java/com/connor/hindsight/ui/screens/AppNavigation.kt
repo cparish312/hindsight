@@ -13,12 +13,17 @@ fun AppNavigation() {
     val navController = rememberNavController()
     NavHost(navController = navController, startDestination = "main") {
         composable("main") {
-            MainScreen(onNavigateToSettings = {
+            MainScreen(onNavigateToScreenRecordingSettings = {
                 navController.navigate("screenRecordingSettings")
+            }, onNavigateToUploadSettings = {
+                navController.navigate("uploadSettings")
             })
         }
         composable("screenRecordingSettings") {
             ScreenRecorderSettingsScreen(navController)
+        }
+        composable("uploadSettings") {
+            UploadSettingsScreen(navController)
         }
     }
 }

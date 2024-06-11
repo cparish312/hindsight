@@ -23,6 +23,7 @@ import androidx.lifecycle.lifecycleScope
 import com.connor.hindsight.MainActivity
 import com.connor.hindsight.R
 import com.connor.hindsight.enums.RecorderState
+import com.connor.hindsight.network.services.PostService
 import com.connor.hindsight.utils.NotificationHelper
 import com.connor.hindsight.utils.PermissionHelper
 import kotlinx.coroutines.Dispatchers
@@ -233,7 +234,7 @@ abstract class RecorderService : LifecycleService() {
     }
 
     private fun getActivityIntent(): PendingIntent {
-        Log.d("ScreenRecordingService", "Starting MainActivity from notification")
+        Log.d("ScreenRecordingService", "Starting Main Activity from notification")
         val intent = Intent(this, MainActivity::class.java).putExtra(FROM_RECORDER_SERVICE, true)
         return PendingIntent.getActivity(
             this,
@@ -241,6 +242,12 @@ abstract class RecorderService : LifecycleService() {
             intent,
             PendingIntent.FLAG_IMMUTABLE
         )
+    }
+
+    fun uploadToServer() {
+        Log.d("RecorderService", "uploadToServer")
+        val uploadIntent = Intent(this, PostService::class.java)
+        ContextCompat.startForegroundService(this, uploadIntent)
     }
 
     companion object {

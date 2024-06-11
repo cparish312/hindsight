@@ -9,6 +9,7 @@ object Preferences {
 
     const val screenrecordingenabled = "ScreenRecordingEnabled"
     const val recordwhenactive = "RecordWhenActive"
+    const val screenshotsperautoupload = "ScreenshotsPerAutoUpload"
 
     fun init(context: Context) {
         prefs = context.getSharedPreferences(PREF_FILE_NAME, Context.MODE_PRIVATE)
@@ -18,6 +19,10 @@ object Preferences {
         }
         if (!prefs.contains(recordwhenactive)) {
             prefs.edit().putBoolean(recordwhenactive, true).apply()
+        }
+
+        if (!prefs.contains(screenshotsperautoupload)) {
+            prefs.edit().putInt(screenshotsperautoupload, 50).apply()
         }
     }
 }
