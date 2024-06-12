@@ -80,6 +80,8 @@ class PostService : LifecycleService() {
             ContextCompat.RECEIVER_EXPORTED
         )
 
+        sendBroadcast(Intent(UPLOADER_STARTED))
+
         screenshotDirectory = getImageDirectory(this)
         syncedScreenshotDirectory = getSyncedImageDirectory(this)
 
@@ -98,7 +100,7 @@ class PostService : LifecycleService() {
             }
             Log.d("PostService", "Uploading file: ${file.name}")
             uploadImageFile(file)
-            delay(100)
+            delay(300)
         }
         onDestroy()
     }
@@ -214,5 +216,6 @@ class PostService : LifecycleService() {
         const val ACTION_EXTRA_KEY = "action"
         const val STOP_ACTION = "STOP"
         const val UPLOADER_FINISHED = "com.connor.hindsight.UPLOAD_FINISHED"
+        const val UPLOADER_STARTED = "com.connor.hindsight.UPLOAD_STARTED"
     }
 }

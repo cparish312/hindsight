@@ -16,8 +16,8 @@ fun AppNavigation() {
             MainScreen(onNavigateToScreenRecordingSettings = {
                 navController.navigate("screenRecordingSettings")
             }, onNavigateToUploadSettings = {
-                navController.navigate("uploadSettings")
-            })
+                    navController.navigate("uploadSettings")
+                })
         }
         composable("screenRecordingSettings") {
             ScreenRecorderSettingsScreen(navController)

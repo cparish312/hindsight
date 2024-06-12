@@ -12,7 +12,6 @@ import android.os.IBinder
 import android.provider.Settings
 import android.text.TextUtils
 import android.util.Log
-import android.view.accessibility.AccessibilityManager
 import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.compose.runtime.getValue
@@ -99,7 +98,7 @@ class RecorderModel : ViewModel() {
         context: Context,
         service: Class<out AccessibilityService>
     ): Boolean {
-        val am = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
+//        val am = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
         val enabledServices = Settings.Secure.getString(
             context.contentResolver,
             Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES

@@ -31,8 +31,11 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun MainScreen(mainViewModel: MainViewModel = viewModel(), onNavigateToScreenRecordingSettings: () -> Unit,
-               onNavigateToUploadSettings: () -> Unit) {
+fun MainScreen(
+    mainViewModel: MainViewModel = viewModel(),
+    onNavigateToScreenRecordingSettings: () -> Unit,
+    onNavigateToUploadSettings: () -> Unit
+) {
     val context = LocalContext.current
 
     LaunchedEffect(key1 = mainViewModel) {
@@ -102,7 +105,6 @@ fun MainScreen(mainViewModel: MainViewModel = viewModel(), onNavigateToScreenRec
                         if (!isUploading.value) {
                             context.uploadToServer()
                         }
-                        mainViewModel.serverUploadPresssed()
                     }
                 },
                 modifier = Modifier.align(Alignment.CenterVertically).padding(top = 16.dp).padding(
@@ -122,7 +124,6 @@ fun MainScreen(mainViewModel: MainViewModel = viewModel(), onNavigateToScreenRec
                     contentDescription = "Settings",
                     modifier = Modifier.align(Alignment.CenterVertically).padding(top = 16.dp)
                 )
-
             }
         }
 

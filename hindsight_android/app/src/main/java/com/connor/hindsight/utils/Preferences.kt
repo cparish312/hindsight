@@ -22,7 +22,7 @@ object Preferences {
         }
 
         if (!prefs.contains(screenshotsperautoupload)) {
-            prefs.edit().putInt(screenshotsperautoupload, 50).apply()
+            prefs.edit().putInt(screenshotsperautoupload, 100).apply()
         }
     }
 }

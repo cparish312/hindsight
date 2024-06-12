@@ -26,6 +26,8 @@ import com.connor.hindsight.enums.RecorderState
 import com.connor.hindsight.network.services.PostService
 import com.connor.hindsight.utils.NotificationHelper
 import com.connor.hindsight.utils.PermissionHelper
+import com.connor.hindsight.utils.ServerConnectionCallback
+import com.connor.hindsight.utils.checkServerConnection
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -246,8 +248,20 @@ abstract class RecorderService : LifecycleService() {
 
     fun uploadToServer() {
         Log.d("RecorderService", "uploadToServer")
-        val uploadIntent = Intent(this, PostService::class.java)
-        ContextCompat.startForegroundService(this, uploadIntent)
+        checkServerConnection(object : ServerConnectionCallback {
+            override fun onServerStatusChecked(isConnected: Boolean) {
+                if (isConnected) {
+                    Log.d(
+                        "RecorderService",
+                        "Connection successful, proceeding with service initialization."
+                    )
+                    val uploadIntent = Intent(this@RecorderService, PostService::class.java)
+                    ContextCompat.startForegroundService(this@RecorderService, uploadIntent)
+                } else {
+                    Log.e("RecorderService", "No server connection, aborting upload.")
+                }
+            }
+        })
     }
 
     companion object {

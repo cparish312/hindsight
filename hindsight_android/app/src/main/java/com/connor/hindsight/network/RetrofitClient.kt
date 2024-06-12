@@ -1,5 +1,6 @@
 package com.connor.hindsight.network
 
+import java.util.concurrent.TimeUnit
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -15,6 +16,9 @@ object RetrofitClient {
             }
 
             val client = OkHttpClient.Builder()
+                .connectTimeout(30, TimeUnit.SECONDS) // Set the connection timeout
+                .readTimeout(30, TimeUnit.SECONDS) // Set the read timeout
+                .writeTimeout(30, TimeUnit.SECONDS) // Set the write timeout
                 .addInterceptor(logging)
                 .build()
 

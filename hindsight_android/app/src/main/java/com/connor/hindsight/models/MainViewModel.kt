@@ -46,6 +46,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     Log.d("MainViewModel", "UPLOADER_FINISHED")
                     _isUploading.value = false
                 }
+                PostService.UPLOADER_STARTED -> {
+                    Log.d("MainViewModel", "UPLOADER_STARTED")
+                    _isUploading.value = true
+                }
                 ScreenRecorderService.SCREEN_RECORDER_STOPPED -> {
                     Log.d("MainViewModel", "SCREEN_RECORDER_STOPPED")
                     _screenRecordingEnabled.value = false
@@ -69,6 +73,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     init {
         val intentFilter = IntentFilter().apply {
             addAction(PostService.UPLOADER_FINISHED)
+            addAction(PostService.UPLOADER_STARTED)
             addAction(ScreenRecorderService.SCREEN_RECORDER_STOPPED)
             addAction(RecorderModel.SCREEN_RECORDER_PERMISSION_DENIED)
         }
@@ -103,10 +108,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun toggleKeylogging() {
         _keyloggingEnabled.value = !_keyloggingEnabled.value
-    }
-
-    fun serverUploadPresssed() {
-        _isUploading.value = true
     }
 
     override fun onCleared() {

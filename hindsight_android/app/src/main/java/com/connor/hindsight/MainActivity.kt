@@ -25,6 +25,8 @@ import com.connor.hindsight.services.ScreenRecorderService
 import com.connor.hindsight.ui.screens.AppNavigation
 import com.connor.hindsight.ui.theme.HindsightTheme
 import com.connor.hindsight.utils.Preferences
+import com.connor.hindsight.utils.ServerConnectionCallback
+import com.connor.hindsight.utils.checkServerConnection
 
 class MainActivity : ComponentActivity() {
     private lateinit var mediaProjectionManager: MediaProjectionManager
@@ -88,8 +90,20 @@ class MainActivity : ComponentActivity() {
 
     fun uploadToServer() {
         Log.d("MainActivity", "uploadToServer")
-        val uploadIntent = Intent(this, PostService::class.java)
-        ContextCompat.startForegroundService(this, uploadIntent)
+        checkServerConnection(object : ServerConnectionCallback {
+            override fun onServerStatusChecked(isConnected: Boolean) {
+                if (isConnected) {
+                    Log.d(
+                        "MainActivity",
+                        "Connection successful, proceeding with service initialization."
+                    )
+                    val uploadIntent = Intent(this@MainActivity, PostService::class.java)
+                    ContextCompat.startForegroundService(this@MainActivity, uploadIntent)
+                } else {
+                    Log.d("MainActivity", "No server connection, aborting upload.")
+                }
+            }
+        })
     }
 }
 
