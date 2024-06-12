@@ -235,6 +235,8 @@ class TimelineViewer:
 
     def copy_texts_within_drag_area(self):
         """Gets all text in the area the user has dragged"""
+        if self.drag_start is None or self.drag_end is None:
+            return
         x1 = min(self.drag_start[0], self.drag_end[0]) 
         y1 = min(self.drag_start[1], self.drag_end[1])
         x2 = max(self.drag_start[0], self.drag_end[0]) 

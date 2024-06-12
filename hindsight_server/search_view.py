@@ -10,6 +10,7 @@ from PIL import Image, ImageTk
 from tkcalendar import DateEntry
 
 from db import HindsightDB
+from run_chromadb_ingest import get_chroma_collection
 from timeline_view import Screenshot, TimelineViewer
 
 local_timezone = tzlocal.get_localzone()
@@ -21,6 +22,7 @@ class SearchViewer:
         self.db = HindsightDB()
         self.max_results = max_results
         self.images_df = self.get_images_df()
+        self.chroma_collection = get_chroma_collection()
         self.first_date = min(self.images_df['datetime_local'])
         self.screen_width = self.master.winfo_screenwidth()
         self.screen_height = self.master.winfo_screenheight()
@@ -80,8 +82,14 @@ class SearchViewer:
         for app in sorted(list(set(self.images_df['application']))):
             self.app_list.insert(tk.END, app)
 
-        self.search_button = ttk.Button(self.search_frame, text="Search", command=self.get_search_results)
-        self.search_button.pack(side=tk.LEFT)
+        self.button_frame = ttk.Frame(self.search_frame)
+        self.button_frame.pack(fill=tk.X, expand=True)
+        
+        self.search_button = ttk.Button(self.button_frame, text="Search Text", command=self.get_search_results)
+        self.search_button.pack(side=tk.TOP, padx=(10, 5), pady=10)
+
+        self.embedding_search_button = ttk.Button(self.button_frame, text="Search Text Embeddings", command=self.get_embedding_search_results)
+        self.embedding_search_button.pack(side=tk.TOP, padx=(5, 10), pady=10)
         
         self.canvas = tk.Canvas(self.master)
         self.scroll_y = ttk.Scrollbar(self.master, orient="vertical", command=self.canvas.yview)
@@ -142,8 +150,53 @@ class SearchViewer:
             selected_apps.add(self.app_list.get(i))
         selected_apps = selected_apps if len(selected_apps) > 0 else None
 
-        search_results = self.db.search(text=search_text, start_date=start_date, end_date=end_date, apps=selected_apps, n_seconds=300)
+        search_results = self.db.search(text=search_text, start_date=start_date, end_date=end_date, apps=selected_apps, n_seconds=500)
         self.search_results = search_results.iloc[:self.max_results]
+        self.display_frames()
+
+    def convert_date_to_utc_milliseconds(self, date):
+        datetime_date = pd.to_datetime(date).tz_localize(tzlocal.get_localzone())
+        utc_date = datetime_date.tz_convert('UTC')
+        return int(utc_date.timestamp() * 1000)
+
+    def get_embedding_search_results(self):
+        query_text = self.search_entry.get()
+
+        utc_milliseconds_start_date = self.convert_date_to_utc_milliseconds(self.start_date_entry.get_date())
+        # Want to include all times within the end date
+        utc_milliseconds_end_date = self.convert_date_to_utc_milliseconds(self.end_date_entry.get_date() + timedelta(hours=24))
+
+        selected_apps = list()
+        for i in self.app_list.curselection():
+            selected_apps.append(self.app_list.get(i))
+        selected_apps = selected_apps if len(selected_apps) > 0 else list(set(self.images_df['application']))
+
+        chroma_serach_results = self.chroma_collection.query(
+            query_texts=[query_text],
+            n_results=self.max_results,
+            where={
+                "$and": [
+                    {"timestamp": {"$gte": utc_milliseconds_start_date}},
+                    {"timestamp": {"$lte": utc_milliseconds_end_date}},
+                    {"application": {"$in": selected_apps}}
+                ]
+            }
+        )
+
+        result_frame_ids = [int(i) for i in chroma_serach_results['ids'][0]]
+
+        self.search_results = self.images_df[self.images_df['id'].isin(result_frame_ids)]
+
+        # Ensure the order of rows in self.search_results matches the order in result_frame_ids:
+        self.search_results['search_results_id'] = pd.Categorical(
+            self.search_results['id'],
+            categories=result_frame_ids,
+            ordered=True
+        )
+
+        # Sort by the 'id' column according to the order specified in 'categories'
+        self.search_results = self.search_results.sort_values('search_results_id')
+        self.search_results['ED'] = chroma_serach_results['distances'][0]
         self.display_frames()
 
     def display_frames(self):
@@ -204,8 +257,12 @@ class SearchViewer:
 
         # Bind the click event to open the timeline view
         label.bind("<Button-1>", lambda e, frame_id=im_row['id']: self.open_timeline_view(frame_id))
-        
-        timestamp_label = ttk.Label(frame, text=f"Time: {screenshot.timestamp.strftime('%Y-%m-%d %H:%M:%S')}", font=("Arial", 16))
+
+        # ED is Embedding distance from chromadb query. Using for RAG eval
+        if "ED" in im_row:
+            timestamp_label = ttk.Label(frame, text=f"ED:{round(im_row['ED'], 3)} Time: {screenshot.timestamp.strftime('%Y-%m-%d %H:%M:%S')}", font=("Arial", 16))
+        else:
+            timestamp_label = ttk.Label(frame, text=f"Time: {screenshot.timestamp.strftime('%Y-%m-%d %H:%M:%S')}", font=("Arial", 16))
         timestamp_label.pack()
 
     def open_timeline_view(self, frame_id):

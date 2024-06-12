@@ -14,6 +14,8 @@ video_timezone = ZoneInfo("UTC")
 
 DB_FILE = os.path.join(DATA_DIR, "hindsight.db")
 
+demo_apps = {'android', 'com-connor-hindsight', 'com-android-phone', 'com-android-pixeldisplayservice', 'com-android-settings',  'com-github-android', 'com-reddit-frontpage', 'com-soundcloud-android', 'com-spotify-music'}
+
 class HindsightDB:
     def __init__(self, db_file=DB_FILE):
         self.db_file = db_file
@@ -106,6 +108,7 @@ class HindsightDB:
             
             # Use pandas to read the SQL query result into a DataFrame
             df = pd.read_sql_query(query, conn)
+            # df = df.loc[df['application'].isin(demo_apps)]
             return df
     
     def get_ocr_results(self, frame_id=None):
@@ -173,6 +176,7 @@ class HindsightDB:
 
             # Sort by timestamp
             df = df.sort_values(by='datetime_utc', ascending=False)
+            # df = df.loc[df['application'].isin(demo_apps)]
 
             if n_seconds is None:
                 return df
