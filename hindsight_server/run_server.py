@@ -72,6 +72,10 @@ def upload_image():
         file.save(tmp_file)
         image_processing_queue.put((filename, tmp_file))
         return jsonify({"status": "success", "message": "File successfully uploaded"}), 200
+    
+@app.route('/ping', methods=['GET'])
+def ping_server():
+    return jsonify({'status': 'success', 'message': 'Server is reachable'}), 200
 
 if __name__ == '__main__':
     num_threads = os.cpu_count() - 2 
