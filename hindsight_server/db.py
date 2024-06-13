@@ -1,4 +1,5 @@
 import os
+import time
 import sqlite3
 import pandas as pd
 from datetime import timedelta
@@ -39,7 +40,7 @@ class HindsightDB:
                     UNIQUE (timestamp, path)
                 )
             ''')
-
+            
             # Create the "ocr_results" table if it doesn't exist
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS ocr_results (
@@ -52,6 +53,22 @@ class HindsightDB:
                     text TEXT,
                     conf DOUBLE NOT NULL,
                     FOREIGN KEY (frame_id) REFERENCES frames(id)
+                )
+            ''')
+
+            # cursor.execute('''
+            #     DROP TABLE IF EXISTS queries
+            # ''')
+
+            # Tables for handling queries
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS queries (
+                    id INTEGER PRIMARY KEY,
+                    query TEXT NOT NULL,
+                    result TEXT,
+                    source_frame_ids TEXT,
+                    timestamp INTEGER NOT NULL,
+                    active BOOLEAN NOT NULL DEFAULT true
                 )
             ''')
 
@@ -193,3 +210,44 @@ class HindsightDB:
             result_df = pd.DataFrame(result)
             
             return result_df
+        
+    def insert_query(self, query):
+        """Inserts query into queries table"""
+        query_timestamp = int(time.time() * 1000) # UTC in milliseconds
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                INSERT INTO queries (query, timestamp)
+                VALUES (?, ?)
+            ''', (query, query_timestamp))
+            
+            # Get the last inserted frame_id
+            query_id = cursor.lastrowid
+            conn.commit()
+            print(f"Query added successfully with query_id: {query_id}")
+            return query_id
+        
+    def insert_query_result(self, query_id, result, source_frame_ids):
+        """Inserts the result of a query into the queries table"""
+        # Convert source_frame_ids from a list or set to a comma-separated string
+        source_frame_ids_str = ','.join(map(str, source_frame_ids))
+        
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            try:
+                cursor.execute('''
+                    UPDATE queries SET result = ?, source_frame_ids = ?
+                    WHERE id = ?
+                ''', (result, source_frame_ids_str, query_id))
+                conn.commit()
+                print(f"Query result added successfully for query_id: {query_id}")
+            except sqlite3.Error as e:
+                print(f"An error occurred: {e}")
+
+
+    def get_active_queries(self):
+        """Returns all active queries"""
+        with self.get_connection() as conn:
+            query = f'''SELECT * FROM queries WHERE active = true'''
+            df = pd.read_sql_query(query, conn)
+            return df

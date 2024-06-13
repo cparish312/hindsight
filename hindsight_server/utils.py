@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from statistics import mean
+from datetime import timedelta
 
 import tzlocal
 from zoneinfo import ZoneInfo
@@ -12,6 +13,12 @@ def add_datetimes(df):
     """Adds UTC datetime and local datetime columns to a DataFrame with a UTC timestamp in milliseconds"""
     df['datetime_utc'] = pd.to_datetime(df['timestamp'] / 1000, unit='s', utc=True)
     df['datetime_local'] = df['datetime_utc'].apply(lambda x: x.replace(tzinfo=video_timezone).astimezone(local_timezone))
+    return df
+
+def add_usage_ids(df, new_usage_threshold=timedelta(seconds=120)):
+    df['time_difference'] = df['datetime_utc'].diff()
+    new_usage_start = (df['time_difference'] > new_usage_threshold)
+    df['usage_id'] = new_usage_start.cumsum()
     return df
 
 def add_sep_ids(df, new_threshold, var_name):
