@@ -1,4 +1,5 @@
 import os
+import time
 import platform
 import shutil
 import queue
@@ -9,6 +10,8 @@ from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify
 import pandas as pd
 
+import utils
+from run_chromadb_ingest import get_chroma_collection, run_chroma_ingest
 from db import HindsightDB
 from config import RAW_SCREENSHOTS_DIR
 
@@ -30,6 +33,24 @@ image_processing_queue = queue.Queue()
 make_dir(SCREENSHOTS_TMP_DIR)
 
 db = HindsightDB()
+frames_to_process = list()
+frames_to_process_lock = Lock()
+
+def process_images_batched():
+    """Made since chromadb insert is much more efficient in batches"""
+    while True:
+        with frames_to_process_lock:
+            if len(frames_to_process) == 0:
+                continue
+            processing_frames = frames_to_process.copy()
+            frames_to_process.clear()
+
+        print(f"Running process_images_batched on {len(processing_frames)} frames")
+        chroma_collection = get_chroma_collection()
+        frames_df = db.get_frames(frame_ids=processing_frames)
+        ocr_results_df = db.get_frames_with_ocr(frame_ids=processing_frames)
+        run_chroma_ingest(df=frames_df, ocr_results_df=ocr_results_df, chroma_collection=chroma_collection)
+        time.sleep(120)
 
 def process_image_queue():
     while True:
@@ -51,7 +72,10 @@ def process_image_queue():
             # Insert into db and run OCR
             frame_id = db.insert_frame(timestamp, filepath, application)
             if platform.system() == 'Darwin':
-                run_ocr.run_ocr(frame_id=frame_id) # run_ocr inserts results into db
+                run_ocr.run_ocr(frame_id=frame_id, path=filepath) # run_ocr inserts results into db
+                with frames_to_process_lock:
+                    frames_to_process.append(frame_id)
+
         except queue.Empty:
             continue
         except Exception as e:
@@ -85,6 +109,10 @@ if __name__ == '__main__':
             thread = threading.Thread(target=process_image_queue)
             thread.start()
             threads.append(thread)
+        process_images_batched_thread = threading.Thread(target=process_images_batched)
+        process_images_batched_thread.start()
+        threads.append(process_images_batched_thread)
+
         app.run(debug=True, host='0.0.0.0', port=6000, ssl_context=(SSL_CERT, SSL_KEY))
     finally:
         for _ in range(num_threads):  # Signal all threads to stop

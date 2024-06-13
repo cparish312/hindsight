@@ -37,18 +37,22 @@ def get_chromadb_text(ocr_result, application, timestamp):
 def get_chromadb_metadata(row):
     return {"frame_id" : row['id'], "application" : row['application'], "timestamp" : row['timestamp']}
 
-def run_ingest(df, chroma_collection, ocr_results_df):
+def run_chroma_ingest(df, chroma_collection, ocr_results_df):
     documents = list()
     metadatas = list()
     ids = list()
+    last_document = ""
     for i, row in df.iterrows():
         # ocr_result = db.get_ocr_results(frame_id=row['id'])
         ocr_result = ocr_results_df.loc[ocr_results_df['frame_id'] == row['id']]
         if len(ocr_result) == 0 or set(ocr_result['text']) == {None}:
             continue
-        documents.append(get_chromadb_text(ocr_result=ocr_result, application=row['application'], timestamp=row['timestamp']))
-        metadatas.append(get_chromadb_metadata(row))
-        ids.append(str(row['id']))
+        document = get_chromadb_text(ocr_result=ocr_result, application=row['application'], timestamp=row['timestamp'])
+        if last_document != document:
+            documents.append(document)
+            metadatas.append(get_chromadb_metadata(row))
+            ids.append(str(row['id']))
+            last_document = document
 
     if len(documents) == 0:
         return
@@ -57,6 +61,7 @@ def run_ingest(df, chroma_collection, ocr_results_df):
         metadatas=metadatas,
         ids=ids
     )
+    print(f"Successfully added {len(documents)} documents to chromadb")
 
 if __name__ == "__main__":
     frames = db.get_frames()
@@ -74,4 +79,4 @@ if __name__ == "__main__":
         start_index = i * batch_size
         end_index = start_index + batch_size
         frames_batch = frames.iloc[start_index:end_index]
-        run_ingest(df=frames_batch, chroma_collection=chroma_collection, ocr_results_df=ocr_results_df)
+        run_chroma_ingest(df=frames_batch, chroma_collection=chroma_collection, ocr_results_df=ocr_results_df)

@@ -38,11 +38,12 @@ def extract_text_from_frame(path):
         ocr_res = [[0, 0, 0, 0, None, 0]]
     return ocr_res
 
-def run_ocr(frame_id):
-    path = db.get_frames(frame_id=frame_id).iloc[0]['path']
+def run_ocr(frame_id, path=None):
+    path = db.get_frames(frame_ids=[frame_id]).iloc[0]['path'] if path is None else path
     ocr_res = extract_text_from_frame(path)
     db.insert_ocr_results(frame_id, ocr_res)
     print(f"Inserted ocr results for {path}")
+    return ocr_res
 
 if __name__ == "__main__":
     images_df = get_images_df(RAW_SCREENSHOTS_DIR)

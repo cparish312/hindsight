@@ -114,17 +114,17 @@ class HindsightDB:
                 
                 print(f"{len(ocr_results)} OCR results added successfully.")
 
-    def get_frames(self, frame_id=None):
+    def get_frames(self, frame_ids=None):
         """Select frames with associated OCR results."""
         with self.get_connection() as conn:
             # Query to get frames
-            if frame_id is None:
-                query = '''SELECT * FROM frames'''
-            else:
-                query = f'''SELECT * FROM frames WHERE id = {frame_id}'''
+            query = '''SELECT * FROM frames'''
+            if frame_ids:
+                placeholders = ','.join(['?'] * len(frame_ids))  # Create placeholders for the query
+                query += f" WHERE id IN ({placeholders})"
             
             # Use pandas to read the SQL query result into a DataFrame
-            df = pd.read_sql_query(query, conn)
+            df = pd.read_sql_query(query, conn, params=tuple(frame_ids) if frame_ids else None)
             # df = df.loc[df['application'].isin(demo_apps)]
             return df
     
@@ -138,7 +138,7 @@ class HindsightDB:
             df = pd.read_sql_query(query, conn)
             return df
 
-    def get_frames_with_ocr(self):
+    def get_frames_with_ocr(self, frame_ids=None):
         """Select frames with associated OCR results."""
         with self.get_connection() as conn:
             # Query to get the frames with OCR results
@@ -147,9 +147,12 @@ class HindsightDB:
                 FROM frames
                 INNER JOIN ocr_results ON frames.id = ocr_results.frame_id
             '''
+            if frame_ids:
+                placeholders = ','.join(['?'] * len(frame_ids))  # Create placeholders for the query
+                query += f" WHERE frames.id IN ({placeholders})"
             
             # Use pandas to read the SQL query result into a DataFrame
-            df = pd.read_sql_query(query, conn)
+            df = pd.read_sql_query(query, conn, params=tuple(frame_ids) if frame_ids else None)
             return df
     
     def search(self, text=None, start_date=None, end_date=None, apps=None, n_seconds=None):
