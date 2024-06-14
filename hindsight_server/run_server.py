@@ -1,5 +1,6 @@
 import os
 import time
+import logging
 import platform
 import shutil
 import queue
@@ -13,12 +14,20 @@ import pandas as pd
 import utils
 from run_chromadb_ingest import get_chroma_collection, run_chroma_ingest
 from db import HindsightDB
-from config import RAW_SCREENSHOTS_DIR
+from config import RAW_SCREENSHOTS_DIR, SERVER_LOG_FILE
 
 if platform.system() == 'Darwin': # OCR only available for MAC currently
     import run_ocr
 
 app = Flask(__name__)
+
+# Set up logging to a file
+handler = logging.FileHandler(SERVER_LOG_FILE)
+handler.setLevel(logging.DEBUG)
+formatter = logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s %(levelname)s %(name)s %(threadName)s : %(message)s')
+handler.setFormatter(formatter)
+app.logger.addHandler(handler)
 
 HOME = Path.home()
 SCREENSHOTS_TMP_DIR = HOME / ".hindsight_server/raw_screenshots_tmp"
@@ -50,6 +59,7 @@ def process_images_batched():
         frames_df = db.get_frames(frame_ids=processing_frames)
         ocr_results_df = db.get_frames_with_ocr(frame_ids=processing_frames)
         run_chroma_ingest(df=frames_df, ocr_results_df=ocr_results_df, chroma_collection=chroma_collection)
+        app.logger.info(f"Ran process_images_batched on {len(processing_frames)} frames")
         time.sleep(120)
 
 def process_image_queue():
@@ -80,6 +90,7 @@ def process_image_queue():
             continue
         except Exception as e:
             print(f"Error processing file: {e}")
+            app.logger.error(f"Error processing file: {e}")
         else:
             image_processing_queue.task_done()
 

@@ -185,19 +185,37 @@ class QueryViewer:
         # Update the window to ensure geometry calculations are correct
         self.master.update_idletasks()
         
-        row_height = 60
-        # Adjust window size to fit all frames
-        total_rows = len(queries)
-        # window_height = min(total_rows * row_height + 100, self.max_height)  # Additional space for search bar and padding
         self.master.geometry(f"{self.screen_width}x{self.max_height}")
 
     def display_query(self, q_row, row):
         frame = ttk.Frame(self.scroll_frame)
-        frame.grid(row=row, column=0, sticky='ew', padx=10, pady=5, columnspan=3)
+        frame.grid(row=row, column=0, sticky='ew', padx=10, pady=0, columnspan=3)  # Ensure no vertical padding
 
-        query_text = f"Query: {q_row.query}\n Result: {q_row.result}\n Sources: {q_row.source_frame_ids}"
-        query_label = ttk.Label(frame, text=query_text, wraplength=self.max_width - 20)  # Adjust wraplength to prevent overflow
-        query_label.pack(fill='x', expand=True)
+        query_text = f"Query: {q_row.query}\nResult: {q_row.result}\n\nSources:"
+        query_label = ttk.Label(frame, text=query_text, wraplength=self.max_width - 20)
+        query_label.pack(fill='x', expand=True, padx=0, pady=0)  # No padding around the text label
+
+        # Can't figure out how to get rid of the pad at the top of the scrollbar
+        if q_row.source_frame_ids:
+            canvas = tk.Canvas(frame, highlightthickness=0, bd=0)  
+            scrollbar = ttk.Scrollbar(frame, orient="horizontal", command=canvas.xview)
+            canvas.configure(xscrollcommand=scrollbar.set)
+
+            scrollbar.pack(side='bottom', fill='x', padx=0, pady=0)  
+            canvas.pack(side='top', fill='both', expand=True, padx=0, pady=0) 
+
+            ids_frame = ttk.Frame(canvas)
+            canvas.create_window((0, 0), window=ids_frame, anchor='nw')
+
+            source_frame_ids = q_row.source_frame_ids.split(',')
+            for id_str in source_frame_ids:
+                frame_id = int(id_str.strip())
+                id_label = tk.Label(ids_frame, text=f"{frame_id}", fg="blue", cursor="hand2", padx=5)
+                id_label.pack(side='left', padx=5, pady=0)
+                id_label.bind("<Button-1>", lambda e, fid=frame_id: self.open_timeline_view(fid), add='+')
+
+            ids_frame.update_idletasks()
+            canvas.config(scrollregion=canvas.bbox("all"))  # Ensure the scroll region covers all items
 
     def open_timeline_view(self, frame_id):
         """Opens timeline view at the clicked frame"""
