@@ -33,26 +33,48 @@ def chroma_search_results_to_df(chroma_search_results):
             results_l.append(d)
     return pd.DataFrame(results_l)
 
-def query_chroma(query_text, source_apps, utc_milliseconds_start_date, utc_milliseconds_end_date, max_chroma_results=200):
+def query_chroma(query_text, source_apps=None, utc_milliseconds_start_date=None, utc_milliseconds_end_date=None, max_chroma_results=200):
     chroma_collection = get_chroma_collection()
 
-    chroma_search_results = chroma_collection.query(
+    conditions = []
+    if source_apps is not None:
+        conditions.append({"application": {"$in": source_apps}})
+    
+    if utc_milliseconds_start_date is not None:
+        conditions.append({"timestamp": {"$gte": int(utc_milliseconds_start_date)}})
+    
+    if utc_milliseconds_end_date is not None:
+        conditions.append({"timestamp": {"$lte": int(utc_milliseconds_end_date)}})
+    
+    if len(conditions) > 1:
+        chroma_search_results = chroma_collection.query(
             query_texts=[query_text],
             n_results=max_chroma_results,
             where={
-                "$and": [
-                    {"timestamp": {"$gte": utc_milliseconds_start_date}},
-                    {"timestamp": {"$lte": utc_milliseconds_end_date}},
-                    {"application": {"$in": source_apps}}
-                ]
+                "$and": conditions
             }
+        )
+    elif len(conditions) == 1:
+        chroma_search_results = chroma_collection.query(
+            query_texts=[query_text],
+            n_results=max_chroma_results,
+            where=conditions[0]
+        )
+    else:
+        chroma_search_results = chroma_collection.query(
+            query_texts=[query_text],
+            n_results=max_chroma_results,
         )
     return chroma_search_results
 
 
-def query(query_id, query_text, source_apps, utc_milliseconds_start_date, utc_milliseconds_end_date, max_chroma_results=100, per_usage_results=2):
+def query(query_id, query_text, source_apps=None, utc_milliseconds_start_date=None, utc_milliseconds_end_date=None, max_chroma_results=100, per_usage_results=2):
     chroma_search_results = query_chroma(query_text, source_apps, utc_milliseconds_start_date, utc_milliseconds_end_date, max_chroma_results)
     chroma_search_results_df = chroma_search_results_to_df(chroma_search_results)
+    if len(chroma_search_results_df) == 0:
+        print("No relevant sources in chromadb")
+        db.insert_query_result(query_id, "No relevant sources in chromadb", {})
+        return
     chroma_search_results_df = chroma_search_results_df.drop_duplicates(subset=['document'])
     chroma_search_results_df = utils.add_datetimes(chroma_search_results_df).sort_values(by='datetime_local', ascending=True)
 
