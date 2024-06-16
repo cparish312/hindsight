@@ -197,33 +197,21 @@ class QueryViewer:
 
         # Can't figure out how to get rid of the pad at the top of the scrollbar
         if q_row.source_frame_ids:
-            canvas = tk.Canvas(frame, highlightthickness=0, bd=0)  
-            scrollbar = ttk.Scrollbar(frame, orient="horizontal", command=canvas.xview)
-            canvas.configure(xscrollcommand=scrollbar.set)
-
-            scrollbar.pack(side='bottom', fill='x', padx=0, pady=0)  
-            canvas.pack(side='top', fill='both', expand=True, padx=0, pady=0) 
-
-            ids_frame = ttk.Frame(canvas)
-            canvas.create_window((0, 0), window=ids_frame, anchor='nw')
-
             source_frame_ids = q_row.source_frame_ids.split(',')
-            for id_str in source_frame_ids:
-                frame_id = int(id_str.strip())
-                id_label = tk.Label(ids_frame, text=f"{frame_id}", fg="blue", cursor="hand2", padx=5)
+            source_frame_ids = [int(id_str.strip()) for id_str in source_frame_ids]
+            for frame_id in source_frame_ids:
+                id_label = tk.Label(frame, text=f"{frame_id}", fg="blue", cursor="hand2", padx=5)
                 id_label.pack(side='left', padx=5, pady=0)
-                id_label.bind("<Button-1>", lambda e, fid=frame_id: self.open_timeline_view(fid), add='+')
+                id_label.bind("<Button-1>", lambda e, fid=frame_id: self.open_timeline_view(fid, source_frame_ids), add='+')
 
-            ids_frame.update_idletasks()
-            canvas.config(scrollregion=canvas.bbox("all"))  # Ensure the scroll region covers all items
-
-    def open_timeline_view(self, frame_id):
+    def open_timeline_view(self, frame_id, query_source_ids):
         """Opens timeline view at the clicked frame"""
         if self.timeline_viewer is not None:
             self.timeline_viewer.master.destroy()
         
+        sources_df = self.images_df.loc[self.images_df['id'].isin(query_source_ids)].reset_index(drop=True)
         timeline_window = tk.Toplevel(self.master)
-        self.timeline_viewer = TimelineViewer(timeline_window, frame_id=frame_id)
+        self.timeline_viewer = TimelineViewer(timeline_window, frame_id=frame_id, images_df=sources_df)
 
     def on_window_close(self):
         self.master.destroy()

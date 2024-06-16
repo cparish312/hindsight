@@ -26,11 +26,12 @@ class Screenshot:
     timestamp: datetime.timestamp
 
 class TimelineViewer:
-    def __init__(self, master, frame_id = None, max_width=1536, max_height=800):
+    def __init__(self, master, frame_id = None, max_width=1536, max_height=800, images_df=None):
         self.master = master
         self.db = HindsightDB()
-        self.images_df = self.get_images_df()
+        self.images_df = self.get_images_df() if images_df is None else images_df
         self.num_frames = len(self.images_df)
+        self.max_frames_index = max(self.images_df.index)
         self.app_color_map = self.get_app_color_map()
         self.max_width = max_width
         self.max_height = max_height - 200
@@ -199,8 +200,8 @@ class TimelineViewer:
         if self.scroll_frame_num < 0:
             self.scroll_frame_num = 0
         
-        if self.scroll_frame_num > self.num_frames:
-            self.scroll_frame_num = self.num_frames
+        if self.scroll_frame_num > self.max_frames_index:
+            self.scroll_frame_num = self.max_frames_index
 
     def on_scroll_up(self, event):
         # Linux scroll up
@@ -210,9 +211,8 @@ class TimelineViewer:
     def on_scroll_down(self, event):
         # Linux scroll down
         self.scroll_frame_num += 1
-        if self.scroll_frame_num > self.num_frames:
-            self.scroll_frame_num = self.num_frames
-
+        if self.scroll_frame_num > self.max_frames_index:
+            self.scroll_frame_num = self.max_frames_index
     def start_drag(self, event):
         self.dragging = True
         self.drag_start = (event.x, event.y)
