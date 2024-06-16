@@ -15,17 +15,17 @@ Hindsight is an android app that takes a screenshot every 2 seconds. The server 
 ## Setup
 ### Server
 1) **Conda Environment:**
-*   Install [conda](https://docs.anaconda.com/free/miniconda/miniconda-install/) if you don't have it already
-*   Create the conda environment: `conda env create -f hindsight_server_env.yml`
-*   Activate the env using: `conda activate hindsight_server`
-*   If running on a Mac run `pip install ocrmac` to utilize OCR
+    *   Install [conda](https://docs.anaconda.com/free/miniconda/miniconda-install/) if you don't have it already
+    *   Create the conda environment: `conda env create -f hindsight_server_env.yml`
+    *   Activate the env using: `conda activate hindsight_server`
+    *   If running on a Mac run `pip install ocrmac` to utilize OCR
 2) **Initialization:**
-* Set up ngrok to allow querying over internet (Optional):
-    * `ngrok http https://localhost:6000`
-    * Fill in `INTERNET_URL` with the ngrok forwarding address(should end in `.ngrok-free.app`) in `hindsight_server/initialize_server.py`
-* copy `hindsight_server/res/template_san.cnf` to `hindsight_server/res/san.cnf`
-* Fill in and replace the `${}` sections in `hindsight_server/res/san.cnf`
-* Run: `hindsight_server/initialize_server.py`
+    * Set up ngrok to allow querying over internet (Optional):
+        * `ngrok http https://localhost:6000`
+        * Fill in `INTERNET_URL` with the ngrok forwarding address(should end in `.ngrok-free.app`) in `hindsight_server/initialize_server.py`
+    * copy `hindsight_server/res/template_san.cnf` to `hindsight_server/res/san.cnf`
+    * Fill in and replace the `${}` sections in `hindsight_server/res/san.cnf`
+    * Run: `hindsight_server/initialize_server.py`
 
 ### App
 1) Open `hindsight_android` in Android Studio.
