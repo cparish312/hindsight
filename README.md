@@ -28,6 +28,7 @@ Hindsight is an android app that takes a screenshot every 2 seconds. The server 
     * Run: `hindsight_server/initialize_server.py`
 
 3) **Running**
+    * For querying you may need to change the LLM and Embedding models in `hindsight_server/config.py` depending on your machine
     * It is recommended to run the server using `gunicorn` to improve the performance
         * `cd hindsight_server`
         * `gunicorn --certfile=$HOME/.hindsight_server/server.crt --keyfile=$HOME/.hindsight_server/server.key -w 4 -b 0.0.0.0:6000 run_server:app`

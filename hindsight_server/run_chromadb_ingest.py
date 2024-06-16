@@ -7,20 +7,20 @@ from mlx_embedding_models.embedding import EmbeddingModel
 
 sys.path.insert(0, "../")
 from db import HindsightDB
-from config import DATA_DIR
+from config import DATA_DIR, MLX_EMBDEDDING_MODEL
 import utils
 
 db = HindsightDB()
 chroma_db_path = os.path.join(DATA_DIR, "chromadb")
 
 class MLXEmbeddingFunction(EmbeddingFunction):
-    def __init__(self, model_id="bge-base"):
+    def __init__(self, model_id=MLX_EMBDEDDING_MODEL):
         self.embedding_model = EmbeddingModel.from_registry(model_id)
 
     def __call__(self, input: Documents) -> Embeddings:
         return self.embedding_model.encode(input).tolist()
 
-def get_chroma_collection(collection_name="pixel_screenshots", model_id="bge-base"):
+def get_chroma_collection(collection_name="pixel_screenshots", model_id=MLX_EMBDEDDING_MODEL):
     embedding_function = MLXEmbeddingFunction(model_id=model_id)
     chroma_client = chromadb.PersistentClient(path=chroma_db_path)
     chroma_collection = chroma_client.get_or_create_collection(collection_name, embedding_function=embedding_function)

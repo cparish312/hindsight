@@ -1,5 +1,4 @@
 import os
-import socket
 from pathlib import Path
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -15,3 +14,6 @@ if os.path.exists(API_KEY_FILE):
         SECRET_API_KEY = infile.read().strip()
 else:
     SECRET_API_KEY = "NONE"
+
+MLX_LLM_MODEL = "mlx-community/Meta-Llama-3-8B-Instruct-8bit"
+MLX_EMBDEDDING_MODEL = "bge-base"

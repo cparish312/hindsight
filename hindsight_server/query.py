@@ -8,6 +8,7 @@ from prompts import get_prompt
 from db import HindsightDB
 from run_chromadb_ingest import get_chroma_collection
 import utils
+from config import MLX_LLM_MODEL
 
 db = HindsightDB()
 
@@ -81,7 +82,7 @@ def query(query_id, query_text, source_apps=None, utc_milliseconds_start_date=No
         combined_text += "New Screenshot" + "-"*30 + "\n"
         combined_text += t
 
-    model, tokenizer = load("mlx-community/Meta-Llama-3-8B-Instruct-8bit")
+    model, tokenizer = load(MLX_LLM_MODEL)
     prompt = get_prompt(text=combined_text, query=query_text)
     response = generate(model, tokenizer, prompt=prompt)
     source_frame_ids = list(chroma_search_results_df['id'])
