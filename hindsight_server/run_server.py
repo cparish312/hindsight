@@ -14,8 +14,9 @@ import pandas as pd
 
 from run_chromadb_ingest import get_chroma_collection, run_chroma_ingest
 from db import HindsightDB
-from config import RAW_SCREENSHOTS_DIR, SERVER_LOG_FILE, SECRET_API_KEY
+from config import RAW_SCREENSHOTS_DIR, SERVER_LOG_FILE, SECRET_API_KEY, HINDSIGHT_SERVER_DIR
 import query
+import utils
 
 if platform.system() == 'Darwin': # OCR only available for MAC currently
     import run_ocr
@@ -33,37 +34,33 @@ app.logger.addHandler(handler)
 threads = list()
 
 HOME = Path.home()
-SCREENSHOTS_TMP_DIR = HOME / ".hindsight_server/raw_screenshots_tmp"
-SSL_CERT = HOME / ".hindsight_server/server.crt"
-SSL_KEY = HOME / ".hindsight_server/server.key"
-
-def make_dir(d):
-    if not os.path.exists(d):
-        os.makedirs(d)
+SCREENSHOTS_TMP_DIR = HINDSIGHT_SERVER_DIR/ "raw_screenshots_tmp"
+SSL_CERT = HINDSIGHT_SERVER_DIR / "server.crt"
+SSL_KEY = HINDSIGHT_SERVER_DIR / "server.key"
 
 image_processing_queue = queue.Queue()
-make_dir(SCREENSHOTS_TMP_DIR)
+utils.make_dir(SCREENSHOTS_TMP_DIR)
 
 db = HindsightDB()
 frames_to_process = list()
 frames_to_process_lock = Lock()
 
-def process_images_batched():
-    """Made since chromadb insert is much more efficient in batches"""
-    while True:
-        with frames_to_process_lock:
-            if len(frames_to_process) == 0:
-                continue
-            processing_frames = frames_to_process.copy()
-            frames_to_process.clear()
+# def process_images_batched():
+#     """Made since chromadb insert is much more efficient in batches"""
+#     while True:
+#         with frames_to_process_lock:
+#             if len(frames_to_process) == 0:
+#                 continue
+#             processing_frames = frames_to_process.copy()
+#             frames_to_process.clear()
 
-        print(f"Running process_images_batched on {len(processing_frames)} frames")
-        chroma_collection = get_chroma_collection()
-        frames_df = db.get_frames(frame_ids=processing_frames)
-        ocr_results_df = db.get_frames_with_ocr(frame_ids=processing_frames)
-        run_chroma_ingest(df=frames_df, ocr_results_df=ocr_results_df, chroma_collection=chroma_collection)
-        app.logger.info(f"Ran process_images_batched on {len(processing_frames)} frames")
-        time.sleep(120)
+#         print(f"Running process_images_batched on {len(processing_frames)} frames")
+#         chroma_collection = get_chroma_collection()
+#         frames_df = db.get_frames(frame_ids=processing_frames)
+#         ocr_results_df = db.get_frames_with_ocr(frame_ids=processing_frames)
+#         run_chroma_ingest(df=frames_df, ocr_results_df=ocr_results_df, chroma_collection=chroma_collection)
+#         app.logger.info(f"Ran process_images_batched on {len(processing_frames)} frames")
+#         time.sleep(120)
 
 def process_image_queue():
     while True:
@@ -77,7 +74,7 @@ def process_image_queue():
             timestamp = int(filename_s[1])
             timestamp_obj = pd.to_datetime(timestamp / 1000, unit='s', utc=True)
             destdir = os.path.join(RAW_SCREENSHOTS_DIR, f"{timestamp_obj.strftime('%Y/%m/%d')}/{application}/")
-            make_dir(destdir)
+            utils.make_dir(destdir)
             filepath = os.path.abspath(os.path.join(destdir, filename))
             shutil.move(tmp_file, filepath)
             print(f"File saved to {filepath}")
@@ -86,8 +83,8 @@ def process_image_queue():
             frame_id = db.insert_frame(timestamp, filepath, application)
             if platform.system() == 'Darwin':
                 run_ocr.run_ocr(frame_id=frame_id, path=filepath) # run_ocr inserts results into db
-                with frames_to_process_lock:
-                    frames_to_process.append(frame_id)
+                # with frames_to_process_lock:
+                #     frames_to_process.append(frame_id)
 
         except queue.Empty:
             continue
@@ -164,9 +161,9 @@ def setup_threads():
         thread = threading.Thread(target=process_image_queue)
         thread.start()
         threads.append(thread)
-    process_images_batched_thread = threading.Thread(target=process_images_batched)
-    process_images_batched_thread.start()
-    threads.append(process_images_batched_thread)
+    # process_images_batched_thread = threading.Thread(target=process_images_batched)
+    # process_images_batched_thread.start()
+    # threads.append(process_images_batched_thread)
 
 def initialize():
     process_tmp_dir() # Since runs for each gunicorn worker will throw errors since files will be moved but can be ignored

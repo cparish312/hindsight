@@ -1,18 +1,7 @@
-import os
-import cv2
-import sys
-import glob
 import pandas as pd
 
 from datetime import timedelta
-import matplotlib.pyplot as plt
-import seaborn as sns
 
-import numpy as np
-
-from statistics import mean
-
-import mlx.core as mx
 from mlx_lm import load, generate
 
 from prompts import get_prompt
@@ -68,7 +57,7 @@ def query_chroma(query_text, source_apps=None, utc_milliseconds_start_date=None,
     return chroma_search_results
 
 
-def query(query_id, query_text, source_apps=None, utc_milliseconds_start_date=None, utc_milliseconds_end_date=None, max_chroma_results=100, per_usage_results=2):
+def query(query_id, query_text, source_apps=None, utc_milliseconds_start_date=None, utc_milliseconds_end_date=None, max_chroma_results=100, per_usage_results=1):
     chroma_search_results = query_chroma(query_text, source_apps, utc_milliseconds_start_date, utc_milliseconds_end_date, max_chroma_results)
     chroma_search_results_df = chroma_search_results_to_df(chroma_search_results)
     if len(chroma_search_results_df) == 0:
@@ -84,6 +73,8 @@ def query(query_id, query_text, source_apps=None, utc_milliseconds_start_date=No
     chroma_search_results_df = chroma_search_results_df.merge(sel_df, on=['usage_id', 'distance'])
 
     chroma_search_results_df = chroma_search_results_df.sort_values(by="distance", ascending=True)
+    chroma_search_results_df = chroma_search_results_df.iloc[:20]
+    chroma_search_results_df = chroma_search_results_df.sort_values(by="datetime_local", ascending=True)
 
     combined_text = ""
     for t in chroma_search_results_df['document']:

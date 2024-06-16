@@ -19,23 +19,17 @@ Hindsight is an android app that takes a screenshot every 2 seconds. The server 
 *   Create the conda environment: `conda env create -f hindsight_server_env.yml`
 *   Activate the env using: `conda activate hindsight_server`
 *   If running on a Mac run `pip install ocrmac` to utilize OCR
-2) **SSL Configuration:**
-*   Openssl is used to create ssl keys for running the server over Https. The keys are expected in `$Home/.hindsight_server` but that can be changed in `hindsight_server/run_server.py`. Copy `hindsight_server/template_san.cnf` to `$Home/.hindsight_server/san.cnf` and replace the `${}` sections. 
-*   Run `openssl req -new -nodes -keyout server.key -out server.csr -config san.cnf`
-*   Run `openssl x509 -req -days 365 -in server.csr -signkey server.key -out server.crt -extensions v3_ca -extfile san.cnf`. You now have the public and private keys for running the server.
-*   You need to generate a `.der` file for the app to authenticate the identify of the server. Run `openssl x509 -outform der -in server.crt -out hindsight_server.der`
-*   You can change the directory that images are stored in by modifying `RAW_SCREENSHOTS_DIR` within `hindsight_server/config.py`
-3) **Start the server:** `python hindsight_server/run_server.py`
-* To improve the performance of the server you can run a WSGI server using a program like `gunicorn`.
-* `conda install -c conda-forge gunicorn`
-* `cd hindsight_server`
-* `gunicorn --certfile=$HOME/.hindsight_server/server.crt --keyfile=$HOME/.hindsight_server/server.key -w 4 -b 0.0.0.0:6000 run_server:app`
+2) **Initialization:**
+* Set up ngrok to allow querying over internet (Optional):
+    * `ngrok http https://localhost:6000`
+    * Fill in `INTERNET_URL` with the ngrok forwarding address(should end in `.ngrok-free.app`) in `hindsight_server/initialize_server.py`
+* copy `hindsight_server/res/template_san.cnf` to `hindsight_server/res/san.cnf`
+* Fill in and replace the `${}` sections in `hindsight_server/res/san.cnf`
+* Run: `hindsight_server/initialize_server.py`
 
 ### App
 1) Open `hindsight_android` in Android Studio.
-2) In `hindsight_android/app/src/main/java/com/connor/hindsight/network/RetrofitClient.kt` change `BASE_URL` to the base url of your server including the port. This should be printed out when `python hindsight_server.py` is run and should also be the ip of `${computer_ip}` in the `san.cnf`.
-3) Move `hindsight_server.der` into `hindsight_android/app/src/main/res/raw/`
-4) You should be good to run the app on your device!
+2) You should be good to run the app on your device!
 
 ## Features
 Currently the app has 2 "working" functionalities.

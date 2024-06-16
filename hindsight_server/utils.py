@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pandas as pd
 from statistics import mean
@@ -8,6 +9,10 @@ from zoneinfo import ZoneInfo
 
 local_timezone = tzlocal.get_localzone()
 video_timezone = ZoneInfo("UTC")
+
+def make_dir(d):
+    if not os.path.exists(d):
+        os.makedirs(d)
 
 def add_datetimes(df):
     """Adds UTC datetime and local datetime columns to a DataFrame with a UTC timestamp in milliseconds"""
