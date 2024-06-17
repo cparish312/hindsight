@@ -53,6 +53,7 @@ def chromadb_process_images():
                 frames_df = db.get_non_chromadb_processed_frames_with_ocr()
                 frame_ids = set(frames_df['id'])
                 if len(frame_ids) == 0:
+                    db.release_lock("chromadb")
                     time.sleep(120)
                     continue
                 print(f"Running process_images_batched on {len(frame_ids)} frames")
