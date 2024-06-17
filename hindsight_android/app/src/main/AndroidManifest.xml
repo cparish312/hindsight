@@ -44,7 +44,7 @@
         </service>
 
         <service
-            android:name="com.connor.hindsight.network.services.PostService"
+            android:name="com.connor.hindsight.network.services.ServerUploadService"
             android:exported="false"
             android:foregroundServiceType="dataSync">
         </service>
