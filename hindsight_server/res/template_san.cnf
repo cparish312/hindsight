@@ -12,13 +12,13 @@ L=${example_city} # Cambridge
 O=${example_org} # Hindsight
 OU=${name} # connor
 emailAddress=${example.gmail.com}
-CN = PYTHON_CONFIG_INSERT_HERE
+CN = PYTHON_CONFIG_INSERT_IP_HERE
 
 [ req_ext ]
 subjectAltName = @alt_names
 
 [ alt_names ]
-IP.1 = PYTHON_CONFIG_INSERT_HERE
+IP.1 = PYTHON_CONFIG_INSERT_IP_HERE
 
 [ v3_ca ]
 subjectAltName = @alt_names
