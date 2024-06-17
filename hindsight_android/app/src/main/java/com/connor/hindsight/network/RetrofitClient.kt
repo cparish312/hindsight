@@ -9,23 +9,23 @@ import retrofit2.converter.gson.GsonConverterFactory
 object RetrofitClient {
     private const val BASE_URL = "https://192.168.1.220:6000/"
 
-    val instance: Retrofit
-        get() {
-            val logging = HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.BASIC
-            }
-
-            val client = OkHttpClient.Builder()
-                .connectTimeout(30, TimeUnit.SECONDS) // Set the connection timeout
-                .readTimeout(30, TimeUnit.SECONDS) // Set the read timeout
-                .writeTimeout(30, TimeUnit.SECONDS) // Set the write timeout
-                .addInterceptor(logging)
-                .build()
-
-            return Retrofit.Builder()
-                .baseUrl(BASE_URL)
-                .addConverterFactory(GsonConverterFactory.create())
-                .client(client)
-                .build()
+    fun getInstance(baseUrl: String): Retrofit
+    {
+        val logging = HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.BASIC
         }
+
+        val client = OkHttpClient.Builder()
+            .connectTimeout(1, TimeUnit.SECONDS) // Set the connection timeout
+            .readTimeout(30, TimeUnit.SECONDS) // Set the read timeout
+            .writeTimeout(30, TimeUnit.SECONDS) // Set the write timeout
+            .addInterceptor(logging)
+            .build()
+
+        return Retrofit.Builder()
+            .baseUrl(baseUrl)
+            .addConverterFactory(GsonConverterFactory.create())
+            .client(client)
+            .build()
+    }
 }

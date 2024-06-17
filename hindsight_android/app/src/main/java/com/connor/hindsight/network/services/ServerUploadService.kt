@@ -21,6 +21,7 @@ import com.connor.hindsight.R
 import com.connor.hindsight.network.RetrofitClient
 import com.connor.hindsight.network.interfaces.ApiService
 import com.connor.hindsight.utils.NotificationHelper
+import com.connor.hindsight.utils.Preferences
 import com.connor.hindsight.utils.getImageDirectory
 import com.connor.hindsight.utils.getImageFiles
 import com.connor.hindsight.utils.getSyncedImageDirectory
@@ -36,7 +37,7 @@ import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.ResponseBody
 
-class PostService : LifecycleService() {
+class ServerUploadService : LifecycleService() {
     val notificationTitle: String = "Hindsight Server Upload"
     private lateinit var screenshotDirectory: File
     private lateinit var syncedScreenshotDirectory: File
@@ -45,7 +46,7 @@ class PostService : LifecycleService() {
     private val uploaderReceiver = object : BroadcastReceiver() {
         @SuppressLint("NewApi")
         override fun onReceive(context: Context?, intent: Intent?) {
-            when (intent?.getStringExtra(PostService.ACTION_EXTRA_KEY)) {
+            when (intent?.getStringExtra(ServerUploadService.ACTION_EXTRA_KEY)) {
                 STOP_ACTION -> {
                     onDestroy()
                 }
@@ -71,7 +72,7 @@ class PostService : LifecycleService() {
         }
 
         val intentFilter = IntentFilter().apply {
-            addAction(PostService.UPLOADER_INTENT_ACTION)
+            addAction(ServerUploadService.UPLOADER_INTENT_ACTION)
         }
         ContextCompat.registerReceiver(
             this,
@@ -113,7 +114,11 @@ class PostService : LifecycleService() {
             requestFile
         )
 
-        val retrofit = RetrofitClient.instance
+        val serverUrl: String = Preferences.prefs.getString(
+            Preferences.localurl,
+            ""
+        ).toString()
+        val retrofit = RetrofitClient.getInstance(serverUrl)
         val client = retrofit.create(ApiService::class.java)
         val call = client.uploadFile(body)
 
@@ -168,9 +173,9 @@ class PostService : LifecycleService() {
     }
 
     private fun buildNotification(): NotificationCompat.Builder {
-        val stopIntent = Intent(PostService.UPLOADER_INTENT_ACTION).putExtra(
-            PostService.ACTION_EXTRA_KEY,
-            PostService.STOP_ACTION
+        val stopIntent = Intent(ServerUploadService.UPLOADER_INTENT_ACTION).putExtra(
+            ServerUploadService.ACTION_EXTRA_KEY,
+            ServerUploadService.STOP_ACTION
         )
         val stopAction = NotificationCompat.Action.Builder(
             null,
@@ -204,7 +209,7 @@ class PostService : LifecycleService() {
                 unregisterReceiver(uploaderReceiver)
             }
 
-            ServiceCompat.stopForeground(this@PostService, ServiceCompat.STOP_FOREGROUND_REMOVE)
+            ServiceCompat.stopForeground(this@ServerUploadService, ServiceCompat.STOP_FOREGROUND_REMOVE)
             Log.d("PostService", "onDestroy")
             stopSelf()
             super.onDestroy()
