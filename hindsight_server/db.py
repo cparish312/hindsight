@@ -22,6 +22,7 @@ class HindsightDB:
         self.db_file = db_file
         self.db_lock = Lock()
         self.create_tables()
+        self.create_lock_table()
 
     def get_connection(self):
         """ Get a new connection every time for thread safety. """
@@ -37,9 +38,21 @@ class HindsightDB:
                     timestamp INTEGER NOT NULL,
                     path TEXT NOT NULL,
                     application TEXT NOT NULL,
+                    chromadb_processed BOOLEAN NOT NULL DEFAULT false,
                     UNIQUE (timestamp, path)
                 )
             ''')
+
+            # Add the 'chromadb_processed' column if it does not exist
+            cursor.execute('''
+                PRAGMA table_info(frames)
+            ''')
+            columns = [row[1] for row in cursor.fetchall()]
+            if 'chromadb_processed' not in columns:
+                cursor.execute('''
+                    ALTER TABLE frames
+                    ADD COLUMN chromadb_processed BOOLEAN NOT NULL DEFAULT false
+                ''')
             
             # Create the "ocr_results" table if it doesn't exist
             cursor.execute('''
@@ -74,6 +87,49 @@ class HindsightDB:
 
             # Commit the changes and close the connection
             conn.commit()
+
+    def create_lock_table(self):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS db_locks (
+                    lock_name TEXT PRIMARY KEY,
+                    is_locked INTEGER NOT NULL DEFAULT false
+                )
+            ''')
+            # Ensure necessary locks are available in the table
+            cursor.execute('''
+                INSERT OR IGNORE INTO db_locks (lock_name, is_locked)
+                VALUES ('db', false), ('chromadb', false)
+            ''')
+            conn.commit()
+
+    def acquire_lock(self, lock_name):
+        """Attempt to acquire a lock by name."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            # Check if the lock is currently available
+            cursor.execute('''
+                SELECT is_locked FROM db_locks WHERE lock_name = ?
+            ''', (lock_name,))
+            if cursor.fetchone()[0] == 0:
+                # Lock is available, acquire it
+                cursor.execute('''
+                    UPDATE db_locks SET is_locked = 1 WHERE lock_name = ?
+                ''', (lock_name,))
+                conn.commit()
+                return True
+            return False
+
+    def release_lock(self, lock_name):
+        """Release a lock by name."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE db_locks SET is_locked = 0 WHERE lock_name = ?
+            ''', (lock_name,))
+            conn.commit()
+
 
     def insert_frame(self, timestamp, path, application):
         with self.db_lock:
@@ -252,5 +308,38 @@ class HindsightDB:
         """Returns all active queries"""
         with self.get_connection() as conn:
             query = f'''SELECT * FROM queries WHERE active = true'''
+            df = pd.read_sql_query(query, conn)
+            return df
+        
+    def update_chromadb_processed(self, frame_ids, value=True):
+        """Updates the chromadb_processed status for a list of frame_ids."""
+        with self.db_lock:  # Ensure thread-safety
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                # Prepare the data for the executemany function
+                data_to_update = [(value, frame_id) for frame_id in frame_ids]
+                try:
+                    cursor.executemany('''
+                        UPDATE frames
+                        SET chromadb_processed = ?
+                        WHERE id = ?
+                    ''', data_to_update)
+                    conn.commit()
+                    print(f"Updated chromadb_processed for {len(frame_ids)} frames.")
+                except sqlite3.Error as e:
+                    print(f"An error occurred while updating chromadb_processed: {e}")
+
+    def get_non_chromadb_processed_frames_with_ocr(self, frame_ids=None):
+        """Select frames that have not been processed but chromadb but have associated OCR results."""
+        with self.get_connection() as conn:
+            # Query to get the frames with OCR results
+            query = '''
+                SELECT DISTINCT frames.*
+                FROM frames
+                INNER JOIN ocr_results ON frames.id = ocr_results.frame_id
+                WHERE NOT frames.chromadb_processed
+            '''
+            
+            # Use pandas to read the SQL query result into a DataFrame
             df = pd.read_sql_query(query, conn)
             return df

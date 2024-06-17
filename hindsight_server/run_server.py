@@ -8,6 +8,7 @@ import queue
 import threading
 from threading import Lock
 from pathlib import Path
+from random import randrange
 from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify, abort
 import pandas as pd
@@ -42,25 +43,28 @@ image_processing_queue = queue.Queue()
 utils.make_dir(SCREENSHOTS_TMP_DIR)
 
 db = HindsightDB()
-frames_to_process = list()
-frames_to_process_lock = Lock()
 
-# def process_images_batched():
-#     """Made since chromadb insert is much more efficient in batches"""
-#     while True:
-#         with frames_to_process_lock:
-#             if len(frames_to_process) == 0:
-#                 continue
-#             processing_frames = frames_to_process.copy()
-#             frames_to_process.clear()
-
-#         print(f"Running process_images_batched on {len(processing_frames)} frames")
-#         chroma_collection = get_chroma_collection()
-#         frames_df = db.get_frames(frame_ids=processing_frames)
-#         ocr_results_df = db.get_frames_with_ocr(frame_ids=processing_frames)
-#         run_chroma_ingest(df=frames_df, ocr_results_df=ocr_results_df, chroma_collection=chroma_collection)
-#         app.logger.info(f"Ran process_images_batched on {len(processing_frames)} frames")
-#         time.sleep(120)
+def chromadb_process_images():
+    """Made since chromadb insert is much more efficient in batches"""
+    while True:
+        if db.acquire_lock("chromadb"):
+            try:
+                chroma_collection = get_chroma_collection()
+                frames_df = db.get_non_chromadb_processed_frames_with_ocr()
+                frame_ids = set(frames_df['id'])
+                if len(frame_ids) == 0:
+                    time.sleep(120)
+                    continue
+                print(f"Running process_images_batched on {len(frame_ids)} frames")
+                ocr_results_df = db.get_frames_with_ocr(frame_ids=frame_ids)
+                run_chroma_ingest(db=db, df=frames_df, ocr_results_df=ocr_results_df, chroma_collection=chroma_collection)
+                app.logger.info(f"Ran process_images_batched on {len(frame_ids)} frames")
+                db.release_lock("chromadb")
+                time.sleep(120)
+            finally:
+                db.release_lock("chromadb")
+        else:
+            time.sleep(120)
 
 def process_image_queue():
     while True:
@@ -83,8 +87,6 @@ def process_image_queue():
             frame_id = db.insert_frame(timestamp, filepath, application)
             if platform.system() == 'Darwin':
                 run_ocr.run_ocr(frame_id=frame_id, path=filepath) # run_ocr inserts results into db
-                # with frames_to_process_lock:
-                #     frames_to_process.append(frame_id)
 
         except queue.Empty:
             continue
@@ -161,9 +163,11 @@ def setup_threads():
         thread = threading.Thread(target=process_image_queue)
         thread.start()
         threads.append(thread)
-    # process_images_batched_thread = threading.Thread(target=process_images_batched)
-    # process_images_batched_thread.start()
-    # threads.append(process_images_batched_thread)
+
+    time.sleep(randrange(120))
+    process_images_batched_thread = threading.Thread(target=chromadb_process_images)
+    process_images_batched_thread.start()
+    threads.append(process_images_batched_thread)
 
 def initialize():
     process_tmp_dir() # Since runs for each gunicorn worker will throw errors since files will be moved but can be ignored

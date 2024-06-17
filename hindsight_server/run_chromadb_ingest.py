@@ -37,7 +37,7 @@ def get_chromadb_text(ocr_result, application, timestamp):
 def get_chromadb_metadata(row):
     return {"frame_id" : row['id'], "application" : row['application'], "timestamp" : row['timestamp']}
 
-def run_chroma_ingest(df, chroma_collection, ocr_results_df):
+def run_chroma_ingest(db, df, chroma_collection, ocr_results_df):
     documents = list()
     metadatas = list()
     ids = list()
@@ -61,6 +61,7 @@ def run_chroma_ingest(df, chroma_collection, ocr_results_df):
         metadatas=metadatas,
         ids=ids
     )
+    db.update_chromadb_processed(frame_ids=set(df['id']))
     print(f"Successfully added {len(documents)} documents to chromadb")
 
 if __name__ == "__main__":
@@ -79,4 +80,4 @@ if __name__ == "__main__":
         start_index = i * batch_size
         end_index = start_index + batch_size
         frames_batch = frames.iloc[start_index:end_index]
-        run_chroma_ingest(df=frames_batch, chroma_collection=chroma_collection, ocr_results_df=ocr_results_df)
+        run_chroma_ingest(db=db, df=frames_batch, chroma_collection=chroma_collection, ocr_results_df=ocr_results_df)
