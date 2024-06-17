@@ -20,7 +20,8 @@ Hindsight is an android app that takes a screenshot every 2 seconds. The server 
     *   Activate the env using: `conda activate hindsight_server`
     *   If running on a Mac run `pip install ocrmac` to utilize OCR
 2) **Initialization:**
-    * Set up ngrok to allow querying over internet (Optional):
+    * Setup ngrok to allow querying over internet (Optional):
+        * First download [ngrok](https://ngrok.com/docs/getting-started/) and setup account
         * `ngrok http https://localhost:6000`
         * Set `INTERNET_URL` equal to the ngrok forwarding address (should end in `.ngrok-free.app`) at the top of `hindsight_server/initialize_server.py`
     * Copy `hindsight_server/res/template_san.cnf` to `hindsight_server/res/san.cnf`
