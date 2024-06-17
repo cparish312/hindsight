@@ -8,8 +8,8 @@ import okhttp3.ResponseBody
 interface ServerConnectionCallback {
     fun onServerStatusChecked(isConnected: Boolean)
 }
-fun checkServerConnection(callback: ServerConnectionCallback) {
-    val retrofit = RetrofitClient.instance
+fun checkServerConnection(serverUrl: String, callback: ServerConnectionCallback) {
+    val retrofit = RetrofitClient.getInstance(serverUrl)
     val client = retrofit.create(ApiService::class.java)
     val call = client.pingServer()
 

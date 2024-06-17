@@ -6,44 +6,105 @@ import android.util.Log
 import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.annotation.RequiresApi
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import com.connor.hindsight.network.RetrofitClient
 import com.connor.hindsight.network.interfaces.ApiService
 import com.connor.hindsight.network.interfaces.PostData
+import com.connor.hindsight.utils.Preferences
 import okhttp3.ResponseBody
+import org.json.JSONArray
 import java.io.IOException
 
 
-class PostQueryViewModel : ViewModel() {
+class QueryViewModel : ViewModel() {
+    private val _queries = MutableLiveData<List<String>>()  // Assuming queries are strings
+    val queries: LiveData<List<String>> = _queries
+    private val primaryUrl: String = Preferences.prefs.getString(
+            Preferences.localurl,
+            ""
+        ).toString()
+    private val fallbackUrl: String = Preferences.prefs.getString(
+        Preferences.interneturl,
+        ""
+    ).toString()
+
     fun postQuery(query: String, startTime: Long?, endTime: Long?, context: Context) {
-        Log.d("MainActivity", "postQuery")
-        val retrofit = RetrofitClient.instance
+        makePostRequest(primaryUrl, query, startTime, endTime, context)
+    }
+
+    private fun makePostRequest(baseUrl: String, query: String, startTime: Long?, endTime: Long?, context: Context) {
+        val retrofit = RetrofitClient.getInstance(baseUrl)
         val client = retrofit.create(ApiService::class.java)
         val postData = PostData(query, startTime, endTime)
 
         client.postQuery(postData).enqueue(object : retrofit2.Callback<ResponseBody> {
-            @RequiresApi(Build.VERSION_CODES.O)
-            override fun onResponse(
-                call: retrofit2.Call<ResponseBody>,
-                response: retrofit2.Response<ResponseBody>
-            ) {
+            override fun onResponse(call: retrofit2.Call<ResponseBody>, response: retrofit2.Response<ResponseBody>) {
                 if (response.isSuccessful) {
-                    Log.d("MainActivity", "Query Post successful: ${response.body()?.string()}")
                     Toast.makeText(context, "Query Post successful!", Toast.LENGTH_SHORT).show()
                 } else {
-                    Log.e("MainActivity", "Query Post failed: ${response.errorBody()?.string()}")
+                    if (baseUrl == primaryUrl) {
+                        makePostRequest(fallbackUrl, query, startTime, endTime, context) // Try the fallback URL
+                    } else {
+                        Log.e("QueryViewModel", "Query Post failed at both servers: ${response.errorBody()?.string()}")
+                    }
                 }
             }
 
             override fun onFailure(call: retrofit2.Call<ResponseBody>, t: Throwable) {
-                if (t is IOException) {
-                    Log.e("MainActivity", "Could not connect to server")
+                if (baseUrl == primaryUrl) {
+                    makePostRequest(fallbackUrl, query, startTime, endTime, context) // Try the fallback URL
                 } else {
-                    Log.e(
-                        "MainActivity",
-                        "Failure in response parsing or serialization: ${t.message}"
-                    )
+                    Log.e("QueryViewModel", "Error connecting to both servers: ${t.message}")
                 }
             }
         })
+    }
+
+    fun fetchQueries() {
+        fetchWithUrl(primaryUrl)
+    }
+
+    private fun fetchWithUrl(baseUrl: String) {
+        val retrofit = RetrofitClient.getInstance(baseUrl)
+        val client = retrofit.create(ApiService::class.java)
+        val apiKey: String = Preferences.prefs.getString(Preferences.apikey, "").toString()
+
+        client.getQueries(apiKey).enqueue(object : retrofit2.Callback<ResponseBody> {
+            override fun onResponse(call: retrofit2.Call<ResponseBody>, response: retrofit2.Response<ResponseBody>) {
+                if (response.isSuccessful) {
+                    val resultString = response.body()?.string() ?: ""
+                    val queriesList: List<String> = parseJsonToQueryList(resultString)
+                    _queries.postValue(queriesList)
+                } else {
+                    if (baseUrl == primaryUrl) {
+                        fetchWithUrl(fallbackUrl) // Retry with the fallback URL
+                    } else {
+                        Log.e("QueryViewModel", "Failed to fetch queries at both servers")
+                    }
+                }
+            }
+
+            override fun onFailure(call: retrofit2.Call<ResponseBody>, t: Throwable) {
+                if (baseUrl == primaryUrl) {
+                    fetchWithUrl(fallbackUrl) // Retry with the fallback URL
+                } else {
+                    Log.e("QueryViewModel", "Error connecting to both servers: ${t.message}")
+                }
+            }
+        })
+    }
+
+    private fun parseJsonToQueryList(json: String): List<String> {
+        val jsonArray = JSONArray(json)
+        val resultList = mutableListOf<String>()
+
+        for (i in 0 until jsonArray.length()) {
+            val jsonObject = jsonArray.getJSONObject(i)
+            val query = jsonObject.getString("query")
+            val result = jsonObject.getString("result")
+            resultList.add("Query: $query\nResult: $result")
+        }
+        return resultList
     }
 }

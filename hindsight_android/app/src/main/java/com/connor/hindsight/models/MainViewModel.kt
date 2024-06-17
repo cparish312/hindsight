@@ -10,7 +10,7 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.connor.hindsight.network.services.PostService
+import com.connor.hindsight.network.services.ServerUploadService
 import com.connor.hindsight.services.ScreenRecorderService
 import com.connor.hindsight.utils.Preferences
 import kotlinx.coroutines.channels.Channel
@@ -42,11 +42,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val broadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
-                PostService.UPLOADER_FINISHED -> {
+                ServerUploadService.UPLOADER_FINISHED -> {
                     Log.d("MainViewModel", "UPLOADER_FINISHED")
                     _isUploading.value = false
                 }
-                PostService.UPLOADER_STARTED -> {
+                ServerUploadService.UPLOADER_STARTED -> {
                     Log.d("MainViewModel", "UPLOADER_STARTED")
                     _isUploading.value = true
                 }
@@ -72,8 +72,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         val intentFilter = IntentFilter().apply {
-            addAction(PostService.UPLOADER_FINISHED)
-            addAction(PostService.UPLOADER_STARTED)
+            addAction(ServerUploadService.UPLOADER_FINISHED)
+            addAction(ServerUploadService.UPLOADER_STARTED)
             addAction(ScreenRecorderService.SCREEN_RECORDER_STOPPED)
             addAction(RecorderModel.SCREEN_RECORDER_PERMISSION_DENIED)
         }

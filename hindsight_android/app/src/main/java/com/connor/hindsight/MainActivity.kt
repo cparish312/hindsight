@@ -19,7 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.core.content.ContextCompat
 import com.connor.hindsight.models.RecorderModel
-import com.connor.hindsight.network.services.PostService
+import com.connor.hindsight.network.services.ServerUploadService
 import com.connor.hindsight.services.RecorderService
 import com.connor.hindsight.services.ScreenRecorderService
 import com.connor.hindsight.ui.screens.AppNavigation
@@ -90,14 +90,19 @@ class MainActivity : ComponentActivity() {
 
     fun uploadToServer() {
         Log.d("MainActivity", "uploadToServer")
-        checkServerConnection(object : ServerConnectionCallback {
+        val primaryUrl: String = Preferences.prefs.getString(
+            Preferences.localurl,
+            ""
+        ).toString()
+
+        checkServerConnection(serverUrl = primaryUrl, object : ServerConnectionCallback {
             override fun onServerStatusChecked(isConnected: Boolean) {
                 if (isConnected) {
                     Log.d(
                         "MainActivity",
                         "Connection successful, proceeding with service initialization."
                     )
-                    val uploadIntent = Intent(this@MainActivity, PostService::class.java)
+                    val uploadIntent = Intent(this@MainActivity, ServerUploadService::class.java)
                     ContextCompat.startForegroundService(this@MainActivity, uploadIntent)
                 } else {
                     Log.d("MainActivity", "No server connection, aborting upload.")

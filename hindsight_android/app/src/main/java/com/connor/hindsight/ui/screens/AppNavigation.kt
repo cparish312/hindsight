@@ -17,13 +17,16 @@ fun AppNavigation() {
                 navController.navigate("screenRecordingSettings")
             }, onNavigateToUploadSettings = {
                     navController.navigate("uploadSettings")
-                })
+                }, onNavigateToPostQuery = {navController.navigate("postQuery")})
         }
         composable("screenRecordingSettings") {
             ScreenRecorderSettingsScreen(navController)
         }
         composable("uploadSettings") {
             UploadSettingsScreen(navController)
+        }
+        composable("postQuery"){
+            PostQueryScreen(navController = navController)
         }
     }
 }

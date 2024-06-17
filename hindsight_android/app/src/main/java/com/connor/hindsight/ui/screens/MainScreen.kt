@@ -34,7 +34,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 fun MainScreen(
     mainViewModel: MainViewModel = viewModel(),
     onNavigateToScreenRecordingSettings: () -> Unit,
-    onNavigateToUploadSettings: () -> Unit
+    onNavigateToUploadSettings: () -> Unit,
+    onNavigateToPostQuery: () -> Unit,
 ) {
     val context = LocalContext.current
 
@@ -131,5 +132,12 @@ fun MainScreen(
             "Unsynced Screenshots: $fileCount",
             modifier = Modifier.padding(16.dp)
         )
+
+        Button(
+            onClick = onNavigateToPostQuery,
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text("Query")
+        }
     }
 }

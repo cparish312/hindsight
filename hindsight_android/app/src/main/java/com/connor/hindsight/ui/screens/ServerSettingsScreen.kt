@@ -26,6 +26,12 @@ fun UploadSettingsScreen(navController: NavController) {
         )
     }
 
+    val serverApiKey = remember {
+        mutableStateOf(
+            Preferences.prefs.getString(Preferences.apikey, "").toString()
+        )
+    }
+
     Column(
         modifier = Modifier.padding(16.dp)
     ) {
@@ -40,6 +46,20 @@ fun UploadSettingsScreen(navController: NavController) {
             },
             label = { Text("Screenshots per Auto Upload") },
             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number)
+        )
+
+        TextField(
+            value = serverApiKey.value,
+            onValueChange = {
+                val trimmedInput = it.trimEnd { char -> char == '\n' }
+                serverApiKey.value = trimmedInput
+                Preferences.prefs.edit().putString(
+                    Preferences.apikey,
+                    trimmedInput
+                ).apply()
+            },
+            label = { Text("API Key") },
+            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Text)
         )
 
         Button(
