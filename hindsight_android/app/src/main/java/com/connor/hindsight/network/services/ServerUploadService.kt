@@ -99,7 +99,7 @@ class ServerUploadService : LifecycleService() {
                 onDestroy()
                 return
             }
-            Log.d("PostService", "Uploading file: ${file.name}")
+            Log.d("ServerUploadService", "Uploading file: ${file.name}")
             uploadImageFile(file)
             delay(300)
         }
@@ -129,7 +129,7 @@ class ServerUploadService : LifecycleService() {
                 response: retrofit2.Response<ResponseBody>
             ) {
                 if (response.isSuccessful) {
-                    Log.d("PostService", "Upload successful: ${response.body()?.string()}")
+                    Log.d("ServerUploadService", "Upload successful: ${response.body()?.string()}")
                     // Files.move(file.toPath(), syncedScreenshotDirectory.toPath().resolve(file.name), StandardCopyOption.REPLACE_EXISTING)
                     if (file.delete()) {
                         Log.d("Upload", "Deleted file: ${file.name}")
@@ -137,17 +137,17 @@ class ServerUploadService : LifecycleService() {
                         Log.e("Upload", "Failed to delete file: ${file.name}")
                     }
                 } else {
-                    Log.e("PostService", "Upload failed: ${response.errorBody()?.string()}")
+                    Log.e("ServerUploadService", "Upload failed: ${response.errorBody()?.string()}")
                 }
             }
 
             override fun onFailure(call: retrofit2.Call<ResponseBody>, t: Throwable) {
                 if (t is IOException) {
-                    Log.e("PostService", "Could not connect to server")
+                    Log.e("ServerUploadService", "Could not connect to server")
                     onDestroy()
                 } else {
                     Log.e(
-                        "PostService",
+                        "ServerUploadService",
                         "Failure in response parsing or serialization: ${t.message}"
                     )
                 }
@@ -210,7 +210,7 @@ class ServerUploadService : LifecycleService() {
             }
 
             ServiceCompat.stopForeground(this@ServerUploadService, ServiceCompat.STOP_FOREGROUND_REMOVE)
-            Log.d("PostService", "onDestroy")
+            Log.d("ServerUploadService", "onDestroy")
             stopSelf()
             super.onDestroy()
         }
