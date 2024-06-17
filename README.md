@@ -23,7 +23,7 @@ Hindsight is an android app that takes a screenshot every 2 seconds. The server 
     * Set up ngrok to allow querying over internet (Optional):
         * `ngrok http https://localhost:6000`
         * Set `INTERNET_URL` equal to the ngrok forwarding address (should end in `.ngrok-free.app`) at the top of `hindsight_server/initialize_server.py`
-    * copy `hindsight_server/res/template_san.cnf` to `hindsight_server/res/san.cnf`
+    * Copy `hindsight_server/res/template_san.cnf` to `hindsight_server/res/san.cnf`
     * Fill in and replace the `${}` sections in `hindsight_server/res/san.cnf`
     * Run: `hindsight_server/initialize_server.py`
 
@@ -43,7 +43,7 @@ Currently the app has 3 "working" functionalities.
 1) **Screen Recording:** Toggle screen recording on or off.
 2) **Server Upload:** Upload screenshots directly to your server.
 * The screenshots timeline can be viewed and searched by running `python timeline_view.py`
-3) Query: Run natural language queries against the text in your screenshots
+3) **Query:** Run natural language queries against the text in your screenshots
 
 ## Developing
 You can easily build applications on top of Hindsight.
