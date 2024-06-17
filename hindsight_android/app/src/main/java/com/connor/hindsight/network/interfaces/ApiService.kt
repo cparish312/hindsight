@@ -19,7 +19,7 @@ interface ApiService {
     fun postQuery(@Body postData: PostData): Call<ResponseBody>
 
     @GET("get_queries")
-    fun getQueries(@Header("Hightsight-API-Key") apiKey: String): Call<ResponseBody>
+    fun getQueries(): Call<ResponseBody>
 
     @GET("ping")
     fun pingServer(): Call<ResponseBody>

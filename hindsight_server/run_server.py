@@ -6,7 +6,6 @@ import platform
 import shutil
 import queue
 import threading
-from threading import Lock
 from pathlib import Path
 from random import randrange
 from werkzeug.utils import secure_filename
@@ -99,6 +98,8 @@ def process_image_queue():
 
 @app.route('/upload_image', methods=['POST'])
 def upload_image():
+    if not verify_api_key():
+        abort(401)
     if 'file' not in request.files:
         return jsonify({"status": "error", "message": "No file part"}), 400
     file = request.files['file']
@@ -113,6 +114,8 @@ def upload_image():
     
 @app.route('/post_query', methods=['POST'])
 def post_query():
+    if not verify_api_key():
+        abort(401)
     if not request.is_json:
         return jsonify({"status": "error", "message": "Missing JSON in request"}),
 
@@ -148,6 +151,8 @@ def get_queries():
     
 @app.route('/ping', methods=['GET'])
 def ping_server():
+    if not verify_api_key():
+        abort(401)
     return jsonify({'status': 'success', 'message': 'Server is reachable'}), 200
 
 def process_tmp_dir():

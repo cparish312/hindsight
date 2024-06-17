@@ -1,11 +1,9 @@
 package com.connor.hindsight.models
 
 import android.content.Context
-import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import androidx.lifecycle.ViewModel
-import androidx.annotation.RequiresApi
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.connor.hindsight.network.RetrofitClient
@@ -14,11 +12,10 @@ import com.connor.hindsight.network.interfaces.PostData
 import com.connor.hindsight.utils.Preferences
 import okhttp3.ResponseBody
 import org.json.JSONArray
-import java.io.IOException
 
 
 class QueryViewModel : ViewModel() {
-    private val _queries = MutableLiveData<List<String>>()  // Assuming queries are strings
+    private val _queries = MutableLiveData<List<String>>()
     val queries: LiveData<List<String>> = _queries
     private val primaryUrl: String = Preferences.prefs.getString(
             Preferences.localurl,
@@ -68,9 +65,8 @@ class QueryViewModel : ViewModel() {
     private fun fetchWithUrl(baseUrl: String) {
         val retrofit = RetrofitClient.getInstance(baseUrl)
         val client = retrofit.create(ApiService::class.java)
-        val apiKey: String = Preferences.prefs.getString(Preferences.apikey, "").toString()
 
-        client.getQueries(apiKey).enqueue(object : retrofit2.Callback<ResponseBody> {
+        client.getQueries().enqueue(object : retrofit2.Callback<ResponseBody> {
             override fun onResponse(call: retrofit2.Call<ResponseBody>, response: retrofit2.Response<ResponseBody>) {
                 if (response.isSuccessful) {
                     val resultString = response.body()?.string() ?: ""
