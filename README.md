@@ -44,7 +44,10 @@ Currently the app has 3 "working" functionalities.
 1) **Screen Recording:** Toggle screen recording on or off.
 2) **Server Upload:** Upload screenshots directly to your server.
 * The screenshots timeline can be viewed and searched by running `python timeline_view.py`
-3) **Query:** Run natural language queries against the text in your screenshots
+3) **Query:** Run natural language queries against the text in your screenshots. There are 3 types of querying techniques currently available:
+    1) Basic (Default or start query with `b\`): Uses top N contexts retreived by chromadb and feeds them to a single LLM call
+    2) Long Context (start query with `lc\`): For each top N contexts grabs the frames immediately before and after. For each context, the frames are combined and fed to an LLM. Finally, all of the results are fed to a summary LLM call to generate the response.
+    3) Decomposition (start query with `d\`): First creates prompt asking LLM to generate prompts to gain context for the query. Then, it run Long Context on each of these sub-prompts. Finally, it combines all of the resuls of the sub-prompts and feeds it to the LLM with the actualy query.
 
 ## Developing
 You can easily build applications on top of Hindsight.
