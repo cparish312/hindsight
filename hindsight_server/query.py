@@ -4,7 +4,7 @@ from datetime import timedelta
 
 from mlx_lm import load, generate
 
-from prompts import get_prompt
+from prompts import get_prompt, get_summary_prompt, get_recomposition_prompt, get_decomposition_prompt
 from db import HindsightDB
 from run_chromadb_ingest import get_chroma_collection
 import utils
@@ -57,33 +57,99 @@ def query_chroma(query_text, source_apps=None, utc_milliseconds_start_date=None,
         )
     return chroma_search_results
 
-
-def query(query_id, query_text, source_apps=None, utc_milliseconds_start_date=None, utc_milliseconds_end_date=None, max_chroma_results=100, per_usage_results=1):
-    chroma_search_results = query_chroma(query_text, source_apps, utc_milliseconds_start_date, utc_milliseconds_end_date, max_chroma_results)
-    chroma_search_results_df = chroma_search_results_to_df(chroma_search_results)
-    if len(chroma_search_results_df) == 0:
-        print("No relevant sources in chromadb")
-        db.insert_query_result(query_id, "No relevant sources in chromadb", {})
-        return
-    chroma_search_results_df = chroma_search_results_df.drop_duplicates(subset=['document'])
-    chroma_search_results_df = utils.add_datetimes(chroma_search_results_df).sort_values(by='datetime_local', ascending=True)
-
+def basic_retrieved_query(query_text, chroma_search_results_df, num_contexts=20, per_usage_results=1):
+    """Grabs the closest per_usage_results frames within a usage. Combines all contexts into a single prompt."""
     # Take the smallest {per_usage_results} distances within a given usage
     chroma_search_results_df = utils.add_usage_ids(chroma_search_results_df, new_usage_threshold=timedelta(seconds=120))
     sel_df = chroma_search_results_df.groupby('usage_id')['distance'].nsmallest(per_usage_results).reset_index()
     chroma_search_results_df = chroma_search_results_df.merge(sel_df, on=['usage_id', 'distance'])
 
     chroma_search_results_df = chroma_search_results_df.sort_values(by="distance", ascending=True)
-    chroma_search_results_df = chroma_search_results_df.iloc[:20]
+    chroma_search_results_df = chroma_search_results_df.iloc[:num_contexts]
     chroma_search_results_df = chroma_search_results_df.sort_values(by="datetime_local", ascending=True)
 
     combined_text = ""
     for t in chroma_search_results_df['document']:
-        combined_text += "New Screenshot" + "-"*30 + "\n"
+        combined_text += "New Context" + "-"*30 + "\n"
         combined_text += t
 
-    model, tokenizer = load(MLX_LLM_MODEL)
     prompt = get_prompt(text=combined_text, query=query_text)
+    model, tokenizer = load(MLX_LLM_MODEL)
     response = generate(model, tokenizer, prompt=prompt)
     source_frame_ids = list(chroma_search_results_df['id'])
-    db.insert_query_result(query_id, response, source_frame_ids)
+    return response, source_frame_ids
+
+def long_context_query(query_text, chroma_search_results_df, num_contexts=10, per_usage_results=1, context_buffer=5):
+    """Grabs the closest per_usage_results frames within a usage. Grabs """
+    # Take the smallest {per_usage_results} distances within a given usage
+    chroma_search_results_df = utils.add_usage_ids(chroma_search_results_df, new_usage_threshold=timedelta(seconds=120))
+    sel_df = chroma_search_results_df.groupby('usage_id')['distance'].nsmallest(per_usage_results).reset_index()
+    chroma_search_results_df = chroma_search_results_df.merge(sel_df, on=['usage_id', 'distance'])
+
+    chroma_search_results_df = chroma_search_results_df.sort_values(by="distance", ascending=True)
+    chroma_search_results_df = chroma_search_results_df.iloc[:num_contexts]
+    chroma_search_results_df = chroma_search_results_df.sort_values(by="datetime_local", ascending=True)
+
+    frames_df = db.get_frames()
+    ocr_results_df = db.get_frames_with_ocr()
+
+    model, tokenizer = load(MLX_LLM_MODEL)
+
+    responses = list()
+    for frame_id in chroma_search_results_df['id']:
+        context_text = utils.get_context_around_frame_id(int(frame_id), frames_df, ocr_results_df, context_buffer=context_buffer)
+        prompt = get_prompt(text=context_text, query=query_text)
+        response = generate(model, tokenizer, prompt=prompt)
+        responses.append(response)
+
+    sep_str = "\n" + "-"*20 + "\n"
+    combined_responses = sep_str.join(responses)
+    summary_prompt = get_summary_prompt(text=combined_responses, query=query_text)
+    response = generate(model, tokenizer, prompt=summary_prompt)
+    source_frame_ids = list(chroma_search_results_df['id'])
+    return response, source_frame_ids
+
+def run_query(query_text, source_apps=None, utc_milliseconds_start_date=None, utc_milliseconds_end_date=None, max_chroma_results=100):
+    chroma_search_results = query_chroma(query_text, source_apps, utc_milliseconds_start_date, utc_milliseconds_end_date, max_chroma_results)
+    chroma_search_results_df = chroma_search_results_to_df(chroma_search_results)
+    if len(chroma_search_results_df) == 0:
+        print("No relevant sources in chromadb")
+        return None, None
+    chroma_search_results_df = chroma_search_results_df.drop_duplicates(subset=['document'])
+    chroma_search_results_df = utils.add_datetimes(chroma_search_results_df).sort_values(by='datetime_local', ascending=True)
+
+    # response, source_frame_ids = basic_retrieved_query(query_text, chroma_search_results_df, num_contexts=20, per_usage_results=1)    
+    response, source_frame_ids = long_context_query(query_text, chroma_search_results_df, num_contexts=10, per_usage_results=1, context_buffer=3)
+    return response, source_frame_ids
+
+def run_decomp_question_query(query_text, num_decomp_questions=4, source_apps=None, utc_milliseconds_start_date=None, utc_milliseconds_end_date=None, max_chroma_results=100, max_tokens=500):
+    decomp_prompt = get_decomposition_prompt(query_text, num_decomp_questions)
+    model, tokenizer = load(MLX_LLM_MODEL)
+    response = generate(model, tokenizer, prompt=decomp_prompt)
+    decomp_questions = response.split("\n")[1:5]
+
+    total_source_frame_ids = set()
+    q_to_res = {}
+    for q in decomp_questions:
+        response, source_frame_ids = run_query(query_text=q, source_apps=source_apps, utc_milliseconds_start_date=utc_milliseconds_start_date, 
+                                       utc_milliseconds_end_date=utc_milliseconds_end_date, max_chroma_results=max_chroma_results)
+        if response is not None:
+            q_to_res[q] = response
+            total_source_frame_ids.update(set(source_frame_ids))
+
+    recomp_prompt = get_recomposition_prompt(query_text, q_to_res)
+    final_response = generate(model, tokenizer, prompt=recomp_prompt, max_tokens=max_tokens)
+    return final_response, total_source_frame_ids
+
+
+def query_and_insert(query_id, query_text, source_apps=None, utc_milliseconds_start_date=None, utc_milliseconds_end_date=None, max_chroma_results=100): 
+    response, source_frame_ids = run_query(query_text, source_apps=source_apps, utc_milliseconds_start_date=utc_milliseconds_start_date, 
+                                       utc_milliseconds_end_date=utc_milliseconds_end_date, max_chroma_results=max_chroma_results)
+
+    # response, source_frame_ids = run_decomp_question_query(query_text, num_decomp_questions=5, source_apps=source_apps, utc_milliseconds_start_date=utc_milliseconds_start_date, 
+    #                                    utc_milliseconds_end_date=utc_milliseconds_end_date, max_chroma_results=max_chroma_results)
+
+    if source_frame_ids is None:
+        db.insert_query_result(query_id, "No relevant sources in chromadb", {})
+    else:
+        db.insert_query_result(query_id, response, source_frame_ids)

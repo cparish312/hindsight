@@ -48,14 +48,14 @@ def chromadb_process_images():
     while True:
         if db.acquire_lock("chromadb"):
             try:
-                chroma_collection = get_chroma_collection()
-                frames_df = db.get_non_chromadb_processed_frames_with_ocr()
+                frames_df = db.get_non_chromadb_processed_frames_with_ocr().sort_values(by='timestamp', ascending=True)
                 frame_ids = set(frames_df['id'])
                 if len(frame_ids) == 0:
                     db.release_lock("chromadb")
                     time.sleep(120)
                     continue
                 print(f"Running process_images_batched on {len(frame_ids)} frames")
+                chroma_collection = get_chroma_collection()
                 ocr_results_df = db.get_frames_with_ocr(frame_ids=frame_ids)
                 run_chroma_ingest(db=db, df=frames_df, ocr_results_df=ocr_results_df, chroma_collection=chroma_collection)
                 app.logger.info(f"Ran process_images_batched on {len(frame_ids)} frames")
@@ -67,6 +67,7 @@ def chromadb_process_images():
             time.sleep(120)
 
 def process_image_queue():
+    time.sleep(randrange(120)) # Make offsync when multiple
     while True:
         try:
             item = image_processing_queue.get(timeout=20)
@@ -127,11 +128,16 @@ def post_query():
     start_time = data['start_time'] if "start_time" in data else None
     end_time = data['end_time'] if "end_time" in data else None
     
-    query_thread = threading.Thread(target=query.query, 
-                                    args=(query_id, data['query'], None, start_time, end_time))
+    try:
+        query_thread = threading.Thread(target=query.query_and_insert, 
+                                        args=(query_id, data['query'], None, start_time, end_time))
 
-    query_thread.start()
+        query_thread.start()
+    except Exception as e:
+        app.logger.error(f"Error processing query {data['query']}: {e}")
+
     return jsonify({"status": "success", "message": "Data received"}), 200
+    
 
 def verify_api_key():
     api_key = request.headers.get('Hightsight-API-Key')
@@ -164,13 +170,11 @@ def process_tmp_dir():
 
 def setup_threads():
     global threads
-    num_threads = os.cpu_count() - 2 
-    for i in range(num_threads):
+    num_image_process_threads = 2
+    for i in range(num_image_process_threads):
         thread = threading.Thread(target=process_image_queue)
         thread.start()
         threads.append(thread)
-
-    time.sleep(randrange(120))
     process_images_batched_thread = threading.Thread(target=chromadb_process_images)
     process_images_batched_thread.start()
     threads.append(process_images_batched_thread)

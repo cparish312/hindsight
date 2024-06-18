@@ -153,7 +153,7 @@ class QueryViewer:
         selected_apps = selected_apps if len(selected_apps) > 0 else list(set(self.images_df['application']))
 
         query_id = self.db.insert_query(query=query_text)
-        query_thread = threading.Thread(target=query.query, 
+        query_thread = threading.Thread(target=query.query_and_insert, 
                                         args=(query_id, query_text, selected_apps, utc_milliseconds_start_date, utc_milliseconds_end_date))
 
         query_thread.start()

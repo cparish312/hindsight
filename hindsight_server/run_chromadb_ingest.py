@@ -26,14 +26,6 @@ def get_chroma_collection(collection_name="pixel_screenshots", model_id=MLX_EMBD
     chroma_collection = chroma_client.get_or_create_collection(collection_name, embedding_function=embedding_function)
     return chroma_collection
 
-def get_screenshot_preprompt(application, timestamp):
-    return f"""Description: Text from a screenshot of {application} with UTC timestamp {timestamp}: \n""" + "-"*20 + "/n"
-
-def get_chromadb_text(ocr_result, application, timestamp):
-    frame_cleaned_text = utils.ocr_results_to_str(ocr_result)
-    frame_text = get_screenshot_preprompt(application, timestamp) + frame_cleaned_text
-    return frame_text
-
 def get_chromadb_metadata(row):
     return {"frame_id" : row['id'], "application" : row['application'], "timestamp" : row['timestamp']}
 
@@ -47,7 +39,7 @@ def run_chroma_ingest(db, df, chroma_collection, ocr_results_df):
         ocr_result = ocr_results_df.loc[ocr_results_df['frame_id'] == row['id']]
         if len(ocr_result) == 0 or set(ocr_result['text']) == {None}:
             continue
-        document = get_chromadb_text(ocr_result=ocr_result, application=row['application'], timestamp=row['timestamp'])
+        document = utils.get_preprompted_text(ocr_result=ocr_result, application=row['application'], timestamp=row['timestamp'])
         if last_document != document:
             documents.append(document)
             metadatas.append(get_chromadb_metadata(row))
@@ -65,19 +57,17 @@ def run_chroma_ingest(db, df, chroma_collection, ocr_results_df):
     print(f"Successfully added {len(documents)} documents to chromadb")
 
 if __name__ == "__main__":
-    frames = db.get_frames()
-    ocr_results_df = db.get_frames_with_ocr()
     chroma_collection = get_chroma_collection()
-    ingested_ids = [int(i) for i in chroma_collection.get()['ids']]
-    # Remove already ingested frames
-    frames = frames.loc[~(frames['id'].isin(ingested_ids))]
+    frames_df = db.get_non_chromadb_processed_frames_with_ocr().sort_values(by='timestamp', ascending=True)
+    frame_ids = set(frames_df['id'])
+    ocr_results_df = db.get_frames_with_ocr(frame_ids=frame_ids)
 
-    print("Total frames to ingest", len(frames))
+    print("Total frames to ingest", len(frame_ids))
     batch_size = 1000
-    num_batches = len(frames) // batch_size + (1 if len(frames) % batch_size > 0 else 0)
+    num_batches = len(frame_ids) // batch_size + (1 if len(frame_ids) % batch_size > 0 else 0)
     for i in range(num_batches):
         print("Batch", i)
         start_index = i * batch_size
         end_index = start_index + batch_size
-        frames_batch = frames.iloc[start_index:end_index]
+        frames_batch = frames_df.iloc[start_index:end_index]
         run_chroma_ingest(db=db, df=frames_batch, chroma_collection=chroma_collection, ocr_results_df=ocr_results_df)

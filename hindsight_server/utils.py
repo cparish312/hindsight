@@ -32,6 +32,7 @@ def add_sep_ids(df, new_threshold, var_name):
         df[var_name] = new_var_start.cumsum()
         return df
 
+text_split_str = "\n" +  "-" * 20 + "\n"
 def convert_to_continuos_str(df, newline_threshold):
     para_df = df.copy()
     para_df['char_width'] = para_df['w'] / para_df['text'].str.len()
@@ -70,9 +71,10 @@ def convert_to_continuos_str(df, newline_threshold):
         final_text.append(line_text)        
     return "\n".join(final_text)
 
-def ocr_results_to_str(ocr_result):
+def ocr_results_to_str(ocr_result, text_conf_thresh=0.7):
     ocr_result = ocr_result.copy()
-    if set(ocr_result['text']) == {None}:
+    ocr_result = ocr_result.loc[ocr_result['conf'] >= text_conf_thresh]
+    if set(ocr_result['text']) == {None} or len(ocr_result) == 0:
         return ""
     avg_h = mean(ocr_result['h'])
     new_para_thresh = avg_h * 2
@@ -86,5 +88,28 @@ def ocr_results_to_str(ocr_result):
         para_df = ocr_result.loc[ocr_result['para_id'] == para_id]
         para_str = convert_to_continuos_str(para_df, newline_threshold=avg_h/2)
         frame_total_text += para_str
-        frame_total_text += "\n" +  "-" * 20 + "\n"
+        frame_total_text += text_split_str
     return frame_total_text
+
+known_applications_d = {""}
+def get_screenshot_preprompt(application, timestamp):
+    return f"""Description: Text from a screenshot of {application} with UTC timestamp {timestamp}:""" + text_split_str
+
+def get_preprompted_text(ocr_result, application, timestamp):
+    frame_cleaned_text = ocr_results_to_str(ocr_result)
+    frame_text = get_screenshot_preprompt(application, timestamp) + frame_cleaned_text
+    return frame_text
+
+def get_context_around_frame_id(frame_id, frames_df, ocr_results_df, context_buffer=5):
+    frame_application = frames_df.loc[frames_df['id'] == frame_id].iloc[0]['application']
+    application_df = frames_df.loc[frames_df['application'] == frame_application].reset_index(drop=True)
+    frame_index = int(application_df.index.get_loc(application_df[application_df['id'] == frame_id].index[0]))
+    application_df = application_df.iloc[frame_index-context_buffer:frame_index+context_buffer]
+    text_list = list()
+    for i, row in application_df.iterrows():
+        ocr_res = ocr_results_df.loc[ocr_results_df['frame_id'] == row['id']]
+        cleaned_res = get_preprompted_text(ocr_res, row['application'], row['timestamp'])
+        for t in cleaned_res.split(text_split_str):
+            if t not in text_list:
+                text_list.append(t)
+    return text_split_str.join(text_list)
