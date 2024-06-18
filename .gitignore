@@ -1,4 +1,6 @@
 hindsight_android/app/src/main/java/com/connor/hindsight/utils/Preferences.kt
 hindsight_server/res/san.cnf
 hindsight_server/data/
+hindsight_server/initialize_server.py
+hindsight_server/config.py
 hindsight_android/local.properties
