@@ -13,7 +13,10 @@ dependencies:
   - colorcet
   - matplotlib
   - gunicorn
+  - mlx-lm
   - pip:
       - opencv-python==4.9.0.80
-      - tkcalendar
       - chromadb
+      - tkcalendar
+      - ocrmac
+      - mlx-embedding-models
