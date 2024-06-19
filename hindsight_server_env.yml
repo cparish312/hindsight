@@ -12,6 +12,7 @@ dependencies:
   - tzlocal=5.2
   - colorcet
   - matplotlib
+  - gunicorn
   - pip:
       - opencv-python==4.9.0.80
       - tkcalendar
