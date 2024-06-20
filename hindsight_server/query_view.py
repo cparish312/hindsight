@@ -24,7 +24,6 @@ class QueryViewer:
         self.db = HindsightDB()
         self.images_df = self.get_images_df()
         self.chroma_collection = get_chroma_collection()
-        # self.chroma_collection = None
         self.first_date = min(self.images_df['datetime_local'])
         self.screen_width = self.master.winfo_screenwidth()
         self.screen_height = self.master.winfo_screenheight()

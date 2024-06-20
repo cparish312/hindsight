@@ -13,6 +13,7 @@ from config import MLX_LLM_MODEL
 db = HindsightDB()
 
 def chroma_search_results_to_df(chroma_search_results):
+    """Converts results from chromadb query to a pandas DataFrame"""
     results_l = list()
     for i in range(len(chroma_search_results['ids'])):
         for j in range(len(chroma_search_results['ids'][i])):

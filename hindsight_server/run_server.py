@@ -6,6 +6,7 @@ import platform
 import shutil
 import queue
 import threading
+from datetime import datetime, timedelta
 from pathlib import Path
 from random import randrange
 from werkzeug.utils import secure_filename
@@ -43,10 +44,16 @@ utils.make_dir(SCREENSHOTS_TMP_DIR)
 
 db = HindsightDB()
 
+last_image_upload = datetime.now() # Used to have chromadb ingestion happen after iamge upload
+
 def chromadb_process_images():
     """Made since chromadb insert is much more efficient in batches"""
+    global last_image_upload
     time.sleep(randrange(120)) # Make offsync when multiple
     while True:
+        if datetime.now() - last_image_upload < timedelta(minutes=2):
+            time.sleep(120)
+            continue
         if db.acquire_lock("chromadb"):
             try:
                 frames_df = db.get_non_chromadb_processed_frames_with_ocr().sort_values(by='timestamp', ascending=True)
@@ -68,7 +75,11 @@ def chromadb_process_images():
             time.sleep(120)
 
 def process_image_queue():
+    global last_image_upload
     while True:
+        if not db.check_lock("chromadb"): # Ensure OCR doesn't happen at the same time as chromadb
+            time.sleep(30)
+            continue
         try:
             item = image_processing_queue.get(timeout=20)
             if item is None:
@@ -95,6 +106,7 @@ def process_image_queue():
             print(f"Error processing file: {e}")
             app.logger.error(f"Error processing file: {e}")
         else:
+            last_image_upload = datetime.now()
             image_processing_queue.task_done()
 
 @app.route('/upload_image', methods=['POST'])
@@ -175,9 +187,9 @@ def setup_threads():
         thread = threading.Thread(target=process_image_queue)
         thread.start()
         threads.append(thread)
-    # process_images_batched_thread = threading.Thread(target=chromadb_process_images)
-    # process_images_batched_thread.start()
-    # threads.append(process_images_batched_thread)
+    process_images_batched_thread = threading.Thread(target=chromadb_process_images)
+    process_images_batched_thread.start()
+    threads.append(process_images_batched_thread)
 
 def initialize():
     process_tmp_dir() # Since runs for each gunicorn worker will throw errors since files will be moved but can be ignored

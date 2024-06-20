@@ -120,6 +120,18 @@ class HindsightDB:
                 conn.commit()
                 return True
             return False
+        
+    def check_lock(self, lock_name):
+        """Checks the value of a lock without acquiring it."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            # Check if the lock is currently available
+            cursor.execute('''
+                SELECT is_locked FROM db_locks WHERE lock_name = ?
+            ''', (lock_name,))
+            if cursor.fetchone()[0] == 0:
+                return True
+            return False
 
     def release_lock(self, lock_name):
         """Release a lock by name."""

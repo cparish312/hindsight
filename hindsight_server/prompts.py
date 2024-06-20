@@ -47,8 +47,8 @@ def get_recomposition_prompt(query, queries_to_res):
 def get_summary_compete_prompt(method_to_text, query):
     prompt_str = f"""Below are the results from a number of LLM RAG pipelines asked to solve the query: {query}.\n"""
     for method, text in method_to_text.items():
-          prompt_str += f"""Method : {method} \nResponse: {text}"""
+          prompt_str += f"""Method : {method} \nResponse: {text}\n\n"""
           prompt_str += text_split_str
         
-    prompt_str += """What is the best and most helpful detailed response to {query}? Which method gave this answer?"""
+    prompt_str += f"Considering the query '{query}', what is the best and most helpful detailed response among the above? Please specify both the response and the method that gave this answer."
     return prompt_str
