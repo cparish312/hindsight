@@ -39,6 +39,11 @@ Hindsight is an android app that takes a screenshot every 2 seconds. The server 
 1) Open `hindsight_android` in Android Studio.
 2) You should be good to run the app on your device!
 
+### Changing Wifi
+* Note when the computer wifi changes, querying should still work using ngrok, but in order to upload images again you will need to:
+    1) Run: `python hindsight_server/initialize_server.py`
+    2) Rebuild the app and install on your device
+
 ## Features
 Currently the app has 3 "working" functionalities.
 1) **Screen Recording:** Toggle screen recording on or off.
