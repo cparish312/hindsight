@@ -48,6 +48,7 @@ Currently the app has 3 "working" functionalities.
     1) Basic (Default or start query with `b\`): Uses top N contexts retreived by chromadb and feeds them to a single LLM call
     2) Long Context (start query with `l\`): For each top N contexts grabs the frames immediately before and after. For each context, the frames are combined and fed to an LLM. Finally, all of the results are fed to a summary LLM call to generate the response.
     3) Decomposition (start query with `d\`): First creates prompt asking LLM to generate prompts to gain context for the query. Then, it run Long Context on each of these sub-prompts. Finally, it combines all of the results of the sub-prompts and feeds it to the LLM with the user query.
+    4) All (start query with `a\`): Runs all of the above methods and passes answers as a prompt asking to chose the best answer and report the method the answer came from.
 
 ## Developing
 You can easily build applications on top of Hindsight.
