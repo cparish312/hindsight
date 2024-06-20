@@ -1,3 +1,4 @@
+"""Scripts for running LLM queries on screenshot context."""
 import pandas as pd
 
 from datetime import timedelta
@@ -25,6 +26,7 @@ def chroma_search_results_to_df(chroma_search_results):
     return pd.DataFrame(results_l)
 
 def query_chroma(query_text, source_apps=None, utc_milliseconds_start_date=None, utc_milliseconds_end_date=None, max_chroma_results=200):
+    """Queries chromadb with the query_text and the provided constraints."""
     chroma_collection = get_chroma_collection()
 
     conditions = []
@@ -59,7 +61,8 @@ def query_chroma(query_text, source_apps=None, utc_milliseconds_start_date=None,
     return chroma_search_results
 
 def basic_retrieved_query(query_text, source_apps=None, utc_milliseconds_start_date=None, utc_milliseconds_end_date=None, 
-                          max_chroma_results=100, num_contexts=20, per_usage_results=1, model=None, tokenizer=None):
+                          max_chroma_results=100, num_contexts=20, per_usage_results=1, model=None, tokenizer=None,
+                          max_tokens=500):
     """Grabs the closest per_usage_results frames within a usage. Combines all contexts into a single prompt."""
     chroma_search_results = query_chroma(query_text, source_apps, utc_milliseconds_start_date, utc_milliseconds_end_date, max_chroma_results)
     chroma_search_results_df = chroma_search_results_to_df(chroma_search_results)
@@ -86,13 +89,17 @@ def basic_retrieved_query(query_text, source_apps=None, utc_milliseconds_start_d
     prompt = get_prompt(text=combined_text, query=query_text)
     if model is None:
         model, tokenizer = load(MLX_LLM_MODEL) 
-    response = generate(model, tokenizer, prompt=prompt)
+    response = generate(model, tokenizer, prompt=prompt, max_tokens=max_tokens)
     source_frame_ids = list(chroma_search_results_df['id'])
     return response, source_frame_ids
 
 def long_context_query(query_text, source_apps=None, utc_milliseconds_start_date=None, utc_milliseconds_end_date=None,
-                        max_chroma_results=100, num_contexts=10, per_usage_results=1, context_buffer=5, model=None, tokenizer=None):
-    """Grabs the closest per_usage_results frames within a usage. Grabs """
+                        max_chroma_results=100, num_contexts=10, per_usage_results=1, context_buffer=5, model=None, tokenizer=None,
+                        max_tokens=500):
+    """Grabs the closest per_usage_results frames within a usage. For each frame, grabs the number of context_buffer frames
+    before and after the frame. It then passes these contexts to the LLM to get a response for each original usage frame.
+    Finally, all of these results are passed to the LLM to get a final response.
+    """
     chroma_search_results = query_chroma(query_text, source_apps, utc_milliseconds_start_date, utc_milliseconds_end_date, max_chroma_results)
     chroma_search_results_df = chroma_search_results_to_df(chroma_search_results)
     if len(chroma_search_results_df) == 0:
@@ -120,24 +127,27 @@ def long_context_query(query_text, source_apps=None, utc_milliseconds_start_date
     for frame_id in chroma_search_results_df['id']:
         context_text = utils.get_context_around_frame_id(int(frame_id), frames_df, ocr_results_df, context_buffer=context_buffer)
         prompt = get_prompt(text=context_text, query=query_text)
-        response = generate(model, tokenizer, prompt=prompt)
+        response = generate(model, tokenizer, prompt=prompt, max_tokens=max_tokens)
         responses.append(response)
 
     sep_str = "\n" + "-"*20 + "\n"
     combined_responses = sep_str.join(responses)
     summary_prompt = get_summary_prompt(text=combined_responses, query=query_text)
-    response = generate(model, tokenizer, prompt=summary_prompt)
+    response = generate(model, tokenizer, prompt=summary_prompt, max_tokens=max_tokens)
     source_frame_ids = list(chroma_search_results_df['id'])
     return response, source_frame_ids
 
 
 def run_decomp_question_query(query_text, num_decomp_questions=4, source_apps=None, utc_milliseconds_start_date=None, utc_milliseconds_end_date=None, max_chroma_results=100, max_tokens=500,
                               model=None, tokenizer=None):
+    """Uses a decompotion strategy to answer more advanced questions. The first step is to answer questions to help
+    get the context needed to answer the original query. Check out README for more details.
+    """
     decomp_prompt = get_decomposition_prompt(query_text, num_decomp_questions)
     if model is None:
         model, tokenizer = load(MLX_LLM_MODEL) 
     response = generate(model, tokenizer, prompt=decomp_prompt)
-    decomp_questions = response.split("\n")[1:5]
+    decomp_questions = response.split("\n")[1:num_decomp_questions + 1]
 
     total_source_frame_ids = set()
     q_to_res = {}
@@ -154,6 +164,7 @@ def run_decomp_question_query(query_text, num_decomp_questions=4, source_apps=No
 
 
 def query_and_insert(query_id, query_text, source_apps=None, utc_milliseconds_start_date=None, utc_milliseconds_end_date=None, max_chroma_results=100):
+    """Runs querying and inserts the results into the queries table."""
     query_type = "b" 
     if "\\" in query_text:
         query_text_s = query_text.split("\\")

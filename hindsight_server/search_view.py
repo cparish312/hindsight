@@ -1,3 +1,4 @@
+"""GUI for running text and embedding searches on screenshots."""
 import platform
 import cv2
 import tzlocal

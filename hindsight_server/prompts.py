@@ -1,3 +1,4 @@
+"""Prompt templates"""
 from utils import text_split_str
 
 def get_prompt(text, query):
@@ -28,7 +29,7 @@ def get_summary_prompt(text, query):
     return f"""Below are the results from a number of LLM queries prompted with the question {query}.
             {text}
             ------------------
-            What is the best answer to {query}?\nAnswer:"""
+            Using these results as context. Answer the query: '{query}'\nAnswer:"""
 
 def get_decomposition_prompt(query, num_decomp_questions):
     return f"""You are a helpful assistant that generates multiple sub-queries related to an input question. \n

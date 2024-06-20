@@ -1,3 +1,4 @@
+"""GUI for scrolling through screenshots timeline."""
 import cv2
 from datetime import datetime
 import platform

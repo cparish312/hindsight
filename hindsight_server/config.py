@@ -15,5 +15,10 @@ if os.path.exists(API_KEY_FILE):
 else:
     SECRET_API_KEY = "NONE"
 
+"""Should be able to run any LLMs in huggingface mlx-community."""
 MLX_LLM_MODEL = "mlx-community/Meta-Llama-3-8B-Instruct-8bit"
+
+"""Should be able to run any embedding models here:
+https://github.com/taylorai/mlx_embedding_models/blob/main/src/mlx_embedding_models/registry.py
+"""
 MLX_EMBDEDDING_MODEL = "bge-large"

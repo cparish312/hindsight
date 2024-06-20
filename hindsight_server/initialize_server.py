@@ -1,3 +1,5 @@
+"""Script for running server initialization. Main functionality is creating the Preferences.kt file
+for the app with the needed urls and api key populated."""
 import os
 import socket
 import string
@@ -14,13 +16,12 @@ base_dir = Path(os.path.dirname(os.path.abspath(__file__)))
 INTERNET_URL = "" # Insert ngrok URL
 
 def generate_random_key(length=30):
-    # Define the possible characters to include in the key
     characters = string.ascii_letters + string.digits
-    # Generate a random string of the specified length
     random_key = ''.join(secrets.choice(characters) for _ in range(length))
     return random_key
 
 def get_local_ip():
+    """Returns the local ip of the server (this computer)."""
     try:
         # Create a socket connection to a public DNS server
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -33,9 +34,11 @@ def get_local_ip():
     
 
 def getinterneturl():
+    """Ideally this would be automatic (could use computer screenshots to populate)"""
     return INTERNET_URL
 
 def fill_in_file(file_path, dest_file_path, placeholder, replacement):
+    """Replaces placeholder with replacement in file_path and saves file to dest_file_path."""
     with open(file_path, 'r') as file:
         file_contents = file.read()
     
@@ -45,6 +48,7 @@ def fill_in_file(file_path, dest_file_path, placeholder, replacement):
         file.write(file_contents)
 
 def create_android_preferences(prefs):
+    """For filling in the koitlin code in Preferences.kt using the prefs dict."""
     set_vars_str = ""
     for v, k in prefs.items():
         if isinstance(k, bool):
@@ -83,6 +87,7 @@ def create_android_preferences(prefs):
 
 
 def create_ssl_keys(local_ip):
+    """Creates the ssl keys for running the local server over https"""
     fill_in_file("./res/san.cnf", HINDSIGHT_SERVER_DIR / "san.cnf", 
                 "PYTHON_CONFIG_INSERT_IP_HERE", local_ip)
     
@@ -110,7 +115,7 @@ def initialize_server():
          "interneturl" : getinterneturl() 
          }
     
-    create_android_preferences(prefs)
+    create_android_preferences(prefs) # Creates Preferences.kt with filled in prefs
     
     with open(API_KEY_FILE, 'w') as outfile:
         outfile.write(prefs["apikey"])

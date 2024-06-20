@@ -1,3 +1,4 @@
+"""Code for interfacing with SQLite database."""
 import os
 import time
 import sqlite3
@@ -25,7 +26,7 @@ class HindsightDB:
         self.create_lock_table()
 
     def get_connection(self):
-        """ Get a new connection every time for thread safety. """
+        """Get a new connection every time for thread safety."""
         return sqlite3.connect(self.db_file)
 
     def create_tables(self):
@@ -89,6 +90,7 @@ class HindsightDB:
             conn.commit()
 
     def create_lock_table(self):
+        """Table for handling db based locks."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
@@ -144,6 +146,7 @@ class HindsightDB:
 
 
     def insert_frame(self, timestamp, path, application):
+        """Insert frame into frames table and return frame_id."""
         with self.db_lock:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
@@ -169,6 +172,7 @@ class HindsightDB:
                 return frame_id
 
     def insert_ocr_results(self, frame_id, ocr_results):
+        """Insert ocr results into ocr_results table."""
         with self.db_lock:
             with self.get_connection() as conn:
                 cursor = conn.cursor()
@@ -197,6 +201,7 @@ class HindsightDB:
             return df
     
     def get_ocr_results(self, frame_id=None):
+        """Gets ocr results for a single frame_id."""
         with self.get_connection() as conn:
             if frame_id is None:
                 query = '''SELECT * FROM ocr_results'''
@@ -224,11 +229,18 @@ class HindsightDB:
             return df
     
     def search(self, text=None, start_date=None, end_date=None, apps=None, n_seconds=None):
-        """Search for frames with OCR results containing the specified text. If n_seconds
-        is provided it will only return 1 result within each n_seconds period.
+        """Search for frames with OCR results containing the specified text.
+        Args:
+            text (str): text to search for
+            start_date (pd.datetime): search all frames after this time
+            end_date (pd.datetime): search all frames before this time
+            app (list | set): only include these app identifiers
+            n_seconds (int): only return 1 result within a n_seconds time period
+        Returns:
+            pd.Dataframe containing search results
         Bonus:
-        Date and app filtering could be done in query to optimize but perfomance isn't currently
-        an issue so leaning towards simplicity.
+            Date and app filtering could be done in query to optimize but perfomance isn't currently
+            an issue so leaning towards simplicity.
         """
         with self.get_connection() as conn:
             if text is None:

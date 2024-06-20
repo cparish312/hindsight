@@ -21,19 +21,24 @@ def add_datetimes(df):
     return df
 
 def add_usage_ids(df, new_usage_threshold=timedelta(seconds=120)):
+    """Adds a column that identifies what 'usage' the frame belongs to. A new usage is defined
+    by a time difference of new_usage_threshold
+    """
     df['time_difference'] = df['datetime_utc'].diff()
     new_usage_start = (df['time_difference'] > new_usage_threshold)
     df['usage_id'] = new_usage_start.cumsum()
     return df
 
 def add_sep_ids(df, new_threshold, var_name):
-        df['y_difference'] = df['y'].diff()
-        new_var_start = (df['y_difference'] > new_threshold)
-        df[var_name] = new_var_start.cumsum()
-        return df
+    """Adds seperations based on y distance between OCR results."""
+    df['y_difference'] = df['y'].diff()
+    new_var_start = (df['y_difference'] > new_threshold)
+    df[var_name] = new_var_start.cumsum()
+    return df
 
 text_split_str = "\n" +  "-" * 20 + "\n"
 def convert_to_continuos_str(df, newline_threshold):
+    """Converts a paragraph DataFrame into a str. It tries to maintain relative spaces and tabs."""
     para_df = df.copy()
     para_df['char_width'] = para_df['w'] / para_df['text'].str.len()
     average_char_width = para_df['char_width'].mean()
@@ -72,6 +77,10 @@ def convert_to_continuos_str(df, newline_threshold):
     return "\n".join(final_text)
 
 def ocr_results_to_str(ocr_result, text_conf_thresh=0.7):
+    """Converts OCR results for a frame into paragraphs based on y distance. Converts each
+    paragraph into a str and finally combines all of the paragraph strs into a single str
+    to represent the OCR results of the frame.
+    """
     ocr_result = ocr_result.copy()
     ocr_result = ocr_result.loc[ocr_result['conf'] >= text_conf_thresh]
     if set(ocr_result['text']) == {None} or len(ocr_result) == 0:
@@ -91,16 +100,21 @@ def ocr_results_to_str(ocr_result, text_conf_thresh=0.7):
         frame_total_text += text_split_str
     return frame_total_text
 
-known_applications_d = {""}
+known_applications_d = {""} # Could convert the android identifiers to normal application names
 def get_screenshot_preprompt(application, timestamp):
     return f"""Description: Text from a screenshot of {application} with UTC timestamp {timestamp}:""" + text_split_str
 
 def get_preprompted_text(ocr_result, application, timestamp):
+    """Used for preprompting chromadb documents and preprompting before feeding to an LLM."""
     frame_cleaned_text = ocr_results_to_str(ocr_result)
     frame_text = get_screenshot_preprompt(application, timestamp) + frame_cleaned_text
     return frame_text
 
 def get_context_around_frame_id(frame_id, frames_df, ocr_results_df, context_buffer=5):
+    """Used by the Long Context Querying method. Pulls context_buffer frames before and after 
+    the provided frame_id and combines them into a single str. It does some deduplication but
+    keeps the entire text of the frame_id passed.
+    """
     frame_application = frames_df.loc[frames_df['id'] == frame_id].iloc[0]['application']
     application_df = frames_df.loc[frames_df['application'] == frame_application].reset_index(drop=True)
     frame_index = int(application_df.index.get_loc(application_df[application_df['id'] == frame_id].index[0]))

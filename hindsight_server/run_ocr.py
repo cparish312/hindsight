@@ -1,3 +1,4 @@
+"""Runs frames insert and OCR on any screenshots not in the database."""
 import os
 import glob
 import multiprocessing
@@ -18,19 +19,21 @@ video_timezone = ZoneInfo("UTC")
 db = HindsightDB()
 
 def get_images_df(screenshots_dir):
-        images_l = list()
-        for f in glob.glob(f"{screenshots_dir}/*/*/*/*/*.jpg"):
-            filename = f.split('/')[-1]
-            filename_s = filename.replace(".jpg", "").split("_")
-            application = filename_s[0]
-            timestamp = int(filename_s[1])
-            images_l.append({"path" : f, "timestamp" : timestamp, "app" : application})
-        images_df = pd.DataFrame(images_l)
-        images_df['datetime_utc'] = pd.to_datetime(images_df['timestamp'] / 1000, unit='s', utc=True)
-        images_df['datetime_local'] = images_df['datetime_utc'].apply(lambda x: x.replace(tzinfo=video_timezone).astimezone(local_timezone))
-        return images_df.sort_values(by='datetime_local', ascending=False)
+    """Returns DataFrame of all screenshots in the screenshots_dir."""
+    images_l = list()
+    for f in glob.glob(f"{screenshots_dir}/*/*/*/*/*.jpg"):
+        filename = f.split('/')[-1]
+        filename_s = filename.replace(".jpg", "").split("_")
+        application = filename_s[0]
+        timestamp = int(filename_s[1])
+        images_l.append({"path" : f, "timestamp" : timestamp, "app" : application})
+    images_df = pd.DataFrame(images_l)
+    images_df['datetime_utc'] = pd.to_datetime(images_df['timestamp'] / 1000, unit='s', utc=True)
+    images_df['datetime_local'] = images_df['datetime_utc'].apply(lambda x: x.replace(tzinfo=video_timezone).astimezone(local_timezone))
+    return images_df.sort_values(by='datetime_local', ascending=False)
 
 def extract_text_from_frame(path):
+    """Uses ocrmac to run OCR on the provided image path."""
     ocr_res = ocrmac.OCR(Image.open(path), recognition_level='accurate').recognize(px=True) # px converts to pil coordinates
     # x, y, w, h, text, conf
     ocr_res = [(r[2][0], r[2][1], r[2][2]-r[2][0], r[2][3]-r[2][1], r[0], r[1]) for r in ocr_res]
@@ -39,6 +42,7 @@ def extract_text_from_frame(path):
     return ocr_res
 
 def run_ocr(frame_id, path=None):
+    """Runs OCR on the given frame_id and inserts results to ocr_results table."""
     path = db.get_frames(frame_ids=[frame_id]).iloc[0]['path'] if path is None else path
     ocr_res = extract_text_from_frame(path)
     db.insert_ocr_results(frame_id, ocr_res)

@@ -1,3 +1,4 @@
+"""Script for running the Hindsight Server."""
 import os
 import atexit
 import time
@@ -47,14 +48,14 @@ db = HindsightDB()
 last_image_upload = datetime.now() # Used to have chromadb ingestion happen after iamge upload
 
 def chromadb_process_images():
-    """Made since chromadb insert is much more efficient in batches"""
+    """Ingests frames into chromadb with OCR results that haven't been ingested already."""
     global last_image_upload
     time.sleep(randrange(120)) # Make offsync when multiple
     while True:
         if datetime.now() - last_image_upload < timedelta(minutes=2):
             time.sleep(120)
             continue
-        if db.acquire_lock("chromadb"):
+        if db.acquire_lock("chromadb"): # Lock to ensure only one ingest occurs at a time
             try:
                 frames_df = db.get_non_chromadb_processed_frames_with_ocr().sort_values(by='timestamp', ascending=True)
                 frame_ids = set(frames_df['id'])
@@ -75,6 +76,9 @@ def chromadb_process_images():
             time.sleep(120)
 
 def process_image_queue():
+    """Copies frame into correct directory in screenshot_dir. Inserts frame into frames table.
+    Runs OCR on frame and inserts results in ocr_results table.
+    """
     global last_image_upload
     while True:
         if not db.check_lock("chromadb"): # Ensure OCR doesn't happen at the same time as chromadb
@@ -108,6 +112,10 @@ def process_image_queue():
         else:
             last_image_upload = datetime.now()
             image_processing_queue.task_done()
+
+def verify_api_key():
+    api_key = request.headers.get('Hightsight-API-Key')
+    return api_key == SECRET_API_KEY
 
 @app.route('/upload_image', methods=['POST'])
 def upload_image():
@@ -149,11 +157,6 @@ def post_query():
         app.logger.error(f"Error processing query {data['query']}: {e}")
 
     return jsonify({"status": "success", "message": "Data received"}), 200
-    
-
-def verify_api_key():
-    api_key = request.headers.get('Hightsight-API-Key')
-    return api_key == SECRET_API_KEY
 
 @app.route('/get_queries', methods=['GET'])
 def get_queries():

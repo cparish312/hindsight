@@ -1,3 +1,4 @@
+"""Computer GUI for querying and viewing queries."""
 import platform
 import threading
 import cv2

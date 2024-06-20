@@ -10,7 +10,6 @@ from db import HindsightDB
 from config import DATA_DIR, MLX_EMBDEDDING_MODEL
 import utils
 
-db = HindsightDB()
 chroma_db_path = os.path.join(DATA_DIR, "chromadb")
 
 class MLXEmbeddingFunction(EmbeddingFunction):
@@ -21,6 +20,7 @@ class MLXEmbeddingFunction(EmbeddingFunction):
         return self.embedding_model.encode(input).tolist()
 
 def get_chroma_collection(collection_name="pixel_screenshots", model_id=MLX_EMBDEDDING_MODEL):
+    """Returns chromadb collections."""
     embedding_function = MLXEmbeddingFunction(model_id=model_id)
     chroma_client = chromadb.PersistentClient(path=chroma_db_path)
     chroma_collection = chroma_client.get_or_create_collection(collection_name, embedding_function=embedding_function)
@@ -30,6 +30,9 @@ def get_chromadb_metadata(row):
     return {"frame_id" : row['id'], "application" : row['application'], "timestamp" : row['timestamp']}
 
 def run_chroma_ingest(db, df, chroma_collection, ocr_results_df):
+    """Runs chromadb ingest for frames in df. Will skip frames that have the same ocr results as the 
+    prior frame.
+    """
     documents = list()
     metadatas = list()
     ids = list()
@@ -57,6 +60,7 @@ def run_chroma_ingest(db, df, chroma_collection, ocr_results_df):
     print(f"Successfully added {len(documents)} documents to chromadb")
 
 def run_chroma_ingest_batched(db, df, chroma_collection, ocr_results_df, batch_size=1000):
+    """Runs chromadb ingest in a batched fashion to balance efficiency and reliability."""
     num_batches = len(df) // batch_size + (1 if len(df) % batch_size > 0 else 0)
     for i in range(num_batches):
         print("Batch", i)
@@ -66,6 +70,7 @@ def run_chroma_ingest_batched(db, df, chroma_collection, ocr_results_df, batch_s
         run_chroma_ingest(db=db, df=frames_batch, chroma_collection=chroma_collection, ocr_results_df=ocr_results_df)
 
 if __name__ == "__main__":
+    db = HindsightDB()
     frames_df = db.get_non_chromadb_processed_frames_with_ocr().sort_values(by='timestamp', ascending=True)
     frame_ids = set(frames_df['id'])
     print("Total frames to ingest", len(frame_ids))
