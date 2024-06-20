@@ -16,4 +16,4 @@ else:
     SECRET_API_KEY = "NONE"
 
 MLX_LLM_MODEL = "mlx-community/Meta-Llama-3-8B-Instruct-8bit"
-MLX_EMBDEDDING_MODEL = "bge-base"
+MLX_EMBDEDDING_MODEL = "bge-large"

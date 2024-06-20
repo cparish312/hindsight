@@ -1,3 +1,5 @@
+from utils import text_split_str
+
 def get_prompt(text, query):
     return f"""Below is the text that's been on my phone screen. ------------- 
         {text}
@@ -28,6 +30,13 @@ def get_summary_prompt(text, query):
             ------------------
             What is the best answer to {query}? """
 
+def get_decomposition_prompt(query, num_decomp_questions):
+    return f"""You are a helpful assistant that generates multiple sub-queries related to an input question. \n
+        The goal is to break down the input into a set of sub-problems / sub-questions that can be answers in isolation. \n
+        These queries will be passed into a embedding database to grab relevant context from text of a users' phone screenshots. \n
+        Generate multiple search queries related to: {query} \n
+        Output ({num_decomp_questions} queries):"""
+
 def get_recomposition_prompt(query, queries_to_res):
     prompt = """Below are a number of queries and responses from an LLM."""
     for q, r in queries_to_res.items():
@@ -35,9 +44,11 @@ def get_recomposition_prompt(query, queries_to_res):
     prompt += f"""Using this context answer the Question: {query}"""
     return prompt
 
-def get_decomposition_prompt(query, num_decomp_questions):
-    return f"""You are a helpful assistant that generates multiple sub-queries related to an input question. \n
-        The goal is to break down the input into a set of sub-problems / sub-questions that can be answers in isolation. \n
-        These queries will be passed into a embedding database to grab relevant context from text of a users' phone screenshots. \n
-        Generate multiple search queries related to: {query} \n
-        Output ({num_decomp_questions} queries):"""
+def get_summary_compete_prompt(method_to_text, query):
+    prompt_str = f"""Below are the results from a number of LLM RAG pipelines asked to solve the query: {query}.\n"""
+    for method, text in method_to_text.items():
+          prompt_str += f"""Method : {method} \nResponse: {text}"""
+          prompt_str += text_split_str
+        
+    prompt_str += """What is the best and most helpful detailed response to {query}? Which method gave this answer?"""
+    return prompt_str

@@ -12,7 +12,7 @@ from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify, abort
 import pandas as pd
 
-from run_chromadb_ingest import get_chroma_collection, run_chroma_ingest
+from run_chromadb_ingest import get_chroma_collection, run_chroma_ingest_batched
 from db import HindsightDB
 from config import RAW_SCREENSHOTS_DIR, SERVER_LOG_FILE, SECRET_API_KEY, HINDSIGHT_SERVER_DIR
 import query
@@ -45,6 +45,7 @@ db = HindsightDB()
 
 def chromadb_process_images():
     """Made since chromadb insert is much more efficient in batches"""
+    time.sleep(randrange(120)) # Make offsync when multiple
     while True:
         if db.acquire_lock("chromadb"):
             try:
@@ -57,7 +58,7 @@ def chromadb_process_images():
                 print(f"Running process_images_batched on {len(frame_ids)} frames")
                 chroma_collection = get_chroma_collection()
                 ocr_results_df = db.get_frames_with_ocr(frame_ids=frame_ids)
-                run_chroma_ingest(db=db, df=frames_df, ocr_results_df=ocr_results_df, chroma_collection=chroma_collection)
+                run_chroma_ingest_batched(db=db, df=frames_df, ocr_results_df=ocr_results_df, chroma_collection=chroma_collection)
                 app.logger.info(f"Ran process_images_batched on {len(frame_ids)} frames")
                 db.release_lock("chromadb")
                 time.sleep(120)
@@ -67,7 +68,6 @@ def chromadb_process_images():
             time.sleep(120)
 
 def process_image_queue():
-    time.sleep(randrange(120)) # Make offsync when multiple
     while True:
         try:
             item = image_processing_queue.get(timeout=20)
@@ -175,9 +175,9 @@ def setup_threads():
         thread = threading.Thread(target=process_image_queue)
         thread.start()
         threads.append(thread)
-    process_images_batched_thread = threading.Thread(target=chromadb_process_images)
-    process_images_batched_thread.start()
-    threads.append(process_images_batched_thread)
+    # process_images_batched_thread = threading.Thread(target=chromadb_process_images)
+    # process_images_batched_thread.start()
+    # threads.append(process_images_batched_thread)
 
 def initialize():
     process_tmp_dir() # Since runs for each gunicorn worker will throw errors since files will be moved but can be ignored

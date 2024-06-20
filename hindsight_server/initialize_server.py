@@ -11,7 +11,7 @@ import utils
 
 base_dir = Path(os.path.dirname(os.path.abspath(__file__)))
 
-INTERNET_URL = "https://e463-24-91-154-59.ngrok-free.app" # Insert ngrok URL
+INTERNET_URL = "https://f35c-24-91-154-59.ngrok-free.app" # Insert ngrok URL
 
 def generate_random_key(length=30):
     # Define the possible characters to include in the key

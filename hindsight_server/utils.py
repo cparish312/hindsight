@@ -110,6 +110,6 @@ def get_context_around_frame_id(frame_id, frames_df, ocr_results_df, context_buf
         ocr_res = ocr_results_df.loc[ocr_results_df['frame_id'] == row['id']]
         cleaned_res = get_preprompted_text(ocr_res, row['application'], row['timestamp'])
         for t in cleaned_res.split(text_split_str):
-            if t not in text_list:
+            if t not in text_list or row['id'] == frame_id:
                 text_list.append(t)
     return text_split_str.join(text_list)
