@@ -16,7 +16,7 @@ Hindsight is an android app that takes a screenshot every 2 seconds. The server 
 ### Server
 1) **Conda Environment:**
     *   Install [conda](https://docs.anaconda.com/free/miniconda/miniconda-install/) if you don't have it already
-    *   Create the conda environment: `conda env create -f hindsight_server_env.yml`
+    *   Create the conda environment: `conda env create -f hindsight_server_env_mac.yml`
     *   Activate the env using: `conda activate hindsight_server`
     *   If running on a Mac run `pip install ocrmac` to utilize OCR
 2) **Initialization:**
@@ -46,7 +46,7 @@ Currently the app has 3 "working" functionalities.
 * The screenshots timeline can be viewed and searched by running `python timeline_view.py`
 3) **Query:** Run natural language queries against the text in your screenshots. There are 3 types of querying techniques currently available:
     1) Basic (Default or start query with `b\`): Uses top N contexts retreived by chromadb and feeds them to a single LLM call
-    2) Long Context (start query with `lc\`): For each top N contexts grabs the frames immediately before and after. For each context, the frames are combined and fed to an LLM. Finally, all of the results are fed to a summary LLM call to generate the response.
+    2) Long Context (start query with `l\`): For each top N contexts grabs the frames immediately before and after. For each context, the frames are combined and fed to an LLM. Finally, all of the results are fed to a summary LLM call to generate the response.
     3) Decomposition (start query with `d\`): First creates prompt asking LLM to generate prompts to gain context for the query. Then, it run Long Context on each of these sub-prompts. Finally, it combines all of the results of the sub-prompts and feeds it to the LLM with the user query.
 
 ## Developing

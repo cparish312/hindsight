@@ -2,21 +2,29 @@ name: hindsight_server
 channels:
   - conda-forge
   - defaults
+  - pytorch-nightly
 dependencies:
-  - flask=3.0.3
-  - numpy=1.26.4
-  - pandas=2.2.2
-  - pillow=10.3.0
-  - pip=24.0
-  - python=3.9.18
-  - tzlocal=5.2
-  - colorcet
+  - flask
+  - python=3.9.19
   - matplotlib
+  - mlx=0.15.0
+  - pillow=10.3.0
+  - pytorch
+  - seaborn=0.13.2
+  - torchaudio
+  - torchvision
+  - numpy=1.26.4
+  - colorcet
+  - tzlocal
   - gunicorn
-  - mlx-lm
+  - pip
   - pip:
+      - protobuf==4.25.3
       - opencv-python==4.9.0.80
-      - chromadb
+      - chroma-hnswlib==0.7.3
+      - chroma==0.2.0
+      - chromadb==0.5.0
       - tkcalendar
       - ocrmac
-      - mlx-embedding-models
+      - mlx-embedding-models==0.0.9
+      - mlx-lm==0.14.3
