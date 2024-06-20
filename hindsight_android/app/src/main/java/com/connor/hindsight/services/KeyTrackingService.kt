@@ -8,7 +8,8 @@ import com.connor.hindsight.obj.UserActivityState
 class KeyTrackingService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         UserActivityState.userActive = true
-        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+        if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
+            event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
             val packageName = event.packageName.toString().replace(".", "-")
             UserActivityState.currentApplication = packageName
             Log.d("KeyTrackingService", "onAccessibilityEvent: $packageName")
