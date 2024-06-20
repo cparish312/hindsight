@@ -170,7 +170,8 @@ class TimelineViewer:
         self.timeline_canvas.create_rectangle(start_pos, 0, start_pos+timeline_screenshot_width, 50, fill=color, outline="black")
 
     def display_frame(self, screenshot, frame_num):
-        print(frame_num)
+        im_row = self.images_df.iloc[frame_num]
+        print(f"frame_num: {frame_num} frame_id: {im_row['id']}")
         cv2image = cv2.cvtColor(screenshot.image, cv2.COLOR_BGR2RGB)
         img = Image.fromarray(cv2image)
         imgtk = ImageTk.PhotoImage(image=img)
