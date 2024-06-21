@@ -17,11 +17,11 @@ import org.json.JSONArray
 class QueryViewModel : ViewModel() {
     private val _queries = MutableLiveData<List<String>>()
     val queries: LiveData<List<String>> = _queries
-    private val primaryUrl: String = Preferences.prefs.getString(
+    private var primaryUrl: String = Preferences.prefs.getString(
             Preferences.localurl,
             ""
         ).toString()
-    private val fallbackUrl: String = Preferences.prefs.getString(
+    private var fallbackUrl: String = Preferences.prefs.getString(
         Preferences.interneturl,
         ""
     ).toString()
@@ -30,18 +30,22 @@ class QueryViewModel : ViewModel() {
         makePostRequest(primaryUrl, query, startTime, endTime, context)
     }
 
-    private fun makePostRequest(baseUrl: String, query: String, startTime: Long?, endTime: Long?, context: Context) {
-        val retrofit = RetrofitClient.getInstance(baseUrl)
+    private fun makePostRequest(baseUrl: String, query: String, startTime: Long?, endTime: Long?, context: Context, connectTimeout: Long = 1) {
+        val retrofit = RetrofitClient.getInstance(baseUrl, connectTimeout)
         val client = retrofit.create(ApiService::class.java)
         val postData = PostData(query, startTime, endTime)
 
         client.postQuery(postData).enqueue(object : retrofit2.Callback<ResponseBody> {
             override fun onResponse(call: retrofit2.Call<ResponseBody>, response: retrofit2.Response<ResponseBody>) {
                 if (response.isSuccessful) {
+                    if (baseUrl == fallbackUrl) {
+                        fallbackUrl = primaryUrl
+                        primaryUrl = baseUrl
+                    }
                     Toast.makeText(context, "Query Post successful!", Toast.LENGTH_SHORT).show()
                 } else {
                     if (baseUrl == primaryUrl) {
-                        makePostRequest(fallbackUrl, query, startTime, endTime, context) // Try the fallback URL
+                        makePostRequest(fallbackUrl, query, startTime, endTime, context, 10) // Try the fallback URL
                     } else {
                         Log.e("QueryViewModel", "Query Post failed at both servers: ${response.errorBody()?.string()}")
                     }
@@ -62,8 +66,8 @@ class QueryViewModel : ViewModel() {
         fetchWithUrl(primaryUrl)
     }
 
-    private fun fetchWithUrl(baseUrl: String) {
-        val retrofit = RetrofitClient.getInstance(baseUrl)
+    private fun fetchWithUrl(baseUrl: String, connectTimeout: Long = 1) {
+        val retrofit = RetrofitClient.getInstance(baseUrl, connectTimeout)
         val client = retrofit.create(ApiService::class.java)
 
         client.getQueries().enqueue(object : retrofit2.Callback<ResponseBody> {
@@ -72,9 +76,13 @@ class QueryViewModel : ViewModel() {
                     val resultString = response.body()?.string() ?: ""
                     val queriesList: List<String> = parseJsonToQueryList(resultString)
                     _queries.postValue(queriesList)
+                    if (baseUrl == fallbackUrl) {
+                        fallbackUrl = primaryUrl
+                        primaryUrl = baseUrl
+                    }
                 } else {
                     if (baseUrl == primaryUrl) {
-                        fetchWithUrl(fallbackUrl) // Retry with the fallback URL
+                        fetchWithUrl(fallbackUrl, 10) // Retry with the fallback URL
                     } else {
                         Log.e("QueryViewModel", "Failed to fetch queries at both servers")
                     }

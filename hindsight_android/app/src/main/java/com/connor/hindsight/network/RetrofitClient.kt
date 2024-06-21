@@ -9,14 +9,14 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitClient {
     private var apiKey: String = Preferences.prefs.getString(Preferences.apikey, "").toString()
-    fun getInstance(baseUrl: String): Retrofit
+    fun getInstance(baseUrl: String, connectTimeout: Long = 30): Retrofit
     {
         val logging = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BASIC
         }
 
         val client = OkHttpClient.Builder()
-            .connectTimeout(1, TimeUnit.SECONDS) // Set the connection timeout
+            .connectTimeout(connectTimeout, TimeUnit.SECONDS) // Set the connection timeout
             .readTimeout(30, TimeUnit.SECONDS) // Set the read timeout
             .writeTimeout(30, TimeUnit.SECONDS) // Set the write timeout
             .addInterceptor(logging)

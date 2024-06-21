@@ -207,6 +207,7 @@ abstract class RecorderService : LifecycleService() {
         runCatching {
             recorderState = RecorderState.IDLE
             onRecorderStateChanged(recorderState)
+            unregisterReceiver(recorderReceiver)
         }
 
         NotificationManagerCompat.from(this)
@@ -220,10 +221,6 @@ abstract class RecorderService : LifecycleService() {
                 }
                 recorder = null
                 fileDescriptor?.close()
-            }
-
-            runCatching {
-                unregisterReceiver(recorderReceiver)
             }
 
             ServiceCompat.stopForeground(
