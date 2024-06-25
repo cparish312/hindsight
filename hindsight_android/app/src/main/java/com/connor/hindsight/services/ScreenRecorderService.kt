@@ -27,6 +27,7 @@ import com.connor.hindsight.utils.getImageDirectory
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.lang.SecurityException
 
 class ScreenRecorderService : RecorderService() {
     override val notificationTitle: String
@@ -82,7 +83,6 @@ class ScreenRecorderService : RecorderService() {
             mediaProjection!!.registerCallback(
                 object : MediaProjection.Callback() {
                     override fun onStop() {
-                        sendBroadcast(Intent(SCREEN_RECORDER_STOPPED))
                         onDestroy()
                     }
                 },
@@ -102,22 +102,28 @@ class ScreenRecorderService : RecorderService() {
 
         mediaProjection?.let { mp ->
             imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
-            virtualDisplay = mp.createVirtualDisplay(
-                "ScreenRecordingService",
-                width,
-                height,
-                density,
-                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
-                imageReader!!.surface,
-                object : VirtualDisplay.Callback() {
-                    override fun onStopped() {
-                        super.onStopped()
-                        // Handle the virtual display being stopped
-                        onDestroy()
-                    }
-                },
-                null
-            )
+            try {
+                virtualDisplay = mp.createVirtualDisplay(
+                    "ScreenRecordingService",
+                    width,
+                    height,
+                    density,
+                    DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                    imageReader!!.surface,
+                    object : VirtualDisplay.Callback() {
+                        override fun onStopped() {
+                            super.onStopped()
+                            // Handle the virtual display being stopped
+                            onDestroy()
+                        }
+                    },
+                    null
+                )
+            } catch (e: SecurityException) {
+                Log.e("ScreenRecordingService", "Failed to create VirtualDisplay", e)
+                onDestroy()
+            }
+
 
             handler = Handler(Looper.getMainLooper())
             imageCaptureRunnable = object : Runnable {
@@ -202,6 +208,7 @@ class ScreenRecorderService : RecorderService() {
 
     override fun onDestroy() {
         Log.d("ScreenRecordingService", "Destroying Screen Recording Service")
+        sendBroadcast(Intent(SCREEN_RECORDER_STOPPED))
         isRunning = false
         handler?.removeCallbacks(imageCaptureRunnable!!) // Stop the recurring image capture
         imageReader?.close()

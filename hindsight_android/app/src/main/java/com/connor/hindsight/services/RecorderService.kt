@@ -246,6 +246,13 @@ abstract class RecorderService : LifecycleService() {
 
     fun uploadToServer() {
         Log.d("RecorderService", "uploadToServer")
+        if (ServerUploadService.isRunning) {
+            Log.d(
+                "RecorderService",
+                "Ran uploadToServer but ServerUploadService is running"
+            )
+            return
+        }
         val primaryUrl: String = Preferences.prefs.getString(
             Preferences.localurl,
             ""

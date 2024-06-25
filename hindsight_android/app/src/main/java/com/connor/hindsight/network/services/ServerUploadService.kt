@@ -66,6 +66,8 @@ class ServerUploadService : LifecycleService() {
                 buildNotification().build()
             )
         }
+        
+        isRunning = true
 
         runCatching {
             unregisterReceiver(uploaderReceiver)
@@ -118,7 +120,7 @@ class ServerUploadService : LifecycleService() {
             Preferences.localurl,
             ""
         ).toString()
-        val retrofit = RetrofitClient.getInstance(serverUrl)
+        val retrofit = RetrofitClient.getInstance(serverUrl, numTries = 3)
         val client = retrofit.create(ApiService::class.java)
         val call = client.uploadFile(body)
 
@@ -199,6 +201,7 @@ class ServerUploadService : LifecycleService() {
 
     override fun onDestroy() {
         stopUpload = true
+        isRunning = false
         sendBroadcast(Intent(UPLOADER_FINISHED))
 
         NotificationManagerCompat.from(this)
@@ -222,5 +225,6 @@ class ServerUploadService : LifecycleService() {
         const val STOP_ACTION = "STOP"
         const val UPLOADER_FINISHED = "com.connor.hindsight.UPLOAD_FINISHED"
         const val UPLOADER_STARTED = "com.connor.hindsight.UPLOAD_STARTED"
+        var isRunning = false
     }
 }
