@@ -25,12 +25,19 @@ def chroma_search_results_to_df(chroma_search_results):
             results_l.append(d)
     return pd.DataFrame(results_l)
 
-def query_chroma(query_text, source_apps=None, utc_milliseconds_start_date=None, utc_milliseconds_end_date=None, max_chroma_results=200):
-    """Queries chromadb with the query_text and the provided constraints."""
-    chroma_collection = get_chroma_collection()
+def query_chroma(query_text: str, source_apps=None, utc_milliseconds_start_date=None, utc_milliseconds_end_date=None, 
+                 max_chroma_results=200, chroma_collection=None):
+    """Queries chromadb with the query_text and the provided constraints.
+    Args:
+        query_text (str): Text to query chromadb of OCR results from user screenshots
+
+    returns query results from chroma collection
+    """
+    chroma_collection = get_chroma_collection() if chroma_collection is None else chroma_collection
 
     conditions = []
     if source_apps is not None:
+        source_apps = list(source_apps)
         conditions.append({"application": {"$in": source_apps}})
     
     if utc_milliseconds_start_date is not None:
@@ -62,9 +69,11 @@ def query_chroma(query_text, source_apps=None, utc_milliseconds_start_date=None,
 
 def basic_retrieved_query(query_text, source_apps=None, utc_milliseconds_start_date=None, utc_milliseconds_end_date=None, 
                           max_chroma_results=100, num_contexts=20, per_usage_results=1, model=None, tokenizer=None,
-                          max_tokens=500):
+                          max_tokens=500, chroma_collection=None):
     """Grabs the closest per_usage_results frames within a usage. Combines all contexts into a single prompt."""
-    chroma_search_results = query_chroma(query_text, source_apps, utc_milliseconds_start_date, utc_milliseconds_end_date, max_chroma_results)
+    chroma_collection = get_chroma_collection() if chroma_collection is None else chroma_collection
+    chroma_search_results = query_chroma(query_text, source_apps, utc_milliseconds_start_date, utc_milliseconds_end_date, max_chroma_results,
+                                         chroma_collection=chroma_collection)
     chroma_search_results_df = chroma_search_results_to_df(chroma_search_results)
     if len(chroma_search_results_df) == 0:
         print("No relevant sources in chromadb")
@@ -95,12 +104,14 @@ def basic_retrieved_query(query_text, source_apps=None, utc_milliseconds_start_d
 
 def long_context_query(query_text, source_apps=None, utc_milliseconds_start_date=None, utc_milliseconds_end_date=None,
                         max_chroma_results=100, num_contexts=10, per_usage_results=1, context_buffer=5, model=None, tokenizer=None,
-                        max_tokens=500):
+                        max_tokens=200, chroma_collection=None):
     """Grabs the closest per_usage_results frames within a usage. For each frame, grabs the number of context_buffer frames
     before and after the frame. It then passes these contexts to the LLM to get a response for each original usage frame.
     Finally, all of these results are passed to the LLM to get a final response.
     """
-    chroma_search_results = query_chroma(query_text, source_apps, utc_milliseconds_start_date, utc_milliseconds_end_date, max_chroma_results)
+    chroma_collection = get_chroma_collection() if chroma_collection is None else chroma_collection
+    chroma_search_results = query_chroma(query_text, source_apps, utc_milliseconds_start_date, utc_milliseconds_end_date, 
+                                         max_chroma_results, chroma_collection=chroma_collection)
     chroma_search_results_df = chroma_search_results_to_df(chroma_search_results)
     if len(chroma_search_results_df) == 0:
         print("No relevant sources in chromadb")
@@ -139,10 +150,11 @@ def long_context_query(query_text, source_apps=None, utc_milliseconds_start_date
 
 
 def run_decomp_question_query(query_text, num_decomp_questions=4, source_apps=None, utc_milliseconds_start_date=None, utc_milliseconds_end_date=None, max_chroma_results=100, max_tokens=500,
-                              model=None, tokenizer=None):
+                              model=None, tokenizer=None, chroma_collection=None):
     """Uses a decompotion strategy to answer more advanced questions. The first step is to answer questions to help
     get the context needed to answer the original query. Check out README for more details.
     """
+    chroma_collection = get_chroma_collection() if chroma_collection is None else chroma_collection
     decomp_prompt = get_decomposition_prompt(query_text, num_decomp_questions)
     if model is None:
         model, tokenizer = load(MLX_LLM_MODEL) 
@@ -153,7 +165,8 @@ def run_decomp_question_query(query_text, num_decomp_questions=4, source_apps=No
     q_to_res = {}
     for q in decomp_questions:
         response, source_frame_ids = long_context_query(query_text=q, source_apps=source_apps, utc_milliseconds_start_date=utc_milliseconds_start_date, 
-                                       utc_milliseconds_end_date=utc_milliseconds_end_date, max_chroma_results=max_chroma_results, model=model, tokenizer=tokenizer)
+                                       utc_milliseconds_end_date=utc_milliseconds_end_date, max_chroma_results=max_chroma_results, model=model, 
+                                       tokenizer=tokenizer, chroma_collection=chroma_collection)
         if response is not None:
             q_to_res[q] = response
             total_source_frame_ids.update(set(source_frame_ids))
@@ -165,6 +178,10 @@ def run_decomp_question_query(query_text, num_decomp_questions=4, source_apps=No
 
 def query_and_insert(query_id, query_text, source_apps=None, utc_milliseconds_start_date=None, utc_milliseconds_end_date=None, max_chroma_results=100):
     """Runs querying and inserts the results into the queries table."""
+    # Default don't pull context from the hindsight app
+    if source_apps is None:
+        source_apps = db.get_all_applications() - {'com-connor-hindsight'}
+
     query_type = "b" 
     if "\\" in query_text:
         query_text_s = query_text.split("\\")
@@ -183,16 +200,19 @@ def query_and_insert(query_id, query_text, source_apps=None, utc_milliseconds_st
                                         utc_milliseconds_end_date=utc_milliseconds_end_date, max_chroma_results=max_chroma_results)
     elif query_type == "a":
         model, tokenizer = load(MLX_LLM_MODEL) 
+        chroma_collection = get_chroma_collection()
         response_b, source_frame_ids_b = basic_retrieved_query(query_text, source_apps=source_apps, utc_milliseconds_start_date=utc_milliseconds_start_date, 
-                                        utc_milliseconds_end_date=utc_milliseconds_end_date, max_chroma_results=max_chroma_results, model=model, tokenizer=tokenizer)
+                                        utc_milliseconds_end_date=utc_milliseconds_end_date, max_chroma_results=max_chroma_results, model=model, tokenizer=tokenizer,
+                                        chroma_collection=chroma_collection)
         response_l, source_frame_ids_l = long_context_query(query_text, source_apps=source_apps, utc_milliseconds_start_date=utc_milliseconds_start_date, 
                                         utc_milliseconds_end_date=utc_milliseconds_end_date, max_chroma_results=max_chroma_results, num_contexts=10, 
-                                        per_usage_results=1, context_buffer=5, model=model, tokenizer=tokenizer)
+                                        per_usage_results=1, context_buffer=5, model=model, tokenizer=tokenizer, chroma_collection=chroma_collection)
         response_d, source_frame_ids_d = run_decomp_question_query(query_text, num_decomp_questions=4, source_apps=source_apps, utc_milliseconds_start_date=utc_milliseconds_start_date, 
-                                        utc_milliseconds_end_date=utc_milliseconds_end_date, max_chroma_results=max_chroma_results, model=model, tokenizer=tokenizer)
+                                        utc_milliseconds_end_date=utc_milliseconds_end_date, max_chroma_results=max_chroma_results, model=model, tokenizer=tokenizer,
+                                        chroma_collection=chroma_collection)
         method_to_text = {"Basic" : response_b, "Long Context" : response_l, "Decomposition" : response_d}
         summary_compete_prompt = get_summary_compete_prompt(method_to_text, query_text)
-        response = generate(model, tokenizer, prompt=summary_compete_prompt, max_tokens=500)
+        response = generate(model, tokenizer, prompt=summary_compete_prompt, max_tokens=250)
         source_frame_ids = set(source_frame_ids_b) | set(source_frame_ids_l) | set(source_frame_ids_d)
     else:
         print("Invalid query type", query_type)

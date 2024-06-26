@@ -33,6 +33,7 @@ class QueryViewer:
         self.max_height = self.screen_height
 
         self.timeline_viewer = None
+        self.threads = list()
 
         self.setup_gui()
 
@@ -151,14 +152,14 @@ class QueryViewer:
         selected_apps = list()
         for i in self.app_list.curselection():
             selected_apps.append(self.app_list.get(i))
-        selected_apps = selected_apps if len(selected_apps) > 0 else list(set(self.images_df['application']))
+        selected_apps = selected_apps if len(selected_apps) > 0 else None
 
         query_id = self.db.insert_query(query=query_text)
         query_thread = threading.Thread(target=query.query_and_insert, 
                                         args=(query_id, query_text, selected_apps, utc_milliseconds_start_date, utc_milliseconds_end_date))
 
         query_thread.start()
-
+        self.threads.append(query_thread)
         self.display_queries()
 
     def display_queries(self):
@@ -215,6 +216,8 @@ class QueryViewer:
         self.timeline_viewer = TimelineViewer(timeline_window, frame_id=frame_id, images_df=sources_df)
 
     def on_window_close(self):
+        for thread in self.threads:
+            thread.join()
         self.master.destroy()
 
 def main():

@@ -36,6 +36,7 @@ fun MainScreen(
     onNavigateToScreenRecordingSettings: () -> Unit,
     onNavigateToUploadSettings: () -> Unit,
     onNavigateToPostQuery: () -> Unit,
+    onNavigateToAnnotations:() -> Unit,
 ) {
     val context = LocalContext.current
 
@@ -138,6 +139,13 @@ fun MainScreen(
             modifier = Modifier.padding(16.dp)
         ) {
             Text("Query")
+        }
+
+        Button(
+            onClick = onNavigateToAnnotations,
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text("Annotations")
         }
     }
 }

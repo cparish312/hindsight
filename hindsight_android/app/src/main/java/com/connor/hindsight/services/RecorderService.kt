@@ -52,6 +52,7 @@ abstract class RecorderService : LifecycleService() {
                 PAUSE_RESUME_ACTION -> {
                     if (recorderState == RecorderState.ACTIVE) pause() else resume()
                 }
+                ANNOTATE_ACTION -> startAnnotateService()
             }
             when (intent?.action) {
                 Intent.ACTION_SCREEN_OFF -> {
@@ -133,6 +134,14 @@ abstract class RecorderService : LifecycleService() {
             getPendingIntent(resumeOrPauseIntent, 3)
         )
 
+        val annotateIntent = Intent(RECORDER_INTENT_ACTION).putExtra(ACTION_EXTRA_KEY, ANNOTATE_ACTION)
+            .putExtra(
+                FROM_RECORDER_SERVICE,
+                true
+            )
+        val annotateAction = NotificationCompat.Action.Builder(
+            null, "Annotate", getPendingIntent(annotateIntent, 4))
+
         return NotificationCompat.Builder(
             this,
             NotificationHelper.RECORDING_NOTIFICATION_CHANNEL
@@ -150,6 +159,7 @@ abstract class RecorderService : LifecycleService() {
                     )
                 }
             }
+            .addAction(annotateAction.build())
             .setUsesChronometer(true)
             .setContentIntent(getActivityIntent())
     }
@@ -273,11 +283,18 @@ abstract class RecorderService : LifecycleService() {
         })
     }
 
+    fun startAnnotateService() {
+        Log.d("RecorderService", "startAnnotationService")
+        val annotateIntent = Intent(this, AnnotateOverlayService::class.java)
+        ContextCompat.startForegroundService(this, annotateIntent)
+    }
+
     companion object {
         const val RECORDER_INTENT_ACTION = "com.connor.hindsight.RECORDER_ACTION"
         const val ACTION_EXTRA_KEY = "action"
         const val STOP_ACTION = "STOP"
         const val PAUSE_RESUME_ACTION = "PR"
         const val FROM_RECORDER_SERVICE = "com.connor.hindsight.FROM_RECORDER_SERVICE"
+        const val ANNOTATE_ACTION = "com.connor.hindsight.ANNOTATE_ACTION"
     }
 }

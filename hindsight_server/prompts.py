@@ -51,5 +51,5 @@ def get_summary_compete_prompt(method_to_text, query):
           prompt_str += f"""Method : {method} \nResponse: {text}\n\n"""
           prompt_str += text_split_str
         
-    prompt_str += f"Considering the query '{query}', what is the best and most helpful detailed response among the above? Please specify both the response and the method that gave this answer.\nAnswer:"
+    prompt_str += f"Considering the query '{query}', what is the best and most helpful detailed response among the above? Please specify both the method and the detailed response.\nMethod: \nAnswer: "
     return prompt_str

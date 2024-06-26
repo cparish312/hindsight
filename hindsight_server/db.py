@@ -82,9 +82,21 @@ class HindsightDB:
                     result TEXT,
                     source_frame_ids TEXT,
                     timestamp INTEGER NOT NULL,
-                    active BOOLEAN NOT NULL DEFAULT true
+                    active BOOLEAN NOT NULL DEFAULT true,
+                    finished_timestamp INTEGER
                 )
             ''')
+
+            # Add the 'chromadb_processed' column if it does not exist
+            cursor.execute('''
+                PRAGMA table_info(queries)
+            ''')
+            columns = [row[1] for row in cursor.fetchall()]
+            if 'finished_timestamp' not in columns:
+                cursor.execute('''
+                    ALTER TABLE queries
+                    ADD COLUMN finished_timestamp INTEGER
+                ''')
 
             # Commit the changes and close the connection
             conn.commit()
@@ -185,6 +197,19 @@ class HindsightDB:
                 conn.commit()
                 
                 print(f"{len(ocr_results)} OCR results added successfully.")
+
+    def get_all_applications(self):
+        """Returns all applications in the frames table."""
+        with self.get_connection() as conn:
+            # Query to get the frames with OCR results
+            query = '''
+                SELECT DISTINCT frames.application
+                FROM frames
+            '''
+            
+            # Use pandas to read the SQL query result into a DataFrame
+            df = pd.read_sql_query(query, conn)
+            return set(df['application'])
 
     def get_frames(self, frame_ids=None):
         """Select frames with associated OCR results."""
@@ -313,15 +338,16 @@ class HindsightDB:
     def insert_query_result(self, query_id, result, source_frame_ids):
         """Inserts the result of a query into the queries table"""
         # Convert source_frame_ids from a list or set to a comma-separated string
+        finished_timestamp = int(time.time() * 1000) # UTC in milliseconds
         source_frame_ids_str = ','.join(map(str, source_frame_ids))
         
         with self.get_connection() as conn:
             cursor = conn.cursor()
             try:
                 cursor.execute('''
-                    UPDATE queries SET result = ?, source_frame_ids = ?
+                    UPDATE queries SET result = ?, source_frame_ids = ?, finished_timestamp = ?
                     WHERE id = ?
-                ''', (result, source_frame_ids_str, query_id))
+                ''', (result, source_frame_ids_str, finished_timestamp, query_id))
                 conn.commit()
                 print(f"Query result added successfully for query_id: {query_id}")
             except sqlite3.Error as e:

@@ -69,6 +69,7 @@ def chromadb_process_images():
                 run_chroma_ingest_batched(db=db, df=frames_df, ocr_results_df=ocr_results_df, chroma_collection=chroma_collection)
                 app.logger.info(f"Ran process_images_batched on {len(frame_ids)} frames")
                 db.release_lock("chromadb")
+                del chroma_collection
                 time.sleep(120)
             finally:
                 db.release_lock("chromadb")
