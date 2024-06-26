@@ -1,5 +1,7 @@
 """Scripts for running LLM queries on screenshot context."""
+import gc
 import pandas as pd
+import mlx
 
 from datetime import timedelta
 
@@ -69,9 +71,9 @@ def query_chroma(query_text: str, source_apps=None, utc_milliseconds_start_date=
 
 def basic_retrieved_query(query_text, source_apps=None, utc_milliseconds_start_date=None, utc_milliseconds_end_date=None, 
                           max_chroma_results=100, num_contexts=20, per_usage_results=1, model=None, tokenizer=None,
-                          max_tokens=500, chroma_collection=None):
+                          max_tokens=100, chroma_collection=None):
     """Grabs the closest per_usage_results frames within a usage. Combines all contexts into a single prompt."""
-    chroma_collection = get_chroma_collection() if chroma_collection is None else chroma_collection
+    # chroma_collection = get_chroma_collection() if chroma_collection is None else chroma_collection
     chroma_search_results = query_chroma(query_text, source_apps, utc_milliseconds_start_date, utc_milliseconds_end_date, max_chroma_results,
                                          chroma_collection=chroma_collection)
     chroma_search_results_df = chroma_search_results_to_df(chroma_search_results)
@@ -188,6 +190,8 @@ def query_and_insert(query_id, query_text, source_apps=None, utc_milliseconds_st
         query_type = query_text_s[0]
         query_text = query_text_s[1]
     
+    mlx.core.metal.clear_cache()
+    
     if query_type == "b":
         response, source_frame_ids = basic_retrieved_query(query_text, source_apps=source_apps, utc_milliseconds_start_date=utc_milliseconds_start_date, 
                                         utc_milliseconds_end_date=utc_milliseconds_end_date, max_chroma_results=max_chroma_results)
@@ -223,3 +227,6 @@ def query_and_insert(query_id, query_text, source_apps=None, utc_milliseconds_st
         db.insert_query_result(query_id, "No relevant sources in chromadb", {})
     else:
         db.insert_query_result(query_id, response, source_frame_ids)
+
+    gc.collect()
+    mlx.core.metal.clear_cache()

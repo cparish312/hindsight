@@ -1,5 +1,7 @@
 """Script for running the Hindsight Server."""
 import os
+import gc
+import mlx
 import atexit
 import time
 import logging
@@ -12,6 +14,7 @@ from pathlib import Path
 from random import randrange
 from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify, abort
+from flask_executor import Executor
 import pandas as pd
 
 from run_chromadb_ingest import get_chroma_collection, run_chroma_ingest_batched
@@ -24,6 +27,7 @@ if platform.system() == 'Darwin': # OCR only available for MAC currently
     import run_ocr
 
 app = Flask(__name__)
+executor = Executor(app)
 
 # Set up logging to a file
 handler = logging.FileHandler(SERVER_LOG_FILE)
@@ -64,12 +68,14 @@ def chromadb_process_images():
                     time.sleep(120)
                     continue
                 print(f"Running process_images_batched on {len(frame_ids)} frames")
+                mlx.core.metal.clear_cache()
                 chroma_collection = get_chroma_collection()
                 ocr_results_df = db.get_frames_with_ocr(frame_ids=frame_ids)
                 run_chroma_ingest_batched(db=db, df=frames_df, ocr_results_df=ocr_results_df, chroma_collection=chroma_collection)
                 app.logger.info(f"Ran process_images_batched on {len(frame_ids)} frames")
                 db.release_lock("chromadb")
-                del chroma_collection
+                gc.collect()
+                mlx.core.metal.clear_cache()
                 time.sleep(120)
             finally:
                 db.release_lock("chromadb")
@@ -148,14 +154,21 @@ def post_query():
     query_id = db.insert_query(query=data['query'])
     start_time = data['start_time'] if "start_time" in data else None
     end_time = data['end_time'] if "end_time" in data else None
-    
-    try:
-        query_thread = threading.Thread(target=query.query_and_insert, 
-                                        args=(query_id, data['query'], None, start_time, end_time))
 
-        query_thread.start()
-    except Exception as e:
-        app.logger.error(f"Error processing query {data['query']}: {e}")
+    executor.submit(query.query_and_insert, query_id, data['query'], None, start_time, end_time)
+
+    # query_thread = threading.Thread(target=query.query_and_insert, 
+    #                                     args=(query_id, data['query'], None, start_time, end_time))
+
+    # query_thread.start()
+    
+    # try:
+    #     query_thread = threading.Thread(target=query.query_and_insert, 
+    #                                     args=(query_id, data['query'], None, start_time, end_time))
+
+    #     query_thread.start()
+    # except Exception as e:
+    #     app.logger.error(f"Error processing query {data['query']}: {e}")
 
     return jsonify({"status": "success", "message": "Data received"}), 200
 
