@@ -372,6 +372,13 @@ class HindsightDB:
             df = pd.read_sql_query(query, conn)
             return df
         
+    def get_unprocessed_queries(self):
+        """Returns all queries without finished_timestamp."""
+        with self.get_connection() as conn:
+            query = f'''SELECT * FROM queries WHERE finished_timestamp IS NULL'''
+            df = pd.read_sql_query(query, conn)
+            return df
+        
     def update_chromadb_processed(self, frame_ids, value=True):
         """Updates the chromadb_processed status for a list of frame_ids."""
         with self.db_lock:  # Ensure thread-safety

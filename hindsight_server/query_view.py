@@ -154,12 +154,15 @@ class QueryViewer:
             selected_apps.append(self.app_list.get(i))
         selected_apps = selected_apps if len(selected_apps) > 0 else None
 
-        query_id = self.db.insert_query(query=query_text)
-        query_thread = threading.Thread(target=query.query_and_insert, 
-                                        args=(query_id, query_text, selected_apps, utc_milliseconds_start_date, utc_milliseconds_end_date))
+        query_id = self.db.insert_query(query=query_text, context_applications=selected_apps, context_start_timestamp=utc_milliseconds_start_date,
+                                        context_end_timestamp=utc_milliseconds_end_date)
+        
+        # Uncomment if not running hindsight server backed
+        # query_thread = threading.Thread(target=query.query_and_insert, 
+        #                                 args=(query_id, query_text, selected_apps, utc_milliseconds_start_date, utc_milliseconds_end_date))
 
-        query_thread.start()
-        self.threads.append(query_thread)
+        # query_thread.start()
+        # self.threads.append(query_thread)
         self.display_queries()
 
     def display_queries(self):

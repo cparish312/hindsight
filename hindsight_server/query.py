@@ -130,14 +130,13 @@ def long_context_query(query_text, source_apps=None, utc_milliseconds_start_date
     chroma_search_results_df = chroma_search_results_df.sort_values(by="datetime_local", ascending=True)
 
     frames_df = db.get_frames()
-    ocr_results_df = db.get_frames_with_ocr()
 
     if model is None:
         model, tokenizer = load(MLX_LLM_MODEL) 
 
     responses = list()
     for frame_id in chroma_search_results_df['id']:
-        context_text = utils.get_context_around_frame_id(int(frame_id), frames_df, ocr_results_df, context_buffer=context_buffer)
+        context_text = utils.get_context_around_frame_id(int(frame_id), frames_df, db, context_buffer=context_buffer)
         prompt = get_prompt(text=context_text, query=query_text)
         response = generate(model, tokenizer, prompt=prompt, max_tokens=max_tokens)
         responses.append(response)
@@ -184,10 +183,10 @@ def query_and_insert(query_id, query_text, source_apps=None, utc_milliseconds_st
         source_apps = db.get_all_applications() - {'com-connor-hindsight'}
 
     query_type = "b" 
-    if "\\" in query_text:
-        query_text_s = query_text.split("\\")
+    if "/" in query_text:
+        query_text_s = query_text.split("/")
         query_type = query_text_s[0]
-        query_text = query_text_s[1]
+        query_text = "/".join(query_text_s[1:])
     
     mlx.core.metal.clear_cache()
     

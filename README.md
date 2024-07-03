@@ -30,10 +30,8 @@ Hindsight is an android app that takes a screenshot every 2 seconds. The server 
 
 3) **Running**
     * For querying you may need to change the LLM and Embedding models in `hindsight_server/config.py` depending on your machine
-    * It is recommended to run the server using `gunicorn` to improve the performance
-        * `cd hindsight_server`
-        * `gunicorn --certfile=$HOME/.hindsight_server/server.crt --keyfile=$HOME/.hindsight_server/server.key -w 4 -b 0.0.0.0:6000 run_server:app`
-    * You can also run the server by just calling `hindsight_server/run_server.py`
+    * Run: `bash start_server.sh`
+        * This start both the `server_backend.py` which just runs as a python process and the `run_server.py` which runs using `gunicorn` for better server performance.
 
 ### App
 1) Open `hindsight_android` in Android Studio.
@@ -50,10 +48,10 @@ Currently the app has 3 "working" functionalities.
 2) **Server Upload:** Upload screenshots directly to your server.
 * The screenshots timeline can be viewed and searched by running `python timeline_view.py`
 3) **Query:** Run natural language queries against the text in your screenshots. There are 3 types of querying techniques currently available:
-    1) Basic (Default or start query with `b\`): Uses top N contexts retreived by chromadb and feeds them to a single LLM call
-    2) Long Context (start query with `l\`): For each top N contexts grabs the frames immediately before and after. For each context, the frames are combined and fed to an LLM. Finally, all of the results are fed to a summary LLM call to generate the response.
-    3) Decomposition (start query with `d\`): First creates prompt asking LLM to generate prompts to gain context for the query. Then, it run Long Context on each of these sub-prompts. Finally, it combines all of the results of the sub-prompts and feeds it to the LLM with the user query.
-    4) All (start query with `a\`): Runs all of the above methods and passes answers as a prompt asking to chose the best answer and report the method the answer came from.
+    1) Basic (Default or start query with `b/`): Uses top N contexts retreived by chromadb and feeds them to a single LLM call
+    2) Long Context (start query with `l/`): For each top N contexts grabs the frames immediately before and after. For each context, the frames are combined and fed to an LLM. Finally, all of the results are fed to a summary LLM call to generate the response.
+    3) Decomposition (start query with `d/`): First creates prompt asking LLM to generate prompts to gain context for the query. Then, it run Long Context on each of these sub-prompts. Finally, it combines all of the results of the sub-prompts and feeds it to the LLM with the user query.
+    4) All (start query with `a/`): Runs all of the above methods and passes answers as a prompt asking to chose the best answer and report the method the answer came from.
 
 ## Developing
 You can easily build applications on top of Hindsight.

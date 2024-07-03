@@ -14,13 +14,13 @@ def make_dir(d):
     if not os.path.exists(d):
         os.makedirs(d)
 
-impute_applications = {"com-google-android-inputmethod-latin"}
+remove_applications = {"com-google-android-inputmethod-latin"}
 def impute_applications(df):
     df_copy = df.copy()
     
     last_non_keyboard = None
     for index, row in df_copy.iterrows():
-        if row["application"] in impute_applications:
+        if row["application"] in remove_applications:
             if last_non_keyboard is not None:
                 df_copy.loc[index, "application"] = last_non_keyboard
         else:
@@ -124,7 +124,7 @@ def get_preprompted_text(ocr_result, application, timestamp):
     frame_text = get_screenshot_preprompt(application, timestamp) + frame_cleaned_text
     return frame_text
 
-def get_context_around_frame_id(frame_id, frames_df, ocr_results_df, context_buffer=5):
+def get_context_around_frame_id(frame_id, frames_df, db, context_buffer=5):
     """Used by the Long Context Querying method. Pulls context_buffer frames before and after 
     the provided frame_id and combines them into a single str. It does some deduplication but
     keeps the entire text of the frame_id passed.
@@ -133,6 +133,7 @@ def get_context_around_frame_id(frame_id, frames_df, ocr_results_df, context_buf
     application_df = frames_df.loc[frames_df['application'] == frame_application].reset_index(drop=True)
     frame_index = int(application_df.index.get_loc(application_df[application_df['id'] == frame_id].index[0]))
     application_df = application_df.iloc[frame_index-context_buffer:frame_index+context_buffer]
+    ocr_results_df = db.get_frames_with_ocr(frame_ids=set(application_df['id']))
     text_list = list()
     for i, row in application_df.iterrows():
         ocr_res = ocr_results_df.loc[ocr_results_df['frame_id'] == row['id']]
