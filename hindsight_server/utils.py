@@ -14,6 +14,20 @@ def make_dir(d):
     if not os.path.exists(d):
         os.makedirs(d)
 
+impute_applications = {"com-google-android-inputmethod-latin"}
+def impute_applications(df):
+    df_copy = df.copy()
+    
+    last_non_keyboard = None
+    for index, row in df_copy.iterrows():
+        if row["application"] in impute_applications:
+            if last_non_keyboard is not None:
+                df_copy.loc[index, "application"] = last_non_keyboard
+        else:
+            last_non_keyboard = row["application"]
+    
+    return df_copy
+
 def add_datetimes(df):
     """Adds UTC datetime and local datetime columns to a DataFrame with a UTC timestamp in milliseconds"""
     df['datetime_utc'] = pd.to_datetime(df['timestamp'] / 1000, unit='s', utc=True)

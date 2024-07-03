@@ -1,41 +1,16 @@
 """Script for running the Hindsight Server."""
 import os
-import gc
-import mlx
-import atexit
-import time
 import logging
-import platform
-import shutil
-import queue
-import threading
-from datetime import datetime, timedelta
 from pathlib import Path
 from random import randrange
 from werkzeug.utils import secure_filename
-from flask import Flask, request, jsonify, abort
-from flask_executor import Executor
-import pandas as pd
+from flask import Flask, request, jsonify, abort, Blueprint
+from celery import Celery
 
-from run_chromadb_ingest import get_chroma_collection, run_chroma_ingest_batched
-from db import HindsightDB
-from config import RAW_SCREENSHOTS_DIR, SERVER_LOG_FILE, SECRET_API_KEY, HINDSIGHT_SERVER_DIR
-import query
+from config import SERVER_LOG_FILE, SECRET_API_KEY, HINDSIGHT_SERVER_DIR
 import utils
-
-if platform.system() == 'Darwin': # OCR only available for MAC currently
-    import run_ocr
-
-app = Flask(__name__)
-executor = Executor(app)
-
-# Set up logging to a file
-handler = logging.FileHandler(SERVER_LOG_FILE)
-handler.setLevel(logging.DEBUG)
-formatter = logging.basicConfig(level=logging.DEBUG,
-                    format='%(asctime)s %(levelname)s %(name)s %(threadName)s : %(message)s')
-handler.setFormatter(formatter)
-app.logger.addHandler(handler)
+import query
+from db import HindsightDB
 
 threads = list()
 
@@ -44,81 +19,41 @@ SCREENSHOTS_TMP_DIR = HINDSIGHT_SERVER_DIR/ "raw_screenshots_tmp"
 SSL_CERT = HINDSIGHT_SERVER_DIR / "server.crt"
 SSL_KEY = HINDSIGHT_SERVER_DIR / "server.key"
 
-image_processing_queue = queue.Queue()
 utils.make_dir(SCREENSHOTS_TMP_DIR)
 
 db = HindsightDB()
 
-last_image_upload = datetime.now() # Used to have chromadb ingestion happen after iamge upload
+app = Flask(__name__)
 
-def chromadb_process_images():
-    """Ingests frames into chromadb with OCR results that haven't been ingested already."""
-    global last_image_upload
-    time.sleep(randrange(120)) # Make offsync when multiple
-    while True:
-        if datetime.now() - last_image_upload < timedelta(minutes=2):
-            time.sleep(120)
-            continue
-        if db.acquire_lock("chromadb"): # Lock to ensure only one ingest occurs at a time
-            try:
-                frames_df = db.get_non_chromadb_processed_frames_with_ocr().sort_values(by='timestamp', ascending=True)
-                frame_ids = set(frames_df['id'])
-                if len(frame_ids) == 0:
-                    db.release_lock("chromadb")
-                    time.sleep(120)
-                    continue
-                print(f"Running process_images_batched on {len(frame_ids)} frames")
-                mlx.core.metal.clear_cache()
-                chroma_collection = get_chroma_collection()
-                ocr_results_df = db.get_frames_with_ocr(frame_ids=frame_ids)
-                run_chroma_ingest_batched(db=db, df=frames_df, ocr_results_df=ocr_results_df, chroma_collection=chroma_collection)
-                app.logger.info(f"Ran process_images_batched on {len(frame_ids)} frames")
-                db.release_lock("chromadb")
-                gc.collect()
-                mlx.core.metal.clear_cache()
-                time.sleep(120)
-            finally:
-                db.release_lock("chromadb")
-        else:
-            time.sleep(120)
+handler = logging.FileHandler(SERVER_LOG_FILE)
+handler.setLevel(logging.DEBUG)
+formatter = logging.basicConfig(level=logging.DEBUG,
+                    format='%(asctime)s %(levelname)s %(name)s %(threadName)s : %(message)s')
+handler.setFormatter(formatter)
+app.logger.addHandler(handler)
+app.config.update(
+    CELERY_BROKER_URL='redis://localhost:6379/0',
+    CELERY_RESULT_BACKEND='redis://localhost:6379/0'
+)
 
-def process_image_queue():
-    """Copies frame into correct directory in screenshot_dir. Inserts frame into frames table.
-    Runs OCR on frame and inserts results in ocr_results table.
-    """
-    global last_image_upload
-    while True:
-        if not db.check_lock("chromadb"): # Ensure OCR doesn't happen at the same time as chromadb
-            time.sleep(30)
-            continue
-        try:
-            item = image_processing_queue.get(timeout=20)
-            if item is None:
-                break  # Allows the thread to be stopped
-            filename, tmp_file = item
-            filename_s = filename.replace(".jpg", "").split("_")
-            application = filename_s[0]
-            timestamp = int(filename_s[1])
-            timestamp_obj = pd.to_datetime(timestamp / 1000, unit='s', utc=True)
-            destdir = os.path.join(RAW_SCREENSHOTS_DIR, f"{timestamp_obj.strftime('%Y/%m/%d')}/{application}/")
-            utils.make_dir(destdir)
-            filepath = os.path.abspath(os.path.join(destdir, filename))
-            shutil.move(tmp_file, filepath)
-            print(f"File saved to {filepath}")
+def make_celery(app):
+    celery = Celery(
+        app.import_name,
+        backend=app.config['CELERY_RESULT_BACKEND'],
+        broker=app.config['CELERY_BROKER_URL']
+    )
+    celery.conf.update(app.config)
 
-            # Insert into db and run OCR
-            frame_id = db.insert_frame(timestamp, filepath, application)
-            if platform.system() == 'Darwin':
-                run_ocr.run_ocr(frame_id=frame_id, path=filepath) # run_ocr inserts results into db
+    class ContextTask(celery.Task):
+        def __call__(self, *args, **kwargs):
+            with app.app_context():
+                return self.run(*args, **kwargs)
 
-        except queue.Empty:
-            continue
-        except Exception as e:
-            print(f"Error processing file: {e}")
-            app.logger.error(f"Error processing file: {e}")
-        else:
-            last_image_upload = datetime.now()
-            image_processing_queue.task_done()
+    celery.Task = ContextTask
+    return celery
+
+celery = make_celery(app)
+from server_tasks import run_query
 
 def verify_api_key():
     api_key = request.headers.get('Hightsight-API-Key')
@@ -137,9 +72,8 @@ def upload_image():
         filename = secure_filename(file.filename)
         tmp_file = os.path.join(SCREENSHOTS_TMP_DIR, filename)
         file.save(tmp_file)
-        image_processing_queue.put((filename, tmp_file))
         return jsonify({"status": "success", "message": "File successfully uploaded"}), 200
-    
+
 @app.route('/post_query', methods=['POST'])
 def post_query():
     if not verify_api_key():
@@ -151,25 +85,10 @@ def post_query():
     if 'query' not in data:
         return jsonify({"status": "error", "message": "Missing data in JSON"}), 400
     
-    query_id = db.insert_query(query=data['query'])
-    start_time = data['start_time'] if "start_time" in data else None
-    end_time = data['end_time'] if "end_time" in data else None
-
-    executor.submit(query.query_and_insert, query_id, data['query'], None, start_time, end_time)
-
-    # query_thread = threading.Thread(target=query.query_and_insert, 
-    #                                     args=(query_id, data['query'], None, start_time, end_time))
-
-    # query_thread.start()
-    
-    # try:
-    #     query_thread = threading.Thread(target=query.query_and_insert, 
-    #                                     args=(query_id, data['query'], None, start_time, end_time))
-
-    #     query_thread.start()
-    # except Exception as e:
-    #     app.logger.error(f"Error processing query {data['query']}: {e}")
-
+    context_start_timestamp = data['context_start_timestamp'] if "context_start_timestamp" in data else None
+    context_end_timestamp = data['context_end_timestamp'] if "context_end_timestamp" in data else None
+    query_id = db.insert_query(query=data['query'], context_start_timestamp=context_start_timestamp, context_end_timestamp=context_end_timestamp)
+    run_query(query_id=query_id, query_text=data['query'], context_start_timestamp=context_start_timestamp, context_end_timestamp=context_end_timestamp)
     return jsonify({"status": "success", "message": "Data received"}), 200
 
 @app.route('/get_queries', methods=['GET'])
@@ -183,47 +102,11 @@ def get_queries():
     print("Successully sent queries.")
     return jsonify(queries[:6])
     
-    
 @app.route('/ping', methods=['GET'])
 def ping_server():
     if not verify_api_key():
         abort(401)
     return jsonify({'status': 'success', 'message': 'Server is reachable'}), 200
-
-def process_tmp_dir():
-    """If the server fails to process images some may remain in the SCREENSHOTS_TMP_DIR.
-    Add them to the image_processing_queue."""
-    for f in os.listdir(SCREENSHOTS_TMP_DIR):
-        file_path = os.path.join(SCREENSHOTS_TMP_DIR, f)
-        image_processing_queue.put((f, file_path))
-
-def setup_threads():
-    global threads
-    num_image_process_threads = 2
-    for i in range(num_image_process_threads):
-        thread = threading.Thread(target=process_image_queue)
-        thread.start()
-        threads.append(thread)
-    process_images_batched_thread = threading.Thread(target=chromadb_process_images)
-    process_images_batched_thread.start()
-    threads.append(process_images_batched_thread)
-
-def initialize():
-    process_tmp_dir() # Since runs for each gunicorn worker will throw errors since files will be moved but can be ignored
-    setup_threads()
-
-with app.app_context():
-    initialize()
-
-def cleanup():
-    print("Cleaning up threads")
-    global threads
-    for _ in range(len(threads) - 1):  # Signal all threads to stop
-        image_processing_queue.put(None)
-    for thread in threads:
-        thread.join()
-
-atexit.register(cleanup)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=6000, ssl_context=(SSL_CERT, SSL_KEY))

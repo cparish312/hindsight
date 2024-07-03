@@ -73,7 +73,6 @@ def basic_retrieved_query(query_text, source_apps=None, utc_milliseconds_start_d
                           max_chroma_results=100, num_contexts=20, per_usage_results=1, model=None, tokenizer=None,
                           max_tokens=100, chroma_collection=None):
     """Grabs the closest per_usage_results frames within a usage. Combines all contexts into a single prompt."""
-    # chroma_collection = get_chroma_collection() if chroma_collection is None else chroma_collection
     chroma_search_results = query_chroma(query_text, source_apps, utc_milliseconds_start_date, utc_milliseconds_end_date, max_chroma_results,
                                          chroma_collection=chroma_collection)
     chroma_search_results_df = chroma_search_results_to_df(chroma_search_results)

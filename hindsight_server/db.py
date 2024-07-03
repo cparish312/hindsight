@@ -10,6 +10,7 @@ import tzlocal
 from zoneinfo import ZoneInfo
 
 from config import DATA_DIR
+import utils
 
 local_timezone = tzlocal.get_localzone()
 video_timezone = ZoneInfo("UTC")
@@ -83,20 +84,23 @@ class HindsightDB:
                     source_frame_ids TEXT,
                     timestamp INTEGER NOT NULL,
                     active BOOLEAN NOT NULL DEFAULT true,
-                    finished_timestamp INTEGER
+                    finished_timestamp INTEGER,
+                    context_start_timestamp INTEGER,
+                    context_end_timestamp INTEGER,
+                    context_applications TEXT
                 )
             ''')
 
             # Add the 'chromadb_processed' column if it does not exist
-            cursor.execute('''
-                PRAGMA table_info(queries)
-            ''')
-            columns = [row[1] for row in cursor.fetchall()]
-            if 'finished_timestamp' not in columns:
-                cursor.execute('''
-                    ALTER TABLE queries
-                    ADD COLUMN finished_timestamp INTEGER
-                ''')
+            # cursor.execute('''
+            #     PRAGMA table_info(queries)
+            # ''')
+            # columns = [row[1] for row in cursor.fetchall()]
+            # if 'finished_timestamp' not in columns:
+            #     cursor.execute('''
+            #         ALTER TABLE queries
+            #         ADD COLUMN finished_timestamp INTEGER
+            #     ''')
 
             # Commit the changes and close the connection
             conn.commit()
@@ -211,7 +215,7 @@ class HindsightDB:
             df = pd.read_sql_query(query, conn)
             return set(df['application'])
 
-    def get_frames(self, frame_ids=None):
+    def get_frames(self, frame_ids=None, impute_applications=True):
         """Select frames with associated OCR results."""
         with self.get_connection() as conn:
             # Query to get frames
@@ -223,6 +227,8 @@ class HindsightDB:
             # Use pandas to read the SQL query result into a DataFrame
             df = pd.read_sql_query(query, conn, params=tuple(frame_ids) if frame_ids else None)
             # df = df.loc[df['application'].isin(demo_apps)]
+            if impute_applications:
+                df = utils.impute_applications(df)
             return df
     
     def get_ocr_results(self, frame_id=None):
@@ -236,7 +242,7 @@ class HindsightDB:
             df = pd.read_sql_query(query, conn)
             return df
 
-    def get_frames_with_ocr(self, frame_ids=None):
+    def get_frames_with_ocr(self, frame_ids=None, impute_applications=True):
         """Select frames with associated OCR results."""
         with self.get_connection() as conn:
             # Query to get the frames with OCR results
@@ -251,9 +257,11 @@ class HindsightDB:
             
             # Use pandas to read the SQL query result into a DataFrame
             df = pd.read_sql_query(query, conn, params=tuple(frame_ids) if frame_ids else None)
+            if impute_applications:
+                df = utils.impute_applications(df)
             return df
     
-    def search(self, text=None, start_date=None, end_date=None, apps=None, n_seconds=None):
+    def search(self, text=None, start_date=None, end_date=None, apps=None, n_seconds=None, impute_applications=True):
         """Search for frames with OCR results containing the specified text.
         Args:
             text (str): text to search for
@@ -287,6 +295,9 @@ class HindsightDB:
                 '''
                 df = pd.read_sql_query(query, conn, params=('%' + text + '%',))
 
+            if impute_applications:
+                df = utils.impute_applications(df)
+
             if apps:
                 df = df.loc[df['application'].isin(apps)]
 
@@ -319,15 +330,15 @@ class HindsightDB:
             
             return result_df
         
-    def insert_query(self, query):
+    def insert_query(self, query, context_start_timestamp=None, context_end_timestamp=None, context_applications=None):
         """Inserts query into queries table"""
         query_timestamp = int(time.time() * 1000) # UTC in milliseconds
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                INSERT INTO queries (query, timestamp)
-                VALUES (?, ?)
-            ''', (query, query_timestamp))
+                INSERT INTO queries (query, timestamp, context_start_timestamp, context_end_timestamp, context_applications)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (query, query_timestamp, context_start_timestamp, context_end_timestamp, context_applications))
             
             # Get the last inserted frame_id
             query_id = cursor.lastrowid
@@ -379,7 +390,7 @@ class HindsightDB:
                 except sqlite3.Error as e:
                     print(f"An error occurred while updating chromadb_processed: {e}")
 
-    def get_non_chromadb_processed_frames_with_ocr(self, frame_ids=None):
+    def get_non_chromadb_processed_frames_with_ocr(self, frame_ids=None, impute_applications=True):
         """Select frames that have not been processed but chromadb but have associated OCR results."""
         with self.get_connection() as conn:
             # Query to get the frames with OCR results
@@ -392,4 +403,6 @@ class HindsightDB:
             
             # Use pandas to read the SQL query result into a DataFrame
             df = pd.read_sql_query(query, conn)
+            if impute_applications:
+                df = utils.impute_applications(df)
             return df
