@@ -34,8 +34,8 @@ import java.util.Date
 @Composable
 fun PostQueryScreen(queryViewModel: QueryViewModel = viewModel(), navController: NavController) {
     var query by remember { mutableStateOf("") }
-    var startTimeMillis by remember { mutableStateOf<Long?>(null) }
-    var endTimeMillis by remember { mutableStateOf<Long?>(null) }
+    var contextStartTimeMillis by remember { mutableStateOf<Long?>(null) }
+    var contextEndTimeMillis by remember { mutableStateOf<Long?>(null) }
     val context = LocalContext.current
 
     val queries = queryViewModel.queries.observeAsState(initial = listOf()).value
@@ -55,26 +55,26 @@ fun PostQueryScreen(queryViewModel: QueryViewModel = viewModel(), navController:
 
         Button(onClick = {
             showDatePicker(context) { millis ->
-                startTimeMillis = millis // Set the time in milliseconds
+                contextStartTimeMillis = millis // Set the time in milliseconds
             }
         }) {
-            Text(if (startTimeMillis != null) "Start Date: ${Date(startTimeMillis!!).toString()}" else "Pick Start Date")
+            Text(if (contextStartTimeMillis != null) "Start Date: ${Date(contextStartTimeMillis!!).toString()}" else "Pick Start Date")
         }
 
         Button(onClick = {
             showDatePicker(context) { millis ->
-                endTimeMillis = millis // Set the time in milliseconds
+                contextEndTimeMillis = millis // Set the time in milliseconds
             }
         }) {
-            Text(if (endTimeMillis != null) "End Date: ${Date(endTimeMillis!!).toString()}" else "Pick End Date")
+            Text(if (contextEndTimeMillis != null) "End Date: ${Date(contextEndTimeMillis!!).toString()}" else "Pick End Date")
         }
 
         Button(
             onClick = { if (context is MainActivity) {
-                queryViewModel.postQuery(query, startTimeMillis, endTimeMillis, context)
+                queryViewModel.postQuery(query, contextStartTimeMillis, contextEndTimeMillis, context)
                 query = ""
-                startTimeMillis = null
-                endTimeMillis = null
+                contextStartTimeMillis = null
+                contextEndTimeMillis = null
             }},
             modifier = Modifier.padding(top = 16.dp)
         ) {

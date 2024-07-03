@@ -27,6 +27,6 @@ interface ApiService {
 
 data class PostData(
     val query: String,
-    val start_time: Long? = null,
-    val end_time:Long? = null
+    val context_start_timestamp: Long? = null,
+    val context_end_timestamp:Long? = null
 )

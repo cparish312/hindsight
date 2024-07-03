@@ -26,8 +26,8 @@ class QueryViewModel : ViewModel() {
         ""
     ).toString()
 
-    fun postQuery(query: String, startTime: Long?, endTime: Long?, context: Context) {
-        makePostRequest(primaryUrl, query, startTime, endTime, context)
+    fun postQuery(query: String, contextStartTimestamp: Long?, contextEndTimestamp: Long?, context: Context) {
+        makePostRequest(primaryUrl, query, contextStartTimestamp, contextEndTimestamp, context)
     }
 
     private fun makePostRequest(baseUrl: String, query: String, startTime: Long?, endTime: Long?, context: Context, connectTimeout: Long = 1) {
