@@ -7,9 +7,12 @@ Look back on your digital experience with Hindsight! (very alpha)
 ## Overview
 Hindsight is an android app that takes a screenshot every 2 seconds. The server upload functionality allows a user to upload the screenshots to a server running on their personal computer.
 
-### Demo
+### Demos
 <a href="https://www.loom.com/share/669eecf3c04648d4aae1565ead56273f">
     <img style="max-width:300px;" src="https://cdn.loom.com/sessions/thumbnails/669eecf3c04648d4aae1565ead56273f-with-play.gif">
+</a>
+<a href="https://www.loom.com/share/8b3f6d4ed66d458c8b901ff5700563be">
+    <img style="max-width:300px;" src="https://cdn.loom.com/sessions/thumbnails/8b3f6d4ed66d458c8b901ff5700563be-with-play.gif">
 </a>
 
 ## Setup
@@ -31,7 +34,7 @@ Hindsight is an android app that takes a screenshot every 2 seconds. The server 
 3) **Running**
     * For querying you may need to change the LLM and Embedding models in `hindsight_server/config.py` depending on your machine
     * Run: `bash start_server.sh`
-        * This start both the `server_backend.py` which just runs as a python process and the `run_server.py` which runs using `gunicorn` for better server performance.
+        * This starts both the `server_backend.py` which just runs as a python process and the `run_server.py` which runs using `gunicorn` for better server performance.
 
 ### App
 1) Open `hindsight_android` in Android Studio.
