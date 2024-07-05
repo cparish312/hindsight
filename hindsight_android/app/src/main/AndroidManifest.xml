@@ -12,6 +12,7 @@
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE"
         tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
 
     <application
         android:name=".App"
@@ -61,5 +62,9 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_service_config" />
         </service>
+
+        <service android:name="com.connor.hindsight.services.AnnotateOverlayService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync"/>
     </application>
 </manifest>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:padding="8dp"
+    android:background="@drawable/bubble_background">
+
+    <EditText
+        android:id="@+id/editTextBubble"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Type annotation here..."
+        android:background="@android:color/white"
+        android:padding="10dp"
+        android:layout_above="@id/buttonSubmit"/>
+
+    <Button
+        android:id="@+id/buttonSubmit"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Submit"
+        android:layout_alignParentBottom="true"/>
+</RelativeLayout>
