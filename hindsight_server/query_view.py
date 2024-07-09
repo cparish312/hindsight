@@ -1,20 +1,15 @@
 """Computer GUI for querying and viewing queries."""
 import platform
-import threading
-import cv2
 import tzlocal
 from zoneinfo import ZoneInfo
 import pandas as pd
 import tkinter as tk
 from tkinter import ttk
 from datetime import timedelta
-from PIL import Image, ImageTk
 from tkcalendar import DateEntry
 
 from db import HindsightDB
-from run_chromadb_ingest import get_chroma_collection
-from timeline_view import Screenshot, TimelineViewer
-import query
+from timeline_view import TimelineViewer
 
 local_timezone = tzlocal.get_localzone()
 video_timezone = ZoneInfo("UTC")
@@ -24,7 +19,6 @@ class QueryViewer:
         self.master = master
         self.db = HindsightDB()
         self.images_df = self.get_images_df()
-        self.chroma_collection = get_chroma_collection()
         self.first_date = min(self.images_df['datetime_local'])
         self.screen_width = self.master.winfo_screenwidth()
         self.screen_height = self.master.winfo_screenheight()
@@ -53,7 +47,8 @@ class QueryViewer:
         self.query_label = ttk.Label(self.query_frame, text="New Query:")
         self.query_label.pack(side=tk.LEFT, padx=(0, 5))
 
-        self.query_entry = ttk.Entry(self.query_frame)
+        self.query_text = tk.StringVar()
+        self.query_entry = ttk.Entry(self.query_frame, textvariable=self.query_text)
         self.query_entry.pack(fill=tk.X, expand=True, side=tk.LEFT, padx=(0, 5))
         self.query_entry.bind("<Return>", lambda event: self.enter_new_query())
 
@@ -144,6 +139,7 @@ class QueryViewer:
 
     def enter_new_query(self):
         query_text = self.query_entry.get()
+        self.query_text.set("") 
 
         utc_milliseconds_start_date = self.convert_date_to_utc_milliseconds(self.start_date_entry.get_date())
         # Want to include all times within the end date

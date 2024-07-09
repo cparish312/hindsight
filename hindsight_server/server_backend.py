@@ -1,5 +1,6 @@
 """This contains the heavy processes of the hindsight server."""
 import os
+import glob
 import shutil
 import time
 import platform
@@ -50,6 +51,12 @@ def chromadb_process_images(frames_df):
     chroma_collection = get_chroma_collection()
     ocr_results_df = db.get_frames_with_ocr(frame_ids=frame_ids)
     run_chroma_ingest_batched(db=db, df=frames_df, ocr_results_df=ocr_results_df, chroma_collection=chroma_collection)
+
+def check_all_frames_ingested():
+    """Ensures that all screenshots in the RAW_SCREENSHOTS_DIR are s
+    ingested in the frames table
+    """
+    pass
 
 
 if __name__ == "__main__":

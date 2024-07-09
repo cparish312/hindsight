@@ -2,6 +2,7 @@
 import os
 import time
 import sqlite3
+import numpy as np
 import pandas as pd
 from datetime import timedelta
 from threading import Lock
@@ -370,6 +371,8 @@ class HindsightDB:
         with self.get_connection() as conn:
             query = f'''SELECT * FROM queries WHERE active = true'''
             df = pd.read_sql_query(query, conn)
+            # Impute Query Running... for running queries
+            df['result'] = df['result'].fillna("Query Running...")
             return df
         
     def get_unprocessed_queries(self):
@@ -377,6 +380,8 @@ class HindsightDB:
         with self.get_connection() as conn:
             query = f'''SELECT * FROM queries WHERE finished_timestamp IS NULL'''
             df = pd.read_sql_query(query, conn)
+            # Replace np.nan with None
+            df = df.replace({np.nan : None})
             return df
         
     def update_chromadb_processed(self, frame_ids, value=True):
