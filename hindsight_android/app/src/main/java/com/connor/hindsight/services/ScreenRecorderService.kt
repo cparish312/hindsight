@@ -208,7 +208,7 @@ class ScreenRecorderService : RecorderService() {
 
     override fun onDestroy() {
         Log.d("ScreenRecordingService", "Destroying Screen Recording Service")
-        sendBroadcast(Intent(SCREEN_RECORDER_STOPPED))
+        // sendBroadcast(Intent(SCREEN_RECORDER_STOPPED))
         isRunning = false
         handler?.removeCallbacks(imageCaptureRunnable!!) // Stop the recurring image capture
         imageReader?.close()
