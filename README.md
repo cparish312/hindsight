@@ -75,7 +75,7 @@ search_results = db.search(text="hindsight")
 * **Screenshots Per Auto Upload** This setting determines how many screenshots taken in a row before the app automatically attempts to upload to the server. (Could add setting to disable)
 
 ## Server Settings
-* **Add Android Application Alias** Can add android identifier aliases to the `hindsight_servers/res/android_identifers.json` file. Note: This file will take a little while to generate once the server starts running.
+* **Add Android Application Alias** Can add android identifier aliases to the `hindsight_servers/res/android_identifers.json` file. Note: This file will only be updated each time the server backend is started.
 
 ## Permissions
 * **Screen Broadcasting:** The App requires screen broadcasting each time recording is started. Ideally this is only needed if the phone is turned off or if the user intentionally stops recording (pausing is available as well). However, the app is very buggy so it may be required more often.

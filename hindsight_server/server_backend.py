@@ -83,9 +83,10 @@ def update_android_identifiers_file():
     utils.save_identifiers_to_alias(id_to_alias)
     print(f"{len(new_applications)} new application identifiers added to alias file.")
 
-ITERS_PER_SERVER_CLEAN_CHECK = 50
 if __name__ == "__main__":
-    iters_since_server_clean_check = 0
+    check_all_frames_ingested()
+    update_android_identifiers_file()
+    
     while True:
         unprocessed_queries = db.get_unprocessed_queries()
         if len(unprocessed_queries) > 0:
@@ -100,11 +101,5 @@ if __name__ == "__main__":
         non_chromadb_processed_frames_df = db.get_non_chromadb_processed_frames_with_ocr().sort_values(by='timestamp', ascending=True)
         if len(non_chromadb_processed_frames_df) > 0:
             chromadb_process_images(non_chromadb_processed_frames_df)
-
-        iters_since_server_clean_check += 1
-        if iters_since_server_clean_check >= ITERS_PER_SERVER_CLEAN_CHECK:
-            check_all_frames_ingested()
-            update_android_identifiers_file()
-            iters_since_server_clean_check = 0
             
         time.sleep(10)
