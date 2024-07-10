@@ -11,7 +11,7 @@
     <string name="pause">Pause</string>
     <string name="resume">Resume</string>
     <string name="delete">Delete</string>
-    <string name="recording_screen">Recording screen</string>
+    <string name="hindsight_recording">Hindsight Recording</string>
     <string name="record_screen">Record screen</string>
     <string name="cant_access_selected_folder">Can\'t access selected folder!</string>
     <string name="accessibility_service_description">Accessibility service for checking user active</string>

@@ -53,13 +53,28 @@ def chromadb_process_images(frames_df):
     run_chroma_ingest_batched(db=db, df=frames_df, ocr_results_df=ocr_results_df, chroma_collection=chroma_collection)
 
 def check_all_frames_ingested():
-    """Ensures that all screenshots in the RAW_SCREENSHOTS_DIR are s
-    ingested in the frames table
+    """Ensures that all screenshots in the RAW_SCREENSHOTS_DIR are
+    ingested in the frames table.
     """
-    pass
+    frames = db.get_frames()
+    screenshot_paths = glob.glob(f"{RAW_SCREENSHOTS_DIR}/*/*/*/*/*.jpg")
+    missing_screenshots = set(screenshot_paths) - set(frames['path'])
+    if len(missing_screenshots) > 0:
+        print(f"Ingesting {len(missing_screenshots)} screenshots missing from frames table.")
+        for ms_path in missing_screenshots:
+            filename = ms_path.split('/')[-1]
+            filename_s = filename.replace(".jpg", "").split("_")
+            application = filename_s[0]
+            timestamp = int(filename_s[1])
+            # Insert into db and run OCR
+            frame_id = db.insert_frame(timestamp, ms_path, application)
+            if platform.system() == 'Darwin':
+                run_ocr.run_ocr(frame_id=frame_id, path=ms_path) # run_ocr inserts results into db
 
 
+ITERS_PER_SERVER_CLEAN_CHECK = 100
 if __name__ == "__main__":
+    iters_since_server_clean_check = 0
     while True:
         unprocessed_queries = db.get_unprocessed_queries()
         if len(unprocessed_queries) > 0:
@@ -74,5 +89,10 @@ if __name__ == "__main__":
         non_chromadb_processed_frames_df = db.get_non_chromadb_processed_frames_with_ocr().sort_values(by='timestamp', ascending=True)
         if len(non_chromadb_processed_frames_df) > 0:
             chromadb_process_images(non_chromadb_processed_frames_df)
+
+        iters_since_server_clean_check += 1
+        if iters_since_server_clean_check >= ITERS_PER_SERVER_CLEAN_CHECK:
+            check_all_frames_ingested()
+            iters_since_server_clean_check = 0
             
         time.sleep(10)

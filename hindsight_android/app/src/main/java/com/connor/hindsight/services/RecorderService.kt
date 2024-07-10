@@ -43,6 +43,7 @@ abstract class RecorderService : LifecycleService() {
     var onRecorderStateChanged: (RecorderState) -> Unit = {}
     open val fgServiceType: Int? = null
     var recorderState: RecorderState = RecorderState.IDLE
+    var screenOn: Boolean = true
 
     private val recorderReceiver = object : BroadcastReceiver() {
         @SuppressLint("NewApi")
@@ -56,10 +57,10 @@ abstract class RecorderService : LifecycleService() {
             }
             when (intent?.action) {
                 Intent.ACTION_SCREEN_OFF -> {
-                    pause()
+                    screenOn = false
                 }
                 Intent.ACTION_SCREEN_ON -> {
-                    resume()
+                    screenOn = true
                 }
             }
         }

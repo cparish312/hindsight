@@ -16,10 +16,12 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
+import com.connor.hindsight.DB
 import com.connor.hindsight.MainActivity
 import com.connor.hindsight.R
 import com.connor.hindsight.network.RetrofitClient
 import com.connor.hindsight.network.interfaces.ApiService
+import com.connor.hindsight.network.interfaces.SyncDBData
 import com.connor.hindsight.utils.NotificationHelper
 import com.connor.hindsight.utils.Preferences
 import com.connor.hindsight.utils.getImageDirectory
@@ -36,6 +38,10 @@ import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.ResponseBody
+import org.json.JSONArray
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
 class ServerUploadService : LifecycleService() {
     val notificationTitle: String = "Hindsight Server Upload"
@@ -85,6 +91,10 @@ class ServerUploadService : LifecycleService() {
 
         sendBroadcast(Intent(UPLOADER_STARTED))
 
+        CoroutineScope(Dispatchers.IO).launch {
+            syncDatabase()
+        }
+
         screenshotDirectory = getImageDirectory(this)
         syncedScreenshotDirectory = getSyncedImageDirectory(this)
 
@@ -92,6 +102,61 @@ class ServerUploadService : LifecycleService() {
             uploadAllImages()
         }
         super.onCreate()
+    }
+
+    private suspend fun getLastTimestamp(table: String): Int? {
+        val serverUrl: String = Preferences.prefs.getString(
+            Preferences.localurl,
+            ""
+        ).toString()
+        val retrofit = RetrofitClient.getInstance(serverUrl, numTries = 3)
+        val client = retrofit.create(ApiService::class.java)
+
+        return try {
+            val response = client.getLastTimestamp(table)
+            if (response.isSuccessful) {
+                response.body()?.last_timestamp?.toInt()
+            } else {
+                println("Failed to fetch the timestamp: ${response.errorBody()?.string()}")
+                null
+            }
+        } catch (t: Throwable) {
+            println("Error fetching timestamp: ${t.message}")
+            null
+        }
+    }
+
+    private suspend fun syncDatabase() {
+        val dbHelper = DB(this@ServerUploadService)
+
+        val lastLocationsTimestamp = getLastTimestamp("locations")
+        val syncLocationsCursor = dbHelper.getLocations(lastLocationsTimestamp)
+        val syncLocations = dbHelper.convertCursorToLocations(syncLocationsCursor)
+        Log.d("ServerUploadService", "Sync locations: ${syncLocations.size}")
+
+        val lastAnnotationsTimestamp = getLastTimestamp("annotations")
+        val syncAnnotationsCursor = dbHelper.getAnnotations(lastAnnotationsTimestamp)
+        val syncAnnotations = dbHelper.convertCursorToAnnotations(syncAnnotationsCursor)
+        Log.d("ServerUploadService", "Sync annotations: ${syncAnnotations.size}")
+
+        val serverUrl: String = Preferences.prefs.getString(
+            Preferences.localurl,
+            ""
+        ).toString()
+        val retrofit = RetrofitClient.getInstance(serverUrl, numTries = 3)
+        val client = retrofit.create(ApiService::class.java)
+        val syncData = SyncDBData(syncAnnotations, syncLocations)
+
+        try {
+            val response = client.syncDB(syncData)
+            if (response.isSuccessful) {
+                Log.d("ServerUploadService", "DB Sync successful")
+            } else {
+                Log.e("ServerUploadService", "DB Sync failed: ${response.errorBody()?.string()}")
+            }
+        } catch (e: Exception) {
+            Log.e("ServerUploadService", "Network call failed with exception: ${e.message}")
+        }
     }
 
     private suspend fun uploadAllImages() {

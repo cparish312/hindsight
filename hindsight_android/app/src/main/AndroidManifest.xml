@@ -13,6 +13,8 @@
     <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE"
         tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
 
     <application
         android:name=".App"
@@ -39,7 +41,7 @@
         </activity>
 
         <service
-            android:name="com.connor.hindsight.services.ScreenRecorderService"
+            android:name="com.connor.hindsight.services.BackgroundRecorderService"
             android:exported="false"
             android:foregroundServiceType="mediaProjection">
         </service>

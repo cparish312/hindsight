@@ -23,7 +23,7 @@ import com.connor.hindsight.R
 import com.connor.hindsight.enums.RecorderState
 import com.connor.hindsight.services.KeyTrackingService
 import com.connor.hindsight.services.RecorderService
-import com.connor.hindsight.services.ScreenRecorderService
+import com.connor.hindsight.services.BackgroundRecorderService
 import com.connor.hindsight.utils.PermissionHelper
 import com.connor.hindsight.utils.Preferences
 
@@ -41,7 +41,7 @@ class RecorderModel : ViewModel() {
             recorderService?.onRecorderStateChanged = {
                 recorderState = it
             }
-            (recorderService as? ScreenRecorderService)?.prepare(activityResult!!)
+            (recorderService as? BackgroundRecorderService)?.prepare(activityResult!!)
             recorderService?.start()
         }
 
@@ -52,7 +52,7 @@ class RecorderModel : ViewModel() {
 
     fun startVideoRecorder(context: Context, result: ActivityResult) {
         activityResult = result
-        val serviceIntent = Intent(context, ScreenRecorderService::class.java)
+        val serviceIntent = Intent(context, BackgroundRecorderService::class.java)
         startRecorderService(context, serviceIntent)
     }
 
@@ -62,7 +62,7 @@ class RecorderModel : ViewModel() {
         }
 
         listOfNotNull(
-            ScreenRecorderService::class.java,
+            BackgroundRecorderService::class.java,
             KeyTrackingService::class.java
         ).forEach {
             runCatching {
@@ -85,7 +85,7 @@ class RecorderModel : ViewModel() {
         // Doesn't work if app is reopened through notification
         Log.d("RecorderModel", "Stop Recorder Service")
         listOfNotNull(
-            ScreenRecorderService::class.java,
+            BackgroundRecorderService::class.java,
             KeyTrackingService::class.java
         ).forEach {
             context.stopService(Intent(context, it))

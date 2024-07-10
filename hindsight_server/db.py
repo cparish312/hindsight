@@ -103,6 +103,22 @@ class HindsightDB:
             #         ADD COLUMN finished_timestamp INTEGER
             #     ''')
 
+            # Create locations table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS locations (
+                    timestamp INTEGER NOT NULL PRIMARY KEY,
+                    latitude DOUBLE NOT NULL,
+                    longitude DOUBLE NOT NULL
+                )
+            ''')
+
+            # Create locations table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS annotations (
+                    timestamp INTEGER NOT NULL PRIMARY KEY,
+                    text Text
+                )
+            ''')
             # Commit the changes and close the connection
             conn.commit()
 
@@ -417,4 +433,56 @@ class HindsightDB:
             df = pd.read_sql_query(query, conn)
             if impute_applications:
                 df = utils.impute_applications(df)
+            return df
+        
+    def get_last_timestamp(self, table):
+        """Returns the most recent timestamp in the table provided."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            query = f"SELECT MAX(timestamp) FROM {table}"
+            cursor.execute(query)
+            # Fetch the result
+            max_timestamp = cursor.fetchone()[0]
+            return max_timestamp
+        
+    def insert_annotations(self, annotations):
+        """Insert annotations into annotations table."""
+        with self.db_lock:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.executemany('''
+                    INSERT INTO annotations (timestamp, text)
+                    VALUES (?, ?)
+                ''', [(a['timestamp'], a['text']) for a in annotations])
+                
+                conn.commit()
+                
+                print(f"{len(annotations)} annotations added successfully.")
+
+    def get_annotations(self):
+        """Returns all annotations."""
+        with self.get_connection() as conn:
+            query = f'''SELECT * FROM annotations'''
+            df = pd.read_sql_query(query, conn)
+            return df
+
+    def insert_locations(self, locations):
+        """Insert locations into locations table."""
+        with self.db_lock:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.executemany('''
+                    INSERT INTO locations (latitude, longitude, timestamp)
+                    VALUES (?, ?, ?)
+                ''', [(l['latitude'], l['longitude'], l['timestamp']) for l in locations])
+                
+                conn.commit()
+                
+                print(f"{len(locations)} locations added successfully.")
+
+    def get_locations(self):
+        """Returns all locations."""
+        with self.get_connection() as conn:
+            query = f'''SELECT * FROM locations'''
+            df = pd.read_sql_query(query, conn)
             return df

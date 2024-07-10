@@ -21,7 +21,7 @@ class AnnotationsViewModel(private val dbHelper: DB) : ViewModel() {
     @SuppressLint("Range")
     private fun loadAnnotations() {
         viewModelScope.launch(Dispatchers.IO) {
-            val cursor = dbHelper.getAllAnnotations()
+            val cursor = dbHelper.getAnnotations()
             val items = mutableListOf<String>()
             while (cursor.moveToNext()) {
                 val text = cursor.getString(cursor.getColumnIndex("text"))

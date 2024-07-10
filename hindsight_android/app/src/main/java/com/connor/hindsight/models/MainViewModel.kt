@@ -11,7 +11,7 @@ import androidx.annotation.RequiresApi
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.connor.hindsight.network.services.ServerUploadService
-import com.connor.hindsight.services.ScreenRecorderService
+import com.connor.hindsight.services.BackgroundRecorderService
 import com.connor.hindsight.utils.Preferences
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,11 +27,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     )
     val screenRecordingEnabled = _screenRecordingEnabled.asStateFlow()
 
+    private val _locationTrackingEnabled = MutableStateFlow(
+        Preferences.prefs.getBoolean(Preferences.locationtrackingenabled, false)
+    )
+    val locationTrackingEnabled = _locationTrackingEnabled.asStateFlow()
+
     private val _isUploading = MutableStateFlow(false)
     val isUploading = _isUploading.asStateFlow()
-
-    private val _locationTrackingEnabled = MutableStateFlow(false)
-    val locationTrackingEnabled = _locationTrackingEnabled.asStateFlow()
 
     private val _keyloggingEnabled = MutableStateFlow(false)
     val keyloggingEnabled = _keyloggingEnabled.asStateFlow()
@@ -50,7 +52,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     Log.d("MainViewModel", "UPLOADER_STARTED")
                     _isUploading.value = true
                 }
-                ScreenRecorderService.SCREEN_RECORDER_STOPPED -> {
+                BackgroundRecorderService.SCREEN_RECORDER_STOPPED -> {
                     Log.d("MainViewModel", "SCREEN_RECORDER_STOPPED")
                     _screenRecordingEnabled.value = false
                     Preferences.prefs.edit().putBoolean(
@@ -74,7 +76,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val intentFilter = IntentFilter().apply {
             addAction(ServerUploadService.UPLOADER_FINISHED)
             addAction(ServerUploadService.UPLOADER_STARTED)
-            addAction(ScreenRecorderService.SCREEN_RECORDER_STOPPED)
+            addAction(BackgroundRecorderService.SCREEN_RECORDER_STOPPED)
             addAction(RecorderModel.SCREEN_RECORDER_PERMISSION_DENIED)
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -90,7 +92,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun toggleScreenRecording() {
         _screenRecordingEnabled.value = !_screenRecordingEnabled.value
-        Preferences.prefs.edit().putBoolean("ScreenRecordingEnabled", _screenRecordingEnabled.value)
+        Preferences.prefs.edit().putBoolean(Preferences.screenrecordingenabled, _screenRecordingEnabled.value)
             .apply()
 
         viewModelScope.launch {
@@ -104,6 +106,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun toggleLocationTracking() {
         _locationTrackingEnabled.value = !_locationTrackingEnabled.value
+        Preferences.prefs.edit().putBoolean(Preferences.locationtrackingenabled, _locationTrackingEnabled.value)
+            .apply()
     }
 
     fun toggleKeylogging() {

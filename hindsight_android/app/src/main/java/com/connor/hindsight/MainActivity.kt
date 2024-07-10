@@ -21,7 +21,7 @@ import androidx.core.content.ContextCompat
 import com.connor.hindsight.models.RecorderModel
 import com.connor.hindsight.network.services.ServerUploadService
 import com.connor.hindsight.services.RecorderService
-import com.connor.hindsight.services.ScreenRecorderService
+import com.connor.hindsight.services.BackgroundRecorderService
 import com.connor.hindsight.ui.screens.AppNavigation
 import com.connor.hindsight.ui.theme.HindsightTheme
 import com.connor.hindsight.utils.Preferences
@@ -63,10 +63,10 @@ class MainActivity : ComponentActivity() {
     }
 
     fun requestScreenCapturePermission() {
-        if (ScreenRecorderService.isRunning) {
+        if (BackgroundRecorderService.isRunning) {
             Log.d(
                 "MainActivity",
-                "Ran requestScreenCapturePermission but ScreenRecorderService is running"
+                "Ran requestScreenCapturePermission but BackgroundRecorderService is running"
             )
             return
         }

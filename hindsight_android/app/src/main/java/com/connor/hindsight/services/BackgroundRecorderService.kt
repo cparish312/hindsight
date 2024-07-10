@@ -2,7 +2,6 @@ package com.connor.hindsight.services
 
 import android.app.Activity
 import android.content.Context
-import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
 import android.graphics.PixelFormat
@@ -28,10 +27,16 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.lang.SecurityException
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.tasks.Task
+import android.location.Location
+import com.connor.hindsight.DB
+import java.util.concurrent.Executors
 
-class ScreenRecorderService : RecorderService() {
+class BackgroundRecorderService : RecorderService() {
     override val notificationTitle: String
-        get() = getString(R.string.recording_screen)
+        get() = getString(R.string.hindsight_recording)
 
     private var virtualDisplay: VirtualDisplay? = null
     private var mediaProjection: MediaProjection? = null
@@ -39,7 +44,7 @@ class ScreenRecorderService : RecorderService() {
 
     private var imageReader: ImageReader? = null
     private var handler: Handler? = null
-    private var imageCaptureRunnable: Runnable? = null
+    private var recordRunnable: Runnable? = null
 
     private var recorderLoopStopped: Boolean = false
 
@@ -54,6 +59,10 @@ class ScreenRecorderService : RecorderService() {
         50
     )
 
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private var lastKnownLatitude: Double? = null
+    private var lastKnownLongitude: Double? = null
+
     override val fgServiceType: Int?
         get() = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
@@ -64,6 +73,11 @@ class ScreenRecorderService : RecorderService() {
     fun prepare(data: ActivityResult) {
         this.activityResult = data
         initMediaProjection()
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
     }
 
     private fun initMediaProjection() {
@@ -126,14 +140,25 @@ class ScreenRecorderService : RecorderService() {
 
 
             handler = Handler(Looper.getMainLooper())
-            imageCaptureRunnable = object : Runnable {
+            recordRunnable = object : Runnable {
                 override fun run() {
+                    if (Preferences.prefs.getBoolean(
+                        Preferences.locationtrackingenabled,
+                        false
+                    )) {
+                        addLastKnownLocation()
+                    }
+                    if (!screenOn) {
+                        Log.d("ScreenRecordingService", "Screen is off, skipping screenshot")
+                        postRecorderLoop(this)
+                        return
+                    }
                     if (recordWhenActive && !UserActivityState.userActive) {
                         Log.d(
                             "ScreenRecordingService",
                             "Skipping Screenshot as User has been inactive"
                         )
-                        postScreenshot(this)
+                        postRecorderLoop(this)
                         return
                     }
                     val image = imageReader!!.acquireLatestImage()
@@ -149,20 +174,20 @@ class ScreenRecorderService : RecorderService() {
                         val bitmap = Bitmap.createBitmap(w, height, Bitmap.Config.ARGB_8888)
                         bitmap.copyPixelsFromBuffer(buffer)
 
-                        saveImageData(bitmap, this@ScreenRecorderService)
+                        saveImageData(bitmap, this@BackgroundRecorderService)
                         it.close()
                     }
                     // Schedule the next capture
                     UserActivityState.userActive = false
-                    postScreenshot(this)
+                    postRecorderLoop(this)
                 }
             }
             // Initial delay before starting the recurring task
-            handler?.postDelayed(imageCaptureRunnable!!, 2000) // Start after a delay of 2 seconds
+            handler?.postDelayed(recordRunnable!!, 2000) // Start after a delay of 2 seconds
         }
     }
 
-    private fun postScreenshot(runnable: Runnable) {
+    private fun postRecorderLoop(runnable: Runnable) {
         if (recorderState == RecorderState.ACTIVE) {
             recorderLoopStopped = false
             handler?.postDelayed(runnable, 2000)
@@ -210,7 +235,7 @@ class ScreenRecorderService : RecorderService() {
         Log.d("ScreenRecordingService", "Destroying Screen Recording Service")
         // sendBroadcast(Intent(SCREEN_RECORDER_STOPPED))
         isRunning = false
-        handler?.removeCallbacks(imageCaptureRunnable!!) // Stop the recurring image capture
+        handler?.removeCallbacks(recordRunnable!!) // Stop the recurring record capture
         imageReader?.close()
         virtualDisplay?.release()
         mediaProjection?.stop() // This will trigger the callback's onStop method
@@ -221,7 +246,36 @@ class ScreenRecorderService : RecorderService() {
         super.resume()
         // recorderLoopStopped ensures that the previous image capture is stopped
         if (recorderState == RecorderState.ACTIVE && recorderLoopStopped) {
-            handler?.postDelayed(imageCaptureRunnable!!, 2000)
+            handler?.postDelayed(recordRunnable!!, 2000)
+        }
+    }
+
+    private fun addLocationToDatabase(latitude: Double, longitude: Double){
+        val dbHelper = DB(this@BackgroundRecorderService)
+        dbHelper.addLocation(latitude, longitude)
+    }
+
+    private fun addLastKnownLocation() {
+        try {
+            val locationResult: Task<Location> = fusedLocationClient.lastLocation
+            val backgroundExecutor = Executors.newSingleThreadExecutor()
+            locationResult.addOnCompleteListener(backgroundExecutor) { task ->
+                if (task.isSuccessful && task.result != null) {
+                    val lastKnownLocation: Location = task.result!!
+                    if (lastKnownLatitude != lastKnownLocation.latitude ||
+                        lastKnownLongitude != lastKnownLocation.longitude) {
+                        lastKnownLatitude = lastKnownLocation.latitude
+                        lastKnownLongitude = lastKnownLocation.longitude
+                        addLocationToDatabase(lastKnownLatitude!!, lastKnownLongitude!!)
+                    }
+                } else {
+                    Log.d("BackgroundRecorderService",
+                        "No location detected. Make sure location is enabled on the device.")
+                }
+            }
+        } catch (e: SecurityException) {
+            // Handle the exception
+            println("SecurityException: ${e.message}")
         }
     }
 

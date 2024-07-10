@@ -1,6 +1,7 @@
 package com.connor.hindsight.network
 
 import com.connor.hindsight.utils.Preferences
+import com.jakewharton.retrofit2.adapter.kotlin.coroutines.CoroutineCallAdapterFactory
 import okhttp3.Interceptor
 import java.util.concurrent.TimeUnit
 import okhttp3.OkHttpClient
@@ -36,6 +37,7 @@ object RetrofitClient {
         return Retrofit.Builder()
             .baseUrl(baseUrl)
             .addConverterFactory(GsonConverterFactory.create())
+            .addCallAdapterFactory(CoroutineCallAdapterFactory())
             .client(client)
             .build()
     }

@@ -79,6 +79,57 @@ def get_queries():
         queries.append({"query": row['query'], "result": row['result']})
     print("Successully sent queries.")
     return jsonify(queries[:6])
+
+@main_app.route('/get_last_timestamp', methods=['GET'])
+def get_last_timestamp():
+    if not verify_api_key():
+        abort(401)
+
+    table = request.args.get('table')
+    if not table:
+        return jsonify({"status": "error", "message": "Missing table parameter"}), 400
+    
+    try:
+        last_timestamp = db.get_last_timestamp(table)
+    except:
+        return jsonify({"status": "error", "message": f"Couldn't retrieve last timestamp for table {table}"}), 400
+    
+    print(f"Successfully sent last timestamp for {table}.")
+    return jsonify({"last_timestamp": last_timestamp})
+
+@main_app.route('/sync_db', methods=['POST'])
+def sync_db():
+    if not verify_api_key():
+        abort(401)
+    data = request.get_json()
+    if not data:
+        return jsonify({'status': 'error', 'message': 'No data provided'}), 400
+    
+    annotations = data.get('annotations', [])
+    locations = data.get('locations', [])
+
+    print(type(annotations))
+    print(type(locations))
+    
+    try:
+        ingested_annotations_timestamps = set(db.get_annotations()['timestamp'])
+        annotations = [a for a in annotations if a['timestamp'] not in ingested_annotations_timestamps]
+        for a in annotations:
+            print(a['timestamp'])
+
+        for a in locations:
+            print(a['timestamp'])
+        # Insert annotations
+        db.insert_annotations(annotations)
+        
+        ingested_locations_timestamps = set(db.get_locations()['timestamp'])
+        locations = [l for l in locations if l['timestamp'] not in ingested_locations_timestamps]
+        # Insert locations
+        db.insert_locations(locations)
+    except:
+        return jsonify({'status': 'error', 'message': 'Failed annotations or locations ingestion'}), 400
+
+    return jsonify({'status': 'success', 'message': 'Database successfully synced'})
     
 @main_app.route('/ping', methods=['GET'])
 def ping_server():
