@@ -6,6 +6,8 @@ DATA_DIR = os.path.join(base_dir, "data")
 RAW_SCREENSHOTS_DIR = os.path.join(DATA_DIR, "raw_screenshots")
 SERVER_LOG_FILE = os.path.join(DATA_DIR, "hindsight_server.log")
 
+ANDROID_IDENTIFIERS_ALIAS_FILE = os.path.join(base_dir, "res/android_identifiers.json")
+
 HOME = Path.home()
 HINDSIGHT_SERVER_DIR = HOME / ".hindsight_server"
 API_KEY_FILE = HINDSIGHT_SERVER_DIR / "secret_api_key.txt"

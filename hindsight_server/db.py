@@ -232,7 +232,7 @@ class HindsightDB:
             df = pd.read_sql_query(query, conn)
             return set(df['application'])
 
-    def get_frames(self, frame_ids=None, impute_applications=True):
+    def get_frames(self, frame_ids=None, impute_applications=True, application_alias=True):
         """Select frames with associated OCR results."""
         with self.get_connection() as conn:
             # Query to get frames
@@ -246,6 +246,12 @@ class HindsightDB:
             # df = df.loc[df['application'].isin(demo_apps)]
             if impute_applications:
                 df = utils.impute_applications(df)
+
+            df['application_org'] = df['application'].copy()
+            if application_alias:
+                id_to_alias = utils.get_identifiers_to_alias()
+                df['application'] = df['application'].map(id_to_alias)
+                df['application'] = df['application'].fillna(df['application_org'])
             return df
     
     def get_ocr_results(self, frame_id=None):

@@ -1,4 +1,5 @@
 import os
+import json
 import numpy as np
 import pandas as pd
 from statistics import mean
@@ -9,6 +10,8 @@ from zoneinfo import ZoneInfo
 
 local_timezone = tzlocal.get_localzone()
 video_timezone = ZoneInfo("UTC")
+
+from config import ANDROID_IDENTIFIERS_ALIAS_FILE
 
 def make_dir(d):
     if not os.path.exists(d):
@@ -142,3 +145,22 @@ def get_context_around_frame_id(frame_id, frames_df, db, context_buffer=5):
             if t not in text_list or row['id'] == frame_id:
                 text_list.append(t)
     return text_split_str.join(text_list)
+
+def get_identifiers_to_alias():
+    if not os.path.exists(ANDROID_IDENTIFIERS_ALIAS_FILE):
+        return {}
+    
+    with open(ANDROID_IDENTIFIERS_ALIAS_FILE, 'r') as infile:
+        id_to_alias = json.load(infile)
+
+    id_to_alias_cleaned = {}
+    for k, v in id_to_alias.items():
+        if v is None:
+            id_to_alias_cleaned[k] = k
+        else:
+            id_to_alias_cleaned[k] = v
+    return id_to_alias_cleaned
+
+def save_identifiers_to_alias(id_to_alias):
+    with open(ANDROID_IDENTIFIERS_ALIAS_FILE, 'w') as outfile:
+        json.dump(id_to_alias, outfile)

@@ -71,8 +71,19 @@ def check_all_frames_ingested():
             if platform.system() == 'Darwin':
                 run_ocr.run_ocr(frame_id=frame_id, path=ms_path) # run_ocr inserts results into db
 
+def update_android_identifiers_file():
+    """Adds any missing android identifiers to the android identifers json"""
+    id_to_alias = utils.get_identifiers_to_alias()
+    frames = db.get_frames()
+    new_applications = set(frames['application_org']) - set(id_to_alias.keys())
+    if len(new_applications) == 0:
+        return
+    for a in new_applications:
+        id_to_alias[a] = None
+    utils.save_identifiers_to_alias(id_to_alias)
+    print(f"{len(new_applications)} new application identifiers added to alias file.")
 
-ITERS_PER_SERVER_CLEAN_CHECK = 100
+ITERS_PER_SERVER_CLEAN_CHECK = 50
 if __name__ == "__main__":
     iters_since_server_clean_check = 0
     while True:
@@ -93,6 +104,7 @@ if __name__ == "__main__":
         iters_since_server_clean_check += 1
         if iters_since_server_clean_check >= ITERS_PER_SERVER_CLEAN_CHECK:
             check_all_frames_ingested()
+            update_android_identifiers_file()
             iters_since_server_clean_check = 0
             
         time.sleep(10)

@@ -70,9 +70,12 @@ frames_df = db.get_frames()
 search_results = db.search(text="hindsight")
 ```
 
-## Settings
+## App Settings
 * **User Activity Detection:** This setting is recommended as, depending on your phone usage, it can signifantly save battery life. The app will only take a screenshot if the user has been active since the last screenshot.
 * **Screenshots Per Auto Upload** This setting determines how many screenshots taken in a row before the app automatically attempts to upload to the server. (Could add setting to disable)
+
+## Server Settings
+* **Add Android Application Alias** Can add android identifier aliases to the `hindsight_servers/res/android_identifers.json` file. Note: This file will take a little while to generate once the server starts running.
 
 ## Permissions
 * **Screen Broadcasting:** The App requires screen broadcasting each time recording is started. Ideally this is only needed if the phone is turned off or if the user intentionally stops recording (pausing is available as well). However, the app is very buggy so it may be required more often.
