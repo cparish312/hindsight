@@ -48,7 +48,7 @@ Hindsight is an android app that takes a screenshot every 2 seconds. The server 
 ## Features
 Currently the app has 4 "working" functionalities.
 1) **Screen Recording:** Toggle screen recording on or off.
-2) **Location Tracking:** Will save the last retrieved location every 2 seconds (if it has changed). Currently only works if screen recording is also enabled.
+2) **Location Tracking:** Will save the last retrieved location every 2 seconds (if it has changed). Currently only works if screen recording is also enabled. Also be sure to give location tracking permissions.
 3) **Server Upload:** Upload screenshots directly to your server.
 * The screenshots timeline can be viewed and searched by running `python timeline_view.py`
 4) **Query:** Run natural language queries against the text in your screenshots. There are 3 types of querying techniques currently available:
