@@ -107,18 +107,10 @@ def sync_db():
     
     annotations = data.get('annotations', [])
     locations = data.get('locations', [])
-
-    print(type(annotations))
-    print(type(locations))
     
     try:
         ingested_annotations_timestamps = set(db.get_annotations()['timestamp'])
         annotations = [a for a in annotations if a['timestamp'] not in ingested_annotations_timestamps]
-        for a in annotations:
-            print(a['timestamp'])
-
-        for a in locations:
-            print(a['timestamp'])
         # Insert annotations
         db.insert_annotations(annotations)
         
