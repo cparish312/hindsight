@@ -163,4 +163,4 @@ def get_identifiers_to_alias():
 
 def save_identifiers_to_alias(id_to_alias):
     with open(ANDROID_IDENTIFIERS_ALIAS_FILE, 'w') as outfile:
-        json.dump(id_to_alias, outfile)
+        json.dump(id_to_alias, outfile, indent=4)

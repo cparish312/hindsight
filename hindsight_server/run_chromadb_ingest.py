@@ -59,7 +59,7 @@ def run_chroma_ingest(db, df, chroma_collection, ocr_results_df):
     db.update_chromadb_processed(frame_ids=set(df['id']))
     print(f"Successfully added {len(documents)} documents to chromadb")
 
-def run_chroma_ingest_batched(db, df, chroma_collection, ocr_results_df, batch_size=1000):
+def run_chroma_ingest_batched(db, df, chroma_collection, batch_size=1000):
     """Runs chromadb ingest in a batched fashion to balance efficiency and reliability."""
     num_batches = len(df) // batch_size + (1 if len(df) % batch_size > 0 else 0)
     for i in range(num_batches):
@@ -67,6 +67,7 @@ def run_chroma_ingest_batched(db, df, chroma_collection, ocr_results_df, batch_s
         start_index = i * batch_size
         end_index = start_index + batch_size
         frames_batch = df.iloc[start_index:end_index]
+        ocr_results_df = db.get_frames_with_ocr(frame_ids=set(frames_batch['id']))
         run_chroma_ingest(db=db, df=frames_batch, chroma_collection=chroma_collection, ocr_results_df=ocr_results_df)
 
 if __name__ == "__main__":
@@ -75,6 +76,5 @@ if __name__ == "__main__":
     frame_ids = set(frames_df['id'])
     print("Total frames to ingest", len(frame_ids))
     if len(frame_ids) > 0:
-        ocr_results_df = db.get_frames_with_ocr(frame_ids=frame_ids)
         chroma_collection = get_chroma_collection()
-        run_chroma_ingest_batched(db, frames_df, chroma_collection=chroma_collection, ocr_results_df=ocr_results_df)
+        run_chroma_ingest_batched(db, frames_df, chroma_collection=chroma_collection)

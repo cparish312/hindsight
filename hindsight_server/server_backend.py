@@ -49,8 +49,7 @@ def chromadb_process_images(frames_df):
     frame_ids = set(frames_df['id'])
     print(f"Running process_images_batched on {len(frame_ids)} frames")
     chroma_collection = get_chroma_collection()
-    ocr_results_df = db.get_frames_with_ocr(frame_ids=frame_ids)
-    run_chroma_ingest_batched(db=db, df=frames_df, ocr_results_df=ocr_results_df, chroma_collection=chroma_collection)
+    run_chroma_ingest_batched(db=db, df=frames_df, chroma_collection=chroma_collection)
 
 def check_all_frames_ingested():
     """Ensures that all screenshots in the RAW_SCREENSHOTS_DIR are
@@ -86,7 +85,8 @@ def update_android_identifiers_file():
 if __name__ == "__main__":
     check_all_frames_ingested()
     update_android_identifiers_file()
-    
+    print("Finished Backend setup")
+
     while True:
         unprocessed_queries = db.get_unprocessed_queries()
         if len(unprocessed_queries) > 0:
