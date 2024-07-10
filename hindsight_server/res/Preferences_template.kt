@@ -8,6 +8,7 @@ object Preferences {
     lateinit var prefs: SharedPreferences
 
     const val screenrecordingenabled = "ScreenRecordingEnabled"
+    const val locationtrackingenabled = "LocationTrackingEnabled"
     const val recordwhenactive = "RecordWhenActive"
     const val screenshotsperautoupload = "ScreenshotsPerAutoUpload"
     const val apikey = "ApiKey"

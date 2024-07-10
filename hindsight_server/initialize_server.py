@@ -13,7 +13,7 @@ import utils
 
 base_dir = Path(os.path.dirname(os.path.abspath(__file__)))
 
-INTERNET_URL = "https://95bb-74-12-5-78.ngrok-free.app" # Insert ngrok URL
+INTERNET_URL = "" # Insert ngrok URL
 
 def generate_random_key(length=30):
     characters = string.ascii_letters + string.digits
@@ -108,6 +108,7 @@ def initialize_server():
     utils.make_dir(HINDSIGHT_SERVER_DIR)
     local_ip = get_local_ip()
     prefs = {"screenrecordingenabled" : False,
+         "locationtrackingenabled" : False,
          "recordwhenactive" : False,
          "screenshotsperautoupload" : 100,
          "apikey" : generate_random_key(),
