@@ -2,6 +2,7 @@ import os
 import json
 import numpy as np
 import pandas as pd
+from collections import defaultdict
 from statistics import mean
 from datetime import timedelta
 
@@ -160,6 +161,14 @@ def get_identifiers_to_alias():
         else:
             id_to_alias_cleaned[k] = v
     return id_to_alias_cleaned
+
+def get_aliases_identifiers(aliases):
+    id_to_alias = get_identifiers_to_alias()
+    identifiers = set()
+    for i, a in id_to_alias.items():
+        if a in aliases:
+            identifiers.add(i)
+    return identifiers
 
 def save_identifiers_to_alias(id_to_alias):
     with open(ANDROID_IDENTIFIERS_ALIAS_FILE, 'w') as outfile:

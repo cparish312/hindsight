@@ -116,9 +116,19 @@ class HindsightDB:
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS annotations (
                     timestamp INTEGER NOT NULL PRIMARY KEY,
-                    text Text
+                    text TEXT
                 )
             ''')
+
+            # Create labels table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS labels (
+                    frame_id INTEGER NOT NULL,
+                    label TEXT NOT NULL,
+                    value TEXT 
+                )
+            ''')
+
             # Commit the changes and close the connection
             conn.commit()
 
@@ -470,6 +480,7 @@ class HindsightDB:
         with self.get_connection() as conn:
             query = f'''SELECT * FROM annotations'''
             df = pd.read_sql_query(query, conn)
+            df = df.dropna()
             return df
 
     def insert_locations(self, locations):
@@ -492,3 +503,20 @@ class HindsightDB:
             query = f'''SELECT * FROM locations'''
             df = pd.read_sql_query(query, conn)
             return df
+        
+    def add_label(self, frame_id, label, value=None):
+        with self.db_lock:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(f'''INSERT INTO labels (frame_id, label, value)
+                VALUES (?, ?, ?)''', (frame_id, label, value))
+                conn.commit()
+                print(f"Successfully added label {label}:{value} for {frame_id}")
+
+    def get_frames_with_label(self, label, value=None):
+        with self.db_lock:
+            with self.get_connection() as conn:
+                query = f"""SELECT frame_id FROM labels WHERE label = '{label}'
+                        AND value = '{value}'"""
+                df = pd.read_sql_query(query, conn)
+                return set(df['frame_id'])
