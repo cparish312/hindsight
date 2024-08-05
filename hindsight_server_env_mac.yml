@@ -5,7 +5,7 @@ channels:
   - pytorch-nightly
 dependencies:
   - flask
-  - python=3.9.19
+  - python=3.10
   - matplotlib
   - mlx=0.15.0
   - pillow=10.3.0
@@ -27,4 +27,5 @@ dependencies:
       - tkcalendar
       - ocrmac
       - mlx-embedding-models==0.0.9
-      - mlx-lm==0.14.3
+      - mlx-lm==0.16.1
+      - mlx-vlm==0.0.11
