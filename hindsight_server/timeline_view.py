@@ -27,10 +27,10 @@ class Screenshot:
     timestamp: datetime.timestamp
 
 class TimelineViewer:
-    def __init__(self, master, frame_id = None, max_width=1536, max_height=800, images_df=None):
+    def __init__(self, master, frame_id = None, max_width=1536, max_height=800, images_df=None, front_camera=None):
         self.master = master
         self.db = HindsightDB()
-        self.images_df = self.get_images_df() if images_df is None else images_df
+        self.images_df = self.get_images_df(front_camera) if images_df is None else images_df
         self.num_frames = len(self.images_df)
         self.max_frames_index = max(self.images_df.index)
         self.app_color_map = self.get_app_color_map()
@@ -54,9 +54,14 @@ class TimelineViewer:
 
         self.exit_flag = False
 
-    def get_images_df(self):
+    def get_images_df(self, front_camera):
         """Gets a DataFrame of all images at the time of inititation"""
-        images_df = self.db.get_frames()
+        if front_camera is None:
+            images_df = self.db.get_screenshots()
+        elif front_camera:
+            images_df = self.db.get_frames(applications=["frontCamera"])
+        else:
+            images_df = self.db.get_frames(applications=["backCamera"])
         images_df['datetime_utc'] = pd.to_datetime(images_df['timestamp'] / 1000, unit='s', utc=True)
         images_df['datetime_local'] = images_df['datetime_utc'].apply(lambda x: x.replace(tzinfo=video_timezone).astimezone(local_timezone))
         return images_df.sort_values(by='datetime_local', ascending=False)
@@ -276,7 +281,7 @@ class TimelineViewer:
 
 def main():
     root = tk.Tk()
-    app = TimelineViewer(root)
+    app = TimelineViewer(root, front_camera=True)
     root.protocol("WM_DELETE_WINDOW", app.on_window_close)  # Handle window close event
     root.mainloop()
 

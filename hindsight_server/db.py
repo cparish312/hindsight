@@ -241,18 +241,52 @@ class HindsightDB:
             # Use pandas to read the SQL query result into a DataFrame
             df = pd.read_sql_query(query, conn)
             return set(df['application'])
+        
+    def get_screenshots(self, frame_ids=None, impute_applications=True, application_alias=True):
+        """Select frames with associated OCR results."""
+        with self.get_connection() as conn:
+            excluded_apps = ("frontCamera", "backCamera")
+            # Query to get frames
+            query = 'SELECT * FROM frames WHERE application NOT IN (?, ?)'
+            params = excluded_apps
 
-    def get_frames(self, frame_ids=None, impute_applications=True, application_alias=True):
+            # Extend the query to filter by frame_ids if provided
+            if frame_ids:
+                placeholders = ','.join(['?'] * len(frame_ids))
+                query += f" AND id IN ({placeholders})"
+                params = excluded_apps + tuple(frame_ids)
+            
+            # Use pandas to read the SQL query result into a DataFrame
+            df = pd.read_sql_query(query, conn, params=params)
+            # df = df.loc[df['application'].isin(demo_apps)]
+            if impute_applications:
+                df = utils.impute_applications(df)
+
+            df['application_org'] = df['application'].copy()
+            if application_alias:
+                id_to_alias = utils.get_identifiers_to_alias()
+                df['application'] = df['application'].map(id_to_alias)
+                df['application'] = df['application'].fillna(df['application_org'])
+            return df
+
+    def get_frames(self, frame_ids=None, impute_applications=True, application_alias=True, applications=None):
         """Select frames with associated OCR results."""
         with self.get_connection() as conn:
             # Query to get frames
             query = '''SELECT * FROM frames'''
+            params = tuple()
+            if applications:
+                placeholders = ','.join(['?'] * len(applications))  # Create placeholders for the query
+                query += f" WHERE application IN ({placeholders})"
+                params += tuple(applications)
+
             if frame_ids:
                 placeholders = ','.join(['?'] * len(frame_ids))  # Create placeholders for the query
                 query += f" WHERE id IN ({placeholders})"
+                params += tuple(frame_ids)
             
             # Use pandas to read the SQL query result into a DataFrame
-            df = pd.read_sql_query(query, conn, params=tuple(frame_ids) if frame_ids else None)
+            df = pd.read_sql_query(query, conn, params=params if len(params) > 0 else None)
             # df = df.loc[df['application'].isin(demo_apps)]
             if impute_applications:
                 df = utils.impute_applications(df)

@@ -8,7 +8,7 @@ import multiprocessing
 import pandas as pd
 
 from db import HindsightDB
-from run_chromadb_ingest import get_chroma_collection, run_chroma_ingest_batched
+from chromadb_tools import get_chroma_collection, run_chroma_ingest_batched
 from run_server import SCREENSHOTS_TMP_DIR
 from config import RAW_SCREENSHOTS_DIR
 import query
@@ -36,8 +36,11 @@ def ingest_image(tmp_image_path):
     destdir = os.path.join(RAW_SCREENSHOTS_DIR, f"{timestamp_obj.strftime('%Y/%m/%d')}/{application}/")
     utils.make_dir(destdir)
     filepath = os.path.abspath(os.path.join(destdir, filename))
-    shutil.move(tmp_image_path, filepath)
-    print(f"File saved to {filepath}")
+    if not os.path.exists(filepath):
+        shutil.move(tmp_image_path, filepath)
+        print(f"File saved to {filepath}")
+    else:
+        os.remove(tmp_image_path)
 
     # Insert into db and run OCR
     frame_id = db.insert_frame(timestamp, filepath, application)

@@ -43,6 +43,10 @@ def extract_text_from_frame(path):
 
 def run_ocr(frame_id, path=None):
     """Runs OCR on the given frame_id and inserts results to ocr_results table."""
+    ocr_res = db.get_ocr_results(frame_id=frame_id)
+    if len(ocr_res) > 0:
+        print(f"Already have OCR results for {frame_id}")
+        return ocr_res
     path = db.get_frames(frame_ids=[frame_id]).iloc[0]['path'] if path is None else path
     ocr_res = extract_text_from_frame(path)
     db.insert_ocr_results(frame_id, ocr_res)

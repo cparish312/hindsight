@@ -149,6 +149,7 @@ class QueryViewer:
         for i in self.app_list.curselection():
             selected_apps.append(self.app_list.get(i))
         selected_apps = selected_apps if len(selected_apps) > 0 else None
+        print(selected_apps)
 
         query_id = self.db.insert_query(query=query_text, context_applications=selected_apps, context_start_timestamp=utc_milliseconds_start_date,
                                         context_end_timestamp=utc_milliseconds_end_date)

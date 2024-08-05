@@ -7,13 +7,13 @@ import secrets
 import subprocess
 from pathlib import Path
 
-from config import API_KEY_FILE, HINDSIGHT_SERVER_DIR
+from config import API_KEY_FILE, HINDSIGHT_SERVER_DIR, BASE_DIR
 
 import utils
 
 base_dir = Path(os.path.dirname(os.path.abspath(__file__)))
 
-INTERNET_URL = "" # Insert ngrok URL
+INTERNET_URL = "https://c50d-204-9-220-42.ngrok-free.app" # Insert ngrok URL
 
 def generate_random_key(length=30):
     characters = string.ascii_letters + string.digits
@@ -88,7 +88,7 @@ def create_android_preferences(prefs):
 
 def create_ssl_keys(local_ip):
     """Creates the ssl keys for running the local server over https"""
-    fill_in_file("./res/san.cnf", HINDSIGHT_SERVER_DIR / "san.cnf", 
+    fill_in_file(BASE_DIR / "res/san.cnf", HINDSIGHT_SERVER_DIR / "san.cnf", 
                 "PYTHON_CONFIG_INSERT_IP_HERE", local_ip)
     
     subprocess.call(["openssl", "req", "-new", "-nodes", "-keyout", HINDSIGHT_SERVER_DIR / "server.key", "-out",
@@ -109,6 +109,7 @@ def initialize_server():
     local_ip = get_local_ip()
     prefs = {"screenrecordingenabled" : False,
          "locationtrackingenabled" : False,
+         "cameracaptureenabled" : False,
          "recordwhenactive" : False,
          "screenshotsperautoupload" : 100,
          "apikey" : generate_random_key(),

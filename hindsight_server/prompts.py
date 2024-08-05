@@ -26,10 +26,11 @@ def get_prompt_custom_additions(text, query, custom_additions):
         {custom_additions} Only answer the query. -------------------------- {query}\nAnswer:"""
 
 def get_summary_prompt(text, query):
-    return f"""Below are the results from a number of LLM queries prompted with the question {query}.
+    return f"""You are a secure personal A.I. agent. Below are the results from a number of LLM queries prompted with the question {query}.
+            ------------------
             {text}
             ------------------
-            Using these results as context. Answer the query: '{query}'\nAnswer:"""
+            Only using the information provided above, answer the query to the best of your ability: '{query}'\nAnswer:"""
 
 def get_decomposition_prompt(query, num_decomp_questions):
     return f"""You are a helpful assistant that generates multiple sub-queries related to an input question. \n

@@ -8,66 +8,13 @@ from datetime import timedelta
 from mlx_lm import load, generate
 
 from prompts import get_prompt, get_summary_prompt, get_recomposition_prompt, get_decomposition_prompt, get_summary_compete_prompt
+from chromadb_tools import query_chroma, chroma_search_results_to_df, get_chroma_collection
 from db import HindsightDB
-from run_chromadb_ingest import get_chroma_collection
 import utils
 from config import MLX_LLM_MODEL
+from query_vlm import vlm_basic_retrieved_query
 
 db = HindsightDB()
-
-def chroma_search_results_to_df(chroma_search_results):
-    """Converts results from chromadb query to a pandas DataFrame"""
-    results_l = list()
-    for i in range(len(chroma_search_results['ids'])):
-        for j in range(len(chroma_search_results['ids'][i])):
-            d = {"chroma_query_id" : i, "id" : chroma_search_results['ids'][i][j],
-                 "distance" : chroma_search_results['distances'][i][j], 
-                 "document" : chroma_search_results['documents'][i][j]}
-            d.update(chroma_search_results['metadatas'][i][j])
-            results_l.append(d)
-    return pd.DataFrame(results_l)
-
-def query_chroma(query_text: str, source_apps=None, utc_milliseconds_start_date=None, utc_milliseconds_end_date=None, 
-                 max_chroma_results=200, chroma_collection=None):
-    """Queries chromadb with the query_text and the provided constraints.
-    Args:
-        query_text (str): Text to query chromadb of OCR results from user screenshots
-
-    returns query results from chroma collection
-    """
-    chroma_collection = get_chroma_collection() if chroma_collection is None else chroma_collection
-
-    conditions = []
-    if source_apps is not None:
-        source_apps = list(source_apps)
-        conditions.append({"application": {"$in": source_apps}})
-    
-    if utc_milliseconds_start_date is not None:
-        conditions.append({"timestamp": {"$gte": int(utc_milliseconds_start_date)}})
-    
-    if utc_milliseconds_end_date is not None:
-        conditions.append({"timestamp": {"$lte": int(utc_milliseconds_end_date)}})
-    
-    if len(conditions) > 1:
-        chroma_search_results = chroma_collection.query(
-            query_texts=[query_text],
-            n_results=max_chroma_results,
-            where={
-                "$and": conditions
-            }
-        )
-    elif len(conditions) == 1:
-        chroma_search_results = chroma_collection.query(
-            query_texts=[query_text],
-            n_results=max_chroma_results,
-            where=conditions[0]
-        )
-    else:
-        chroma_search_results = chroma_collection.query(
-            query_texts=[query_text],
-            n_results=max_chroma_results,
-        )
-    return chroma_search_results
 
 def basic_retrieved_query(query_text, source_apps=None, utc_milliseconds_start_date=None, utc_milliseconds_end_date=None, 
                           max_chroma_results=100, num_contexts=20, per_usage_results=1, model=None, tokenizer=None,
@@ -216,6 +163,9 @@ def query_and_insert(query_id, query_text, source_apps=None, utc_milliseconds_st
         summary_compete_prompt = get_summary_compete_prompt(method_to_text, query_text)
         response = generate(model, tokenizer, prompt=summary_compete_prompt, max_tokens=250)
         source_frame_ids = set(source_frame_ids_b) | set(source_frame_ids_l) | set(source_frame_ids_d)
+    elif query_type == "v":
+        response, source_frame_ids = vlm_basic_retrieved_query(query_text, source_apps=source_apps, utc_milliseconds_start_date=utc_milliseconds_start_date, 
+                                    utc_milliseconds_end_date=utc_milliseconds_end_date, max_chroma_results=max_chroma_results)
     else:
         print("Invalid query type", query_type)
         db.insert_query_result(query_id, "Invalid query type", {})

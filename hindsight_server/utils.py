@@ -42,6 +42,7 @@ def add_usage_ids(df, new_usage_threshold=timedelta(seconds=120)):
     """Adds a column that identifies what 'usage' the frame belongs to. A new usage is defined
     by a time difference of new_usage_threshold
     """
+    df = df.sort_values(by='datetime_utc')
     df['time_difference'] = df['datetime_utc'].diff()
     new_usage_start = (df['time_difference'] > new_usage_threshold)
     df['usage_id'] = new_usage_start.cumsum()

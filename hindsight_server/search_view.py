@@ -10,8 +10,9 @@ from datetime import timedelta
 from PIL import Image, ImageTk
 from tkcalendar import DateEntry
 
+import utils
 from db import HindsightDB
-from run_chromadb_ingest import get_chroma_collection
+from chromadb_tools import get_chroma_collection, query_chroma
 from timeline_view import Screenshot, TimelineViewer
 
 local_timezone = tzlocal.get_localzone()
@@ -149,8 +150,7 @@ class SearchViewer:
         selected_apps = set()
         for i in self.app_list.curselection():
             selected_apps.add(self.app_list.get(i))
-        selected_apps = selected_apps if len(selected_apps) > 0 else None
-
+        selected_apps = utils.get_aliases_identifiers(selected_apps) if len(selected_apps) > 0 else None
         search_results = self.db.search(text=search_text, start_date=start_date, end_date=end_date, apps=selected_apps, n_seconds=500)
         self.search_results = search_results.iloc[:self.max_results]
         self.display_frames()
@@ -170,21 +170,13 @@ class SearchViewer:
         selected_apps = list()
         for i in self.app_list.curselection():
             selected_apps.append(self.app_list.get(i))
-        selected_apps = selected_apps if len(selected_apps) > 0 else list(set(self.images_df['application']))
+        selected_apps = utils.get_aliases_identifiers(selected_apps) if len(selected_apps) > 0 else list(set(self.images_df['application']))
 
-        chroma_serach_results = self.chroma_collection.query(
-            query_texts=[query_text],
-            n_results=self.max_results,
-            where={
-                "$and": [
-                    {"timestamp": {"$gte": utc_milliseconds_start_date}},
-                    {"timestamp": {"$lte": utc_milliseconds_end_date}},
-                    {"application": {"$in": selected_apps}}
-                ]
-            }
-        )
+        chroma_search_results = query_chroma(query_text=query_text, max_chroma_results=self.max_results,
+                                             utc_milliseconds_start_date=utc_milliseconds_start_date, utc_milliseconds_end_date=utc_milliseconds_end_date,
+                                             source_apps=selected_apps)
 
-        result_frame_ids = [int(i) for i in chroma_serach_results['ids'][0]]
+        result_frame_ids = [int(i) for i in chroma_search_results['ids'][0]]
 
         self.search_results = self.images_df[self.images_df['id'].isin(result_frame_ids)]
 
@@ -197,7 +189,7 @@ class SearchViewer:
 
         # Sort by the 'id' column according to the order specified in 'categories'
         self.search_results = self.search_results.sort_values('search_results_id')
-        self.search_results['ED'] = chroma_serach_results['distances'][0]
+        self.search_results['ED'] = chroma_search_results['distances'][0]
         self.display_frames()
 
     def display_frames(self):
