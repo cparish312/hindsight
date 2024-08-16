@@ -89,7 +89,15 @@ class TimelineViewer:
         else:
             current_value = self.last_stock_value
         self.ax.scatter([current_datetime], [current_value], color='red', s=100)  # Red point
-        # self.ax.annotate(f'{current_value}', (current_datetime, current_value), textcoords="offset points", xytext=(0,10), ha='center')
+        self.ax.annotate('Day of Screenshot', (current_datetime, current_value), 
+                         textcoords="offset points", xytext=(-100,20), ha='center', 
+                         arrowprops=dict(arrowstyle="->", connectionstyle="arc3", color='red'))
+        
+        buy_datetime, buy_value = (datetime(2022, 4, 22), 19.53)
+        self.ax.scatter([buy_datetime], [buy_value], color='blue', s=200)
+        self.ax.annotate(f'Connor buys NVDA at {buy_value}', (buy_datetime, buy_value), 
+                         textcoords="offset points", xytext=(0,40), ha='center', 
+                         arrowprops=dict(arrowstyle="->", connectionstyle="arc3", color='red'))
         
         self.ax.legend()
         self.stock_canvas.draw()
