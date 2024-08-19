@@ -17,6 +17,7 @@ from zoneinfo import ZoneInfo
 from dataclasses import dataclass
 
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 import sys
@@ -58,58 +59,85 @@ class TimelineViewer:
     def create_stock_plot(self):
         # Example data for the plot
 
-        start_date = datetime(2022, 1, 1) 
-        end_date = datetime.now()
-        self.stock_data = yf.download('NVDA', start = start_date, 
-                        end = end_date) 
-        self.last_stock_value = self.stock_data.iloc[-1].Open
+        self.stock_data = pd.read_csv('./data/nvidia_stock_during.csv')
+        self.stock_data = utils.add_datetimes(self.stock_data)
+        self.stock_data = self.stock_data.iloc[:300]
+        self.start_date = min(self.stock_data['datetime_local']).date()
+        self.end_date = max(self.stock_data['datetime_local']).date()
         
-        self.figure = plt.Figure(figsize=(11, 4), dpi=100)
+        self.figure = plt.Figure(figsize=(10, 4), dpi=100)
     
         self.ax = self.figure.add_subplot(111)
-        self.ax.plot(self.stock_data['Open']) 
-        self.ax.set_title('NVDA Opening Prices from {} to {}'.format(start_date, 
-                                                end_date)) 
-        self.ax.legend()
+        self.ax.plot(self.stock_data['Adj Close']) 
+        self.ax.set_title('NVDA Stock Prices from {} to {}'.format(self.start_date, 
+                                                self.end_date))
+
+        self.ax.xaxis.set_major_locator(mdates.AutoDateLocator())
+        self.ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+        plt.setp(self.ax.xaxis.get_majorticklabels(), rotation=45, ha="right") 
+        # self.ax.legend()
         
         self.stock_canvas = FigureCanvasTkAgg(self.figure, self.left_frame)
         self.stock_canvas_widget = self.stock_canvas.get_tk_widget()
         self.stock_canvas_widget.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 
+    def get_interpolated_stock_price(self, current_datetime):
+        data_with_distance = self.stock_data.copy()
+        data_with_distance['distance'] = data_with_distance['datetime_local'] - current_datetime
+        before = data_with_distance[data_with_distance['distance'] <= pd.Timedelta(0)].iloc[-1] if not data_with_distance[data_with_distance['distance'] <= pd.Timedelta(0)].empty else None
+        after = data_with_distance[data_with_distance['distance'] > pd.Timedelta(0)].iloc[0] if not data_with_distance[data_with_distance['distance'] > pd.Timedelta(0)].empty else None
+        
+        if before['datetime_local'] == current_datetime:
+            # Exact match
+            interpolated_value = before['Adj Close']
+        elif before is None or after is None:
+            raise ValueError("Couldn't interpolate")
+        else:
+            # Linear interpolation
+            total_seconds = (after['datetime_local'] - before['datetime_local']).total_seconds()
+            weight = (current_datetime - before['datetime_local']).total_seconds() / total_seconds
+            interpolated_value = before['Adj Close'] + (after['Adj Close'] - before['Adj Close']) * weight
+        return interpolated_value
+
     def update_stock_plot(self, current_datetime):
         # Clear previous points
         self.ax.clear()
         # Redraw the plot
-        self.ax.plot(self.stock_data['Open']) 
+        self.ax.plot(self.stock_data['datetime_local'], self.stock_data['Adj Close'])
         # Draw a point for the current frame
-        current_day = pd.Timestamp(current_datetime.normalize().date())
-        if current_day in self.stock_data.index:
-            current_value = self.stock_data.loc[current_day].Open
-            self.last_stock_value = current_value
-        else:
-            current_value = self.last_stock_value
-        self.ax.scatter([current_datetime], [current_value], color='red', s=100)  # Red point
-        self.ax.annotate('Day of Screenshot', (current_datetime, current_value), 
-                         textcoords="offset points", xytext=(-100,20), ha='center', 
+
+        # closest_stock_point = self.stock_data.loc[self.stock_data['datetime_local'] >= current_datetime].iloc[0]
+        interpolated_stock_price = self.get_interpolated_stock_price(current_datetime)
+
+        self.ax.scatter([current_datetime], [interpolated_stock_price], color='red', s=100)  # Red point
+        self.ax.annotate(f'${round(interpolated_stock_price,2)}', (current_datetime, interpolated_stock_price), 
+                         textcoords="offset points", xytext=(-80,30), ha='center', 
                          arrowprops=dict(arrowstyle="->", connectionstyle="arc3", color='red'))
         
-        buy_datetime, buy_value = (datetime(2022, 4, 22), 19.53)
-        self.ax.scatter([buy_datetime], [buy_value], color='blue', s=200)
-        self.ax.annotate(f'Connor buys NVDA at {buy_value}', (buy_datetime, buy_value), 
-                         textcoords="offset points", xytext=(0,40), ha='center', 
-                         arrowprops=dict(arrowstyle="->", connectionstyle="arc3", color='red'))
+        self.ax.xaxis.set_major_locator(mdates.AutoDateLocator())
+        self.ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+        plt.setp(self.ax.xaxis.get_majorticklabels(), rotation=45, ha="right") 
+        self.ax.set_title('NVDA Stock Prices from {} to {}'.format(self.start_date, 
+                                                self.end_date))
         
-        self.ax.legend()
+        # buy_datetime, buy_value = (datetime(2022, 4, 22), 19.53)
+        # self.ax.scatter([buy_datetime], [buy_value], color='blue', s=200)
+        # self.ax.annotate(f'Connor buys NVDA at {buy_value}', (buy_datetime, buy_value), 
+        #                  textcoords="offset points", xytext=(0,40), ha='center', 
+        #                  arrowprops=dict(arrowstyle="->", connectionstyle="arc3", color='red'))
+        
+        # self.ax.legend()
         self.stock_canvas.draw()
 
     def get_images_df(self, front_camera):
         """Gets a DataFrame of all images at the time of inititation"""
-        maybe = {42375, 33651, 30073, 29645, 28126, 50158, 53182, 55401, 57836, 58578, 58264, 68418, 72581,
+        maybe = {42375, 33651, 30073, 28126, 50158, 53182, 55401, 57836, 58578, 58264, 68418, 72581,
                  73294, 73711, 77405, 87933, 90771, 99093, 99766, 108067, 110166, 110047, 114019}
         nvidia_frame_ids = {48715, 47478, 44212, 42009, 40327, 40012, 40006, 39362, 39130, 38431, 35434, 35054,
                             31998, 30186, 29333, 28415, 51163, 51633, 60145, 60244, 60272, 61842, 62721, 66021, 66086, 67706, 72945,
                             72169, 73147, 77773, 81928, 85394, 89059, 92740, 95947, 98813, 99028, 100683, 101218, 103798, 104452, 106681,
                             108271, 107569, 110035, 115009, 111802, 113269, 118242, 122937}
+        need_frame_ids = {48715, 44212, 42009, 40327, 40006, 39130, 51163, 60272, 72945, 85394, 98813}
         nvidia_frames = maybe | nvidia_frame_ids
         images_df = self.db.get_frames(frame_ids=nvidia_frames)
         images_df = utils.add_datetimes(images_df)
@@ -211,7 +239,7 @@ class TimelineViewer:
         imgtk = ImageTk.PhotoImage(image=img)
         self.video_label.imgtk = imgtk
         self.video_label.configure(image=imgtk)
-        self.scroll_frame_num_var.set(f"Time: {screenshot.timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
+        self.scroll_frame_num_var.set(f"{screenshot.timestamp.strftime('%A, %Y-%m-%d %H:%M')}")
         self.displayed_image = screenshot
         self.displayed_frame_num = frame_num
         self.update_stock_plot(screenshot.timestamp)
