@@ -131,14 +131,23 @@ class TimelineViewer:
 
     def get_images_df(self, front_camera):
         """Gets a DataFrame of all images at the time of inititation"""
-        maybe = {42375, 33651, 30073, 28126, 50158, 53182, 55401, 57836, 58578, 58264, 68418, 72581,
-                 73294, 73711, 77405, 87933, 90771, 99093, 99766, 108067, 110166, 110047, 114019}
-        nvidia_frame_ids = {48715, 47478, 44212, 42009, 40327, 40012, 40006, 39362, 39130, 38431, 35434, 35054,
+        maybe = {110047}
+        nvidia_frame_ids = {48715, 47478, 44212, 42010, 40327, 40012, 40006, 39362, 39130, 38431, 35434, 35054,
                             31998, 30186, 29333, 28415, 51163, 51633, 60145, 60244, 60272, 61842, 62721, 66021, 66086, 67706, 72945,
-                            72169, 73147, 77773, 81928, 85394, 89059, 92740, 95947, 98813, 99028, 100683, 101218, 103798, 104452, 106681,
-                            108271, 107569, 110035, 115009, 111802, 113269, 118242, 122937}
-        need_frame_ids = {48715, 44212, 42009, 40327, 40006, 39130, 51163, 60272, 72945, 85394, 98813}
-        nvidia_frames = maybe | nvidia_frame_ids
+                            72169, 73147, 77773, 81928, 85394, 89059, 92740, 95947, 98751, 99028, 100683, 101218, 103798, 104452, 106681,
+                            108271, 107569, 110035, 115009, 111802, 122937}
+        need_frame_ids = {48715, 44212, 42010, 40327, 40006, 39130, 51163, 60272, 72945, 85394, 98751}
+
+        actually_need_frame_ids = {40006, 39130, 51163, 60272, 72945, 106681, 107569, 111802}
+        actually_probably_frame_ids = {42010, 40327, 35434, 28415, 66086, 72169, 77773, 81928, 85394, 95947, 115009}
+        probably_frame_ids = {44212, 42010, 40327, 39362, 35434, 28415, 28415, 61842, 66021, 66086, 67706, 72169, 
+                              77773, 81928, 85394, 95947, 98751, 99028, 101218, 108271, 110035, 115009}
+        
+        # 115009 tweet about Nvidia 5 years ago stock
+        # 60145 boob
+        # nvidia_frames = maybe | nvidia_frame_ids
+        # nvidia_frames = nvidia_frame_ids | maybe
+        nvidia_frames = actually_need_frame_ids | actually_probably_frame_ids
         images_df = self.db.get_frames(frame_ids=nvidia_frames)
         images_df = utils.add_datetimes(images_df)
         images_df = images_df.sort_values(by="datetime_local", ascending=False).reset_index(drop=True)
@@ -183,11 +192,11 @@ class TimelineViewer:
         self.top_frame = ttk.Frame(self.right_frame)
         self.top_frame.pack(fill=tk.X, padx=5, pady=5)
 
-        self.video_label = ttk.Label(self.right_frame)
-        self.video_label.pack(expand=True, fill=tk.BOTH)
-
         self.time_label = ttk.Label(self.right_frame, textvariable=str(self.scroll_frame_num_var), font=("Arial", 24), anchor="e")
         self.time_label.pack(fill=tk.X)
+
+        self.video_label = ttk.Label(self.right_frame)
+        self.video_label.pack(expand=True, fill=tk.BOTH)
 
         self.master.bind("<Right>", self.click_right)
         self.master.bind("<Left>", self.click_left)
