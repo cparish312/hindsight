@@ -1,6 +1,7 @@
 """Code for interfacing with SQLite database."""
 import os
 import time
+import shutil
 import sqlite3
 import numpy as np
 import pandas as pd
@@ -10,7 +11,7 @@ from threading import Lock
 import tzlocal
 from zoneinfo import ZoneInfo
 
-from config import DATA_DIR
+from config import DATA_DIR, RAW_SCREENSHOTS_DIR
 import utils
 
 local_timezone = tzlocal.get_localzone()
@@ -554,3 +555,83 @@ class HindsightDB:
                         AND value = '{value}'"""
                 df = pd.read_sql_query(query, conn)
                 return set(df['frame_id'])
+
+    def copy_database(self, frame_ids, db_file, frames_dir_path):
+        """
+        Copies specific frames from the current database to a new database file, and copies associated files.
+        
+        Args:
+            frame_ids (list[int]): List of frame IDs to copy.
+            db_file (str): File path of the new database.
+            frames_dir_path (str): Directory path to copy the frame files to.
+        """
+        frames_dir_path = os.path.abspath(frames_dir_path)
+
+        # Establish a connection to the new database and create tables
+        new_db_conn = sqlite3.connect(db_file)
+        new_cursor = new_db_conn.cursor()
+
+        # Create tables in the new database
+        new_cursor.execute('''
+            CREATE TABLE IF NOT EXISTS frames (
+                id INTEGER PRIMARY KEY,
+                timestamp INTEGER NOT NULL,
+                path TEXT NOT NULL,
+                application TEXT NOT NULL,
+                chromadb_processed BOOLEAN NOT NULL DEFAULT false
+            )
+        ''')
+        new_cursor.execute('''
+            CREATE TABLE IF NOT EXISTS ocr_results (
+                id INTEGER PRIMARY KEY,
+                frame_id INTEGER NOT NULL,
+                x DOUBLE NOT NULL,
+                y DOUBLE NOT NULL,
+                w DOUBLE NOT NULL,
+                h DOUBLE NOT NULL,
+                text TEXT,
+                conf DOUBLE NOT NULL,
+                FOREIGN KEY (frame_id) REFERENCES frames(id)
+            )
+        ''')
+
+        # Select frames from the current database
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT id, timestamp, path, application, chromadb_processed FROM frames WHERE id IN ({})
+            '''.format(','.join('?' for _ in frame_ids)), tuple(frame_ids))
+            
+            frames = cursor.fetchall()
+
+            # Copy frames to new database and copy files
+            for frame in frames:
+                frame_id, timestamp, path, application, chromadb_processed = frame
+                new_path = path.replace(str(RAW_SCREENSHOTS_DIR), frames_dir_path)
+                utils.make_dir(os.path.dirname(new_path))
+                
+                # Copy file to new location
+                shutil.copy2(path, new_path)
+                
+                # Insert frame into new database
+                new_cursor.execute('''
+                    INSERT INTO frames (id, timestamp, path, application, chromadb_processed)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (frame_id, timestamp, new_path, application, chromadb_processed))
+            
+            # # Also handle copying OCR results if necessary
+            # ocr_ids = [frame[0] for frame in frames]
+            # cursor.execute('''
+            #     SELECT * FROM ocr_results WHERE frame_id IN ({})
+            # '''.format(','.join('?' for _ in ocr_ids)), ocr_ids)
+            # ocr_results = cursor.fetchall()
+
+            # for ocr_result in ocr_results:
+            #     new_cursor.execute('''
+            #         INSERT INTO ocr_results (frame_id, x, y, w, h, text, conf)
+            #         VALUES (?, ?, ?, ?, ?, ?, ?)
+            #     ''', ocr_result)
+
+        # Commit changes to the new database and close connections
+        new_db_conn.commit()
+        new_db_conn.close()
