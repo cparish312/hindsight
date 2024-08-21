@@ -25,6 +25,7 @@ sys.path.insert(0, "../")
 
 import utils
 from db import HindsightDB
+from all_nvda_frame_ids import all_nvda_frame_ids
 
 local_timezone = tzlocal.get_localzone()
 video_timezone = ZoneInfo("UTC")
@@ -36,15 +37,21 @@ class Screenshot:
     timestamp: datetime.timestamp
 
 class TimelineViewer:
-    def __init__(self, master, frame_id = None, max_width=2400, max_height=900, images_df=None, front_camera=None):
+    def __init__(self, master, frame_id = None, max_width=2400, max_height=1000, images_df=None, front_camera=None):
         self.master = master
-        self.db = HindsightDB()
+        # self.master.attributes('-fullscreen', True)
+        # self.full_screen = False
+
+        self.db = HindsightDB(db_file="./data/auglabdemo.db")
         self.images_df = self.get_images_df(front_camera) if images_df is None else images_df
         self.num_frames = len(self.images_df)
         self.max_frames_index = max(self.images_df.index)
         self.app_color_map = self.get_app_color_map()
         self.max_width = max_width
         self.max_height = max_height - 200
+
+        self.all_nvda_frames = self.db.get_frames(frame_ids=all_nvda_frame_ids)
+        self.all_nvda_frames = utils.add_datetimes(self.all_nvda_frames)
 
         if frame_id is None:
             self.scroll_frame_num = self.images_df.index[-1]
@@ -64,8 +71,10 @@ class TimelineViewer:
         self.stock_data = self.stock_data.iloc[:300]
         self.start_date = min(self.stock_data['datetime_local']).date()
         self.end_date = max(self.stock_data['datetime_local']).date()
+
+        self.all_nvda_frames = self.all_nvda_frames.loc[self.all_nvda_frames['datetime_local'] <= max(self.stock_data['datetime_local'])]
         
-        self.figure = plt.Figure(figsize=(10, 4), dpi=100)
+        self.figure = plt.Figure(figsize=(11, 4), dpi=100)
     
         self.ax = self.figure.add_subplot(111)
         self.ax.plot(self.stock_data['Adj Close']) 
@@ -106,7 +115,6 @@ class TimelineViewer:
         self.ax.plot(self.stock_data['datetime_local'], self.stock_data['Adj Close'])
         # Draw a point for the current frame
 
-        # closest_stock_point = self.stock_data.loc[self.stock_data['datetime_local'] >= current_datetime].iloc[0]
         interpolated_stock_price = self.get_interpolated_stock_price(current_datetime)
 
         self.ax.scatter([current_datetime], [interpolated_stock_price], color='red', s=100)  # Red point
@@ -120,6 +128,35 @@ class TimelineViewer:
         self.ax.set_title('NVDA Stock Prices from {} to {}'.format(self.start_date, 
                                                 self.end_date))
         
+        # buy_datetime, buy_value = (datetime(2022, 4, 22), 19.53)
+        # self.ax.scatter([buy_datetime], [buy_value], color='blue', s=200)
+        # self.ax.annotate(f'Connor buys NVDA at {buy_value}', (buy_datetime, buy_value), 
+        #                  textcoords="offset points", xytext=(0,40), ha='center', 
+        #                  arrowprops=dict(arrowstyle="->", connectionstyle="arc3", color='red'))
+        
+        # self.ax.legend()
+        self.stock_canvas.draw()
+
+    def final_stock_plot(self):
+        self.ax.clear()
+        # Redraw the plot
+        self.ax.plot(self.stock_data['datetime_local'], self.stock_data['Adj Close'])
+        # Draw a point for the current frame
+        
+        self.ax.xaxis.set_major_locator(mdates.AutoDateLocator())
+        self.ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+        plt.setp(self.ax.xaxis.get_majorticklabels(), rotation=45, ha="right") 
+        self.ax.set_title('All times I saw Information about Nvidia'.format(self.start_date, 
+                                                self.end_date))
+        
+        for i, row in self.all_nvda_frames.iterrows():
+            dt = row['datetime_local']
+            interpolated_stock_price = self.get_interpolated_stock_price(dt)
+            self.ax.scatter([dt], [interpolated_stock_price], color='orange', s=100)
+
+
+        earning_date = datetime(2024, 5, 22)
+        self.ax.axvline(x=earning_date, color='r', label="earning date")
         # buy_datetime, buy_value = (datetime(2022, 4, 22), 19.53)
         # self.ax.scatter([buy_datetime], [buy_value], color='blue', s=200)
         # self.ax.annotate(f'Connor buys NVDA at {buy_value}', (buy_datetime, buy_value), 
@@ -143,11 +180,14 @@ class TimelineViewer:
         probably_frame_ids = {44212, 42010, 40327, 39362, 35434, 28415, 28415, 61842, 66021, 66086, 67706, 72169, 
                               77773, 81928, 85394, 95947, 98751, 99028, 101218, 108271, 110035, 115009}
         
+        final_frame_ids = {40327, 40006, 39130, 28415, 51163, 60272, 72945, 85394, 95947, 106681, 107569, 111802}
+        
         # 115009 tweet about Nvidia 5 years ago stock
         # 60145 boob
         # nvidia_frames = maybe | nvidia_frame_ids
         # nvidia_frames = nvidia_frame_ids | maybe
-        nvidia_frames = actually_need_frame_ids | actually_probably_frame_ids
+        # nvidia_frames = actually_need_frame_ids | actually_probably_frame_ids
+        nvidia_frames = final_frame_ids
         images_df = self.db.get_frames(frame_ids=nvidia_frames)
         images_df = utils.add_datetimes(images_df)
         images_df = images_df.sort_values(by="datetime_local", ascending=False).reset_index(drop=True)
@@ -176,7 +216,7 @@ class TimelineViewer:
         self.right_frame = ttk.Frame(self.master)
 
         # Grid layout
-        self.left_frame.grid(row=0, column=0, sticky="nswe")
+        self.left_frame.grid(row=0, column=0, sticky="nswe", padx=(0,10))
         self.right_frame.grid(row=0, column=1, sticky="nswe")
 
         # Configure columns to give them appropriate space allocation
@@ -192,19 +232,31 @@ class TimelineViewer:
         self.top_frame = ttk.Frame(self.right_frame)
         self.top_frame.pack(fill=tk.X, padx=5, pady=5)
 
-        self.time_label = ttk.Label(self.right_frame, textvariable=str(self.scroll_frame_num_var), font=("Arial", 24), anchor="e")
+        self.video_container = ttk.Frame(self.right_frame)
+        self.video_container.pack(expand=True, fill=tk.BOTH)
+
+        self.time_label = ttk.Label(self.video_container, textvariable=str(self.scroll_frame_num_var), font=("Arial", 24), anchor="w")
         self.time_label.pack(fill=tk.X)
 
-        self.video_label = ttk.Label(self.right_frame)
+        self.video_label = ttk.Label(self.video_container)
         self.video_label.pack(expand=True, fill=tk.BOTH)
 
         self.master.bind("<Right>", self.click_right)
         self.master.bind("<Left>", self.click_left)
+        self.master.bind("<Configure>", self.on_window_resize)
 
         self.displayed_frame_num = self.scroll_frame_num
         screenshot = self.get_screenshot(self.displayed_frame_num)
         self.display_frame(screenshot, self.displayed_frame_num)
         self.master.after(40, self.update_frame_periodically)
+
+    def on_window_resize(self, event=None):
+        # Adjust the max width and height according to the new window size
+        self.max_width = self.master.winfo_width()
+        self.max_height = self.master.winfo_height() - 20
+        print(self.max_width, self.max_height)
+        if hasattr(self, 'displayed_image'):
+            self.display_frame(self.displayed_image, self.displayed_frame_num)
     
     def resize_screenshot(self, screenshot, max_width, max_height):
         height, width, _ = screenshot.image.shape
@@ -227,6 +279,7 @@ class TimelineViewer:
         if set(text_df['text']) == {None}:
             text_df = None
         screenshot = Screenshot(image=image, text_df=text_df, timestamp=im_row['datetime_local'])
+        print(self.right_frame.winfo_width(), self.right_frame.winfo_height())
         screenshot_resized = self.resize_screenshot(screenshot, self.max_width, self.max_height)
         return screenshot_resized
 
@@ -248,6 +301,8 @@ class TimelineViewer:
         imgtk = ImageTk.PhotoImage(image=img)
         self.video_label.imgtk = imgtk
         self.video_label.configure(image=imgtk)
+
+        self.video_container.configure(width=imgtk.width())
         self.scroll_frame_num_var.set(f"{screenshot.timestamp.strftime('%A, %Y-%m-%d %H:%M')}")
         self.displayed_image = screenshot
         self.displayed_frame_num = frame_num
@@ -269,6 +324,9 @@ class TimelineViewer:
         if self.scroll_frame_num > 0:
             self.scroll_frame_num -= 1
             self.update_frame_periodically() 
+        else:
+            print("Showing final stock plot")
+            self.final_stock_plot()
 
 def main():
     root = tk.Tk()
