@@ -25,7 +25,6 @@ sys.path.insert(0, "../")
 
 import utils
 from db import HindsightDB
-from all_nvda_frame_ids import all_nvda_frame_ids
 
 local_timezone = tzlocal.get_localzone()
 video_timezone = ZoneInfo("UTC")
@@ -50,7 +49,7 @@ class TimelineViewer:
         self.max_width = max_width
         self.max_height = max_height - 200
 
-        self.all_nvda_frames = self.db.get_frames(frame_ids=all_nvda_frame_ids)
+        self.all_nvda_frames = pd.read_csv("./all_nvda_frames.csv")
         self.all_nvda_frames = utils.add_datetimes(self.all_nvda_frames)
 
         if frame_id is None:
@@ -146,13 +145,18 @@ class TimelineViewer:
         self.ax.xaxis.set_major_locator(mdates.AutoDateLocator())
         self.ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
         plt.setp(self.ax.xaxis.get_majorticklabels(), rotation=45, ha="right") 
-        self.ax.set_title('All times I saw Information about Nvidia'.format(self.start_date, 
+        self.ax.set_title('All Times I Saw Information About Nvidia'.format(self.start_date, 
                                                 self.end_date))
+
+        applications = self.all_nvda_frames['application'].unique()
+        colors = plt.cm.jet(np.linspace(0, 1, len(applications)))
+        color_dict = dict(zip(applications, colors))  
         
         for i, row in self.all_nvda_frames.iterrows():
             dt = row['datetime_local']
+            app = row['application']
             interpolated_stock_price = self.get_interpolated_stock_price(dt)
-            self.ax.scatter([dt], [interpolated_stock_price], color='orange', s=100)
+            self.ax.scatter([dt], [interpolated_stock_price], color=color_dict[app], s=100, label=app if app not in self.ax.get_legend_handles_labels()[1] else "")
 
 
         earning_date = datetime(2024, 5, 22)
@@ -164,6 +168,18 @@ class TimelineViewer:
         #                  arrowprops=dict(arrowstyle="->", connectionstyle="arc3", color='red'))
         
         # self.ax.legend()
+
+        def skip_app(a):
+            if a[:4] == "com-":
+                return True
+            if a == "screenshot":
+                return True
+            return False
+        
+        handles, labels = self.ax.get_legend_handles_labels()
+        by_label = dict(zip(labels, handles))  # removing duplicates in legend
+        by_label = {a : c for a, c in by_label.items() if not skip_app(a)}
+        self.ax.legend(by_label.values(), by_label.keys())
         self.stock_canvas.draw()
 
     def get_images_df(self, front_camera):
@@ -180,7 +196,7 @@ class TimelineViewer:
         probably_frame_ids = {44212, 42010, 40327, 39362, 35434, 28415, 28415, 61842, 66021, 66086, 67706, 72169, 
                               77773, 81928, 85394, 95947, 98751, 99028, 101218, 108271, 110035, 115009}
         
-        final_frame_ids = {40327, 40006, 39130, 28415, 51163, 60272, 72945, 85394, 95947, 106681, 107569, 111802}
+        final_frame_ids = {40327, 40006, 39130, 28415, 51163, 72945, 85394, 95947, 106681, 107569, 111802}
         
         # 115009 tweet about Nvidia 5 years ago stock
         # 60145 boob
