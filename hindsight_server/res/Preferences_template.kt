@@ -10,6 +10,7 @@ object Preferences {
     const val screenrecordingenabled = "ScreenRecordingEnabled"
     const val locationtrackingenabled = "LocationTrackingEnabled"
     const val recordwhenactive = "RecordWhenActive"
+    const val cameracaptureenabled = "CameraCaptureEnabled"
     const val screenshotsperautoupload = "ScreenshotsPerAutoUpload"
     const val apikey = "ApiKey"
     const val localurl = "LocalUrl"
