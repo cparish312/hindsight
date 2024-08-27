@@ -103,6 +103,9 @@ class TimelineViewer:
         self.timeline_canvas = tk.Canvas(self.master, height=50)
         self.timeline_canvas.pack(fill=tk.X, padx=5, pady=5)
         self.master.bind('<Configure>', lambda e: self.update_timeline(self.displayed_frame_num)) # Update timeline when frame changed
+
+        self.master.bind("<Right>", self.click_right)
+        self.master.bind("<Left>", self.click_left)
         
         self.displayed_frame_num = self.scroll_frame_num
         screenshot = self.get_screenshot(self.displayed_frame_num)
@@ -183,7 +186,7 @@ class TimelineViewer:
         imgtk = ImageTk.PhotoImage(image=img)
         self.video_label.imgtk = imgtk
         self.video_label.configure(image=imgtk)
-        self.scroll_frame_num_var.set(f"Time: {screenshot.timestamp.strftime('%Y-%m-%d %H:%M:%S')}")
+        self.scroll_frame_num_var.set(f"{screenshot.timestamp.strftime('%A, %Y-%m-%d %H:%M')}")
         self.update_timeline(frame_num)
         self.displayed_image = screenshot
         self.displayed_frame_num = frame_num
@@ -220,6 +223,19 @@ class TimelineViewer:
         self.scroll_frame_num += 1
         if self.scroll_frame_num > self.max_frames_index:
             self.scroll_frame_num = self.max_frames_index
+
+    def click_left(self, event):
+        """Move to the next frame on the right."""
+        if self.scroll_frame_num < self.max_frames_index:
+            self.scroll_frame_num += 1
+            self.update_frame_periodically()  # Force update to display the new frame
+
+    def click_right(self, event):
+        """Move to the previous frame on the left."""
+        if self.scroll_frame_num > 0:
+            self.scroll_frame_num -= 1
+            self.update_frame_periodically() 
+
     def start_drag(self, event):
         self.dragging = True
         self.drag_start = (event.x, event.y)
