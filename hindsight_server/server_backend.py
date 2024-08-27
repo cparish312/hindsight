@@ -98,7 +98,7 @@ if __name__ == "__main__":
         unprocessed_image_paths = [os.path.join(SCREENSHOTS_TMP_DIR, f) for f in os.listdir(SCREENSHOTS_TMP_DIR)]
         if len(unprocessed_image_paths) > 0:
             print(f"Ingesting {len(unprocessed_image_paths)} images.")
-            with multiprocessing.Pool(os.cpu_count() - 2) as p:
+            with multiprocessing.Pool(6) as p:
                 p.map(ingest_image, unprocessed_image_paths)
 
         non_chromadb_processed_frames_df = db.get_non_chromadb_processed_frames_with_ocr().sort_values(by='timestamp', ascending=True)

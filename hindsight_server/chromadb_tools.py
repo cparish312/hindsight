@@ -21,6 +21,11 @@ class MLXEmbeddingFunction(EmbeddingFunction):
 
     def __call__(self, input: Documents) -> Embeddings:
         return self.embedding_model.encode(input).tolist()
+    
+    def embed_query(self, input: Documents) -> Embeddings:
+        print("MLX EMBEDDING", type(input))
+        return self.embedding_model.encode([input]).tolist()[0]
+
 
 def get_chroma_collection(collection_name=DEFAULT_COLLECTION, model_id=MLX_EMBDEDDING_MODEL):
     """Returns chromadb collections."""
