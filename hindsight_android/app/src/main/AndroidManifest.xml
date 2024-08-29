@@ -2,7 +2,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-feature
+        android:name="android.hardware.CAMERA"
+        android:required="false" />
+
     <uses-permission android:name="MediaStore.createWriteRequest"/>
+    <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"/>
@@ -68,5 +73,11 @@
         <service android:name="com.connor.hindsight.services.AnnotateOverlayService"
             android:exported="false"
             android:foregroundServiceType="dataSync"/>
+
+        <service
+            android:name="com.connor.hindsight.services.CameraCaptureService"
+            android:exported="false"
+            android:permission="android.permission.CAMERA">
+        </service>
     </application>
 </manifest>
