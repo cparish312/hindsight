@@ -32,6 +32,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     )
     val locationTrackingEnabled = _locationTrackingEnabled.asStateFlow()
 
+    private val _cameraCaptureEnabled = MutableStateFlow(
+        Preferences.prefs.getBoolean(Preferences.cameracaptureenabled, false)
+    )
+    val cameraCaptureEnabled = _cameraCaptureEnabled.asStateFlow()
+
     private val _isUploading = MutableStateFlow(false)
     val isUploading = _isUploading.asStateFlow()
 
@@ -107,6 +112,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun toggleLocationTracking() {
         _locationTrackingEnabled.value = !_locationTrackingEnabled.value
         Preferences.prefs.edit().putBoolean(Preferences.locationtrackingenabled, _locationTrackingEnabled.value)
+            .apply()
+    }
+
+    fun toggleCameraCapture() {
+        _cameraCaptureEnabled.value = !_cameraCaptureEnabled.value
+        Preferences.prefs.edit().putBoolean(Preferences.cameracaptureenabled, _cameraCaptureEnabled.value)
             .apply()
     }
 

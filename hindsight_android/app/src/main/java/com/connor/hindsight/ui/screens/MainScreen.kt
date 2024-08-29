@@ -1,4 +1,5 @@
 package com.connor.hindsight.ui.screens
+import android.content.Intent
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
@@ -24,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.connor.hindsight.MainActivity
 import com.connor.hindsight.models.MainViewModel
+import com.connor.hindsight.services.CameraCaptureService
 import com.connor.hindsight.ui.components.ToggleButton
 import com.connor.hindsight.ui.components.observeDirectory
 import com.connor.hindsight.utils.getImageDirectory
@@ -64,6 +66,7 @@ fun MainScreen(
         val screenRecordingEnabled = mainViewModel.screenRecordingEnabled.collectAsState()
         val isUploading = mainViewModel.isUploading.collectAsState()
         val locationTrackingEnabled = mainViewModel.locationTrackingEnabled.collectAsState()
+        val cameraCaptureEnabled = mainViewModel.cameraCaptureEnabled.collectAsState()
         val keyloggingEnabled = mainViewModel.keyloggingEnabled.collectAsState()
 
         val imageDir = getImageDirectory(context)
@@ -89,6 +92,14 @@ fun MainScreen(
         )
 
         ToggleButton(
+            checked = cameraCaptureEnabled.value,
+            text = "Camera Capture",
+            onToggleOn = mainViewModel::toggleCameraCapture,
+            onToggleOff = mainViewModel::toggleCameraCapture,
+            onClickSettings = { /* Open settings for camera capture */ }
+        )
+
+        ToggleButton(
             checked = keyloggingEnabled.value,
             text = "Keystroke Tracking",
             onToggleOn = mainViewModel::toggleKeylogging,
@@ -109,22 +120,29 @@ fun MainScreen(
                         }
                     }
                 },
-                modifier = Modifier.align(Alignment.CenterVertically).padding(top = 16.dp).padding(
-                    16.dp
-                )
+                modifier = Modifier
+                    .align(Alignment.CenterVertically)
+                    .padding(top = 16.dp)
+                    .padding(
+                        16.dp
+                    )
             ) {
                 Text("Server Upload")
             }
             if (isUploading.value) {
                 CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.CenterVertically).padding(top = 16.dp)
+                    modifier = Modifier
+                        .align(Alignment.CenterVertically)
+                        .padding(top = 16.dp)
                 )
             }
             IconButton(onClick = onNavigateToUploadSettings) {
                 Icon(
                     imageVector = Icons.Filled.Settings,
                     contentDescription = "Settings",
-                    modifier = Modifier.align(Alignment.CenterVertically).padding(top = 16.dp)
+                    modifier = Modifier
+                        .align(Alignment.CenterVertically)
+                        .padding(top = 16.dp)
                 )
             }
         }
@@ -146,6 +164,17 @@ fun MainScreen(
             modifier = Modifier.padding(16.dp)
         ) {
             Text("Annotations")
+        }
+
+        Button(onClick = {
+            Intent(context, CameraCaptureService::class.java).also { serviceIntent ->
+                context.stopService(serviceIntent)
+            }
+            Intent(context, CameraCaptureService::class.java).also { serviceIntent ->
+                context.startService(serviceIntent)
+            }
+        }, modifier = Modifier.padding(16.dp)){
+            Text("Camera Capture")
         }
     }
 }

@@ -112,13 +112,13 @@ class BackgroundRecorderService : RecorderService() {
         val density = resolution.density
         val width = resolution.width
         val height = resolution.height
-        Log.d("ScreenRecordingService", "Screen resolution: $width x $height x $density")
+        Log.d("BackgroundRecorderService", "Screen resolution: $width x $height x $density")
 
         mediaProjection?.let { mp ->
             imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
             try {
                 virtualDisplay = mp.createVirtualDisplay(
-                    "ScreenRecordingService",
+                    "BackgroundRecorderService",
                     width,
                     height,
                     density,
@@ -134,7 +134,7 @@ class BackgroundRecorderService : RecorderService() {
                     null
                 )
             } catch (e: SecurityException) {
-                Log.e("ScreenRecordingService", "Failed to create VirtualDisplay", e)
+                Log.e("BackgroundRecorderService", "Failed to create VirtualDisplay", e)
                 onDestroy()
             }
 
@@ -149,13 +149,13 @@ class BackgroundRecorderService : RecorderService() {
                         addLastKnownLocation()
                     }
                     if (!screenOn) {
-                        Log.d("ScreenRecordingService", "Screen is off, skipping screenshot")
+                        Log.d("BackgroundRecorderService", "Screen is off, skipping screenshot")
                         postRecorderLoop(this)
                         return
                     }
                     if (recordWhenActive && !UserActivityState.userActive) {
                         Log.d(
-                            "ScreenRecordingService",
+                            "BackgroundRecorderService",
                             "Skipping Screenshot as User has been inactive"
                         )
                         postRecorderLoop(this)
@@ -163,7 +163,7 @@ class BackgroundRecorderService : RecorderService() {
                     }
                     val image = imageReader!!.acquireLatestImage()
                     screenshotApplication = UserActivityState.currentApplication
-                    Log.d("ScreenRecordingService", "Image Acquired")
+                    Log.d("BackgroundRecorderService", "Image Acquired")
                     image?.let {
                         val buffer = it.planes[0].buffer
                         val pixelStride = it.planes[0].pixelStride
@@ -174,7 +174,7 @@ class BackgroundRecorderService : RecorderService() {
                         val bitmap = Bitmap.createBitmap(w, height, Bitmap.Config.ARGB_8888)
                         bitmap.copyPixelsFromBuffer(buffer)
 
-                        saveImageData(bitmap, this@BackgroundRecorderService)
+                        saveImageData(bitmap, this@BackgroundRecorderService, screenshotApplication)
                         it.close()
                     }
                     // Schedule the next capture
@@ -196,15 +196,15 @@ class BackgroundRecorderService : RecorderService() {
         }
     }
 
-    private fun saveImageData(bitmap: Bitmap, context: Context) {
+    private fun saveImageData(bitmap: Bitmap, context: Context, imageApplication: String?) {
         // Use the app's private storage directory
         val directory = getImageDirectory(context)
 
-        val file = File(directory, "${screenshotApplication}_${System.currentTimeMillis()}.jpg")
+        val file = File(directory, "${imageApplication}_${System.currentTimeMillis()}.jpg")
         try {
             FileOutputStream(file).use { fos ->
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos)
-                Log.d("ScreenRecordingService", "Image saved to ${file.absolutePath}")
+                Log.d("BackgroundRecorderService", "Image saved to ${file.absolutePath}")
             }
             screenShotsSinceAutoUpload += 1
             if (screenShotsSinceAutoUpload >= screenShotsPerAutoUpload) {
@@ -212,7 +212,7 @@ class BackgroundRecorderService : RecorderService() {
                 uploadToServer()
             }
         } catch (e: IOException) {
-            Log.e("ScreenRecordingService", "Failed to save image", e)
+            Log.e("BackgroundRecorderService", "Failed to save image", e)
         }
     }
 
@@ -232,7 +232,7 @@ class BackgroundRecorderService : RecorderService() {
     }
 
     override fun onDestroy() {
-        Log.d("ScreenRecordingService", "Destroying Screen Recording Service")
+        Log.d("BackgroundRecorderService", "Destroying Screen Recording Service")
         // sendBroadcast(Intent(SCREEN_RECORDER_STOPPED))
         isRunning = false
         handler?.removeCallbacks(recordRunnable!!) // Stop the recurring record capture

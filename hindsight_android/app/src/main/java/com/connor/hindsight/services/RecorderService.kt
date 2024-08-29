@@ -36,6 +36,11 @@ import kotlinx.coroutines.withContext
 abstract class RecorderService : LifecycleService() {
     abstract val notificationTitle: String
 
+    private var cameraCaptureEnabled: Boolean = Preferences.prefs.getBoolean(
+        Preferences.cameracaptureenabled,
+        false
+    )
+
     private val binder = LocalBinder()
     var recorder: MediaRecorder? = null
     var fileDescriptor: ParcelFileDescriptor? = null
@@ -60,6 +65,15 @@ abstract class RecorderService : LifecycleService() {
                     screenOn = false
                 }
                 Intent.ACTION_SCREEN_ON -> {
+                    if (!screenOn && cameraCaptureEnabled){
+                        Log.d("RecorderService", "Starting camera service")
+                        Intent(context, CameraCaptureService::class.java).also { serviceIntent ->
+                            context?.stopService(serviceIntent)
+                        }
+                        Intent(context, CameraCaptureService::class.java).also { serviceIntent ->
+                            context?.startService(serviceIntent)
+                        }
+                    }
                     screenOn = true
                 }
             }
