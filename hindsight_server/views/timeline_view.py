@@ -15,6 +15,10 @@ import tzlocal
 from zoneinfo import ZoneInfo
 from dataclasses import dataclass
 
+import sys
+sys.path.insert(0, "../")
+sys.path.insert(0, "./")
+
 from db import HindsightDB
 
 local_timezone = tzlocal.get_localzone()

@@ -10,6 +10,10 @@ from datetime import timedelta
 from PIL import Image, ImageTk
 from tkcalendar import DateEntry
 
+import sys
+sys.path.insert(0, "../")
+sys.path.insert(0, "./")
+
 import utils
 from db import HindsightDB
 from chromadb_tools import get_chroma_collection, query_chroma
