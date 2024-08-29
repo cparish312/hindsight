@@ -534,10 +534,11 @@ class HindsightDB:
 
     def get_locations(self):
         """Returns all locations."""
-        with self.get_connection() as conn:
-            query = f'''SELECT * FROM locations'''
-            df = pd.read_sql_query(query, conn)
-            return df
+        with self.db_lock:
+            with self.get_connection() as conn:
+                query = f'''SELECT * FROM locations'''
+                df = pd.read_sql_query(query, conn)
+                return df
         
     def add_label(self, frame_id, label, value=None):
         with self.db_lock:
