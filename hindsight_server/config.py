@@ -1,12 +1,12 @@
 import os
 from pathlib import Path
 
-base_dir = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(base_dir, "data")
+BASE_DIR = Path(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = os.path.join(BASE_DIR, "data")
 RAW_SCREENSHOTS_DIR = os.path.join(DATA_DIR, "raw_screenshots")
 SERVER_LOG_FILE = os.path.join(DATA_DIR, "hindsight_server.log")
 
-ANDROID_IDENTIFIERS_ALIAS_FILE = os.path.join(base_dir, "res/android_identifiers.json")
+ANDROID_IDENTIFIERS_ALIAS_FILE = os.path.join(BASE_DIR, "res/android_identifiers.json")
 
 HOME = Path.home()
 HINDSIGHT_SERVER_DIR = HOME / ".hindsight_server"

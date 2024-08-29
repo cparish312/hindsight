@@ -11,8 +11,6 @@ from config import API_KEY_FILE, HINDSIGHT_SERVER_DIR, BASE_DIR
 
 import utils
 
-base_dir = Path(os.path.dirname(os.path.abspath(__file__)))
-
 INTERNET_URL = "" # Insert ngrok URL
 
 def generate_random_key(length=30):
@@ -82,7 +80,7 @@ def create_android_preferences(prefs):
         }}
         """
 
-    fill_in_file(base_dir / "res/Preferences_template.kt", base_dir / "../hindsight_android/app/src/main/java/com/connor/hindsight/utils/Preferences.kt", 
+    fill_in_file(BASE_DIR / "res/Preferences_template.kt", BASE_DIR / "../hindsight_android/app/src/main/java/com/connor/hindsight/utils/Preferences.kt", 
                 "PYTHON_CONFIG_INSERT_HERE", set_vars_str)
 
 
@@ -98,7 +96,9 @@ def create_ssl_keys(local_ip):
                     "-signkey", HINDSIGHT_SERVER_DIR / "server.key", "-out", HINDSIGHT_SERVER_DIR / "server.crt",
                     "-extensions", "v3_ca", "-extfile", HINDSIGHT_SERVER_DIR / "san.cnf"])
     
-    der_dest = base_dir / "../hindsight_android/app/src/main/res/raw/hindsight_server.der"
+    app_raw_res_dir = BASE_DIR / "../hindsight_android/app/src/main/res/raw/"
+    utils.make_dir(app_raw_res_dir)
+    der_dest = app_raw_res_dir / "hindsight_server.der"
     subprocess.call(["openssl", "x509", "-outform", "der", "-in", HINDSIGHT_SERVER_DIR / "server.crt", "-out",
                     der_dest])
 
