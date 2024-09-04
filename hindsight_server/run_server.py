@@ -129,6 +129,6 @@ def ping_server():
         abort(401)
     return jsonify({'status': 'success', 'message': 'Server is reachable'}), 200
 
+app = create_app()
 if __name__ == '__main__':
-    app = create_app()
     app.run(debug=True, host='0.0.0.0', port=6000, ssl_context=(SSL_CERT, SSL_KEY))

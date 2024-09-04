@@ -16,7 +16,7 @@ dependencies:
   - numpy=1.26.4
   - colorcet
   - tzlocal
-  - gunicorn
+  - uwsgi
   - pip
   - pip:
       - protobuf==4.25.3
