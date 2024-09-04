@@ -36,9 +36,9 @@ def extract_text_from_frame(path):
     """Uses ocrmac to run OCR on the provided image path."""
     ocr_res = ocrmac.OCR(Image.open(path), recognition_level='accurate').recognize(px=True) # px converts to pil coordinates
     # x, y, w, h, text, conf
-    ocr_res = [(r[2][0], r[2][1], r[2][2]-r[2][0], r[2][3]-r[2][1], r[0], r[1]) for r in ocr_res]
+    ocr_res = [(r[2][0], r[2][1], r[2][2]-r[2][0], r[2][3]-r[2][1], r[0], r[1], None, None) for r in ocr_res]
     if len(ocr_res) == 0:
-        ocr_res = [[0, 0, 0, 0, None, 0]]
+        ocr_res = [[0, 0, 0, 0, None, 0, None, None]]
     return ocr_res
 
 def run_ocr(frame_id, path=None):
