@@ -13,7 +13,7 @@ from db import HindsightDB
 main_app = Blueprint('main', __name__)
 
 HOME = Path.home()
-SCREENSHOTS_TMP_DIR = HINDSIGHT_SERVER_DIR/ "raw_screenshots_tmp"
+SCREENSHOTS_TMP_DIR = HINDSIGHT_SERVER_DIR / "raw_screenshots_tmp"
 SSL_CERT = HINDSIGHT_SERVER_DIR / "server.crt"
 SSL_KEY = HINDSIGHT_SERVER_DIR / "server.key"
 

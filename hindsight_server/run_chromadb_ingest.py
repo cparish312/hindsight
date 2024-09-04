@@ -1,9 +1,12 @@
 import os
+import platform
 import chromadb
 from chromadb import Documents, Embeddings, EmbeddingFunction
+from chromadb.utils import embedding_functions
 import sys
 
-from mlx_embedding_models.embedding import EmbeddingModel
+if platform.system() == 'Darwin':
+    from mlx_embedding_models.embedding import EmbeddingModel
 
 sys.path.insert(0, "../")
 from db import HindsightDB
@@ -21,7 +24,10 @@ class MLXEmbeddingFunction(EmbeddingFunction):
 
 def get_chroma_collection(collection_name="pixel_screenshots", model_id=MLX_EMBDEDDING_MODEL):
     """Returns chromadb collections."""
-    embedding_function = MLXEmbeddingFunction(model_id=model_id)
+    if platform.system() == 'Darwin':
+        embedding_function = MLXEmbeddingFunction(model_id=model_id)
+    else:
+        embedding_function = embedding_functions.DefaultEmbeddingFunction()
     chroma_client = chromadb.PersistentClient(path=chroma_db_path)
     chroma_collection = chroma_client.get_or_create_collection(collection_name, embedding_function=embedding_function)
     return chroma_collection
@@ -38,7 +44,6 @@ def run_chroma_ingest(db, df, chroma_collection, ocr_results_df):
     ids = list()
     last_document = ""
     for i, row in df.iterrows():
-        # ocr_result = db.get_ocr_results(frame_id=row['id'])
         ocr_result = ocr_results_df.loc[ocr_results_df['frame_id'] == row['id']]
         if len(ocr_result) == 0 or set(ocr_result['text']) == {None}:
             continue

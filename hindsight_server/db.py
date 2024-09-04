@@ -333,6 +333,21 @@ class HindsightDB:
             # Use pandas to read the SQL query result into a DataFrame
             df = pd.read_sql_query(query, conn)
             return df
+        
+    def get_frames_without_ocr(self):
+        """Select frames that have not been linked to any OCR results."""
+        with self.get_connection() as conn:
+            # Query to get the frames that do not have associated OCR results
+            query = '''
+                SELECT f.*
+                FROM frames f
+                LEFT JOIN ocr_results o ON f.id = o.frame_id
+                WHERE o.id IS NULL
+            '''
+
+            # Use pandas to read the SQL query result into a DataFrame
+            df = pd.read_sql_query(query, conn)
+            return df
 
     def get_frames_with_ocr(self, frame_ids=None, impute_applications=True):
         """Select frames with associated OCR results."""

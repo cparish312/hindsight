@@ -65,7 +65,7 @@ def run_grouped_ocr():
 def chromadb_process_images(frames_df):
     """Ingests frames into chromadb."""
     frame_ids = set(frames_df['id'])
-    print(f"Running process_images_batched on {len(frame_ids)} frames")
+    print(f"Running ChromaDB ingest on {len(frame_ids)} frames")
     chroma_collection = get_chroma_collection()
     run_chroma_ingest_batched(db=db, df=frames_df, chroma_collection=chroma_collection)
 
@@ -86,6 +86,10 @@ def check_all_frames_ingested():
             # Insert into db and run OCR
             db.insert_frame(timestamp, ms_path, application)
 
+    screenshots_missing_paths = set(frames['path']) - set(screenshot_paths)
+    if len(screenshots_missing_paths) > 0:
+        print(f"Screenshots missing path: {screenshots_missing_paths}")
+
 def update_android_identifiers_file():
     """Adds any missing android identifiers to the android identifers json"""
     id_to_alias = utils.get_identifiers_to_alias()
@@ -100,7 +104,6 @@ def update_android_identifiers_file():
 
 if __name__ == "__main__":
     check_all_frames_ingested()
-    run_grouped_ocr()
     update_android_identifiers_file()
     print("Finished Backend setup")
 
