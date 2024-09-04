@@ -6,7 +6,9 @@ import sqlite3
 import numpy as np
 import pandas as pd
 from datetime import timedelta
-from threading import Lock
+
+import redis
+from redis.lock import Lock
 
 import tzlocal
 from zoneinfo import ZoneInfo
@@ -24,13 +26,17 @@ demo_apps = {'android', 'com-connor-hindsight', 'com-android-phone', 'com-androi
 class HindsightDB:
     def __init__(self, db_file=DB_FILE):
         self.db_file = db_file
-        self.db_lock = Lock()
+        client = redis.Redis(host='localhost', port=6379, db=0)
+        self.db_lock = Lock(client, "hindsight_db_lock") # Use Redis Lock to ensure lock across multiple instances of HindsightDB
         self.create_tables()
         self.create_lock_table()
 
     def get_connection(self):
         """Get a new connection every time for thread safety."""
-        return sqlite3.connect(self.db_file)
+        connection = sqlite3.connect(self.db_file)
+        connection.execute('PRAGMA journal_mode=WAL;')
+        connection.execute('PRAGMA busy_timeout = 10000;')
+        return connection
 
     def create_tables(self):
         # Create the "frames" table if it doesn't exist
@@ -69,9 +75,26 @@ class HindsightDB:
                     h DOUBLE NOT NULL,
                     text TEXT,
                     conf DOUBLE NOT NULL,
+                    block_num INTEGER,
+                    line_num INTEGER,
                     FOREIGN KEY (frame_id) REFERENCES frames(id)
                 )
             ''')
+
+            # Add the 'chromadb_processed' column if it does not exist
+            cursor.execute('''
+                PRAGMA table_info(ocr_results)
+            ''')
+            columns = [row[1] for row in cursor.fetchall()]
+            if 'block_num' not in columns:
+                cursor.execute('''
+                    ALTER TABLE ocr_results
+                    ADD COLUMN block_num INTEGER
+                ''')
+                cursor.execute('''
+                    ALTER TABLE ocr_results
+                    ADD COLUMN line_num INTEGER
+                ''')
 
             # cursor.execute('''
             #     DROP TABLE IF EXISTS queries
@@ -222,9 +245,9 @@ class HindsightDB:
                 cursor = conn.cursor()
                 # Insert multiple OCR results
                 cursor.executemany('''
-                    INSERT INTO ocr_results (frame_id, x, y, w, h, text, conf)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                ''', [(frame_id, x, y, w, h, text, conf) for x, y, w, h, text, conf in ocr_results])
+                    INSERT INTO ocr_results (frame_id, x, y, w, h, text, conf, block_num, line_num)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', [(frame_id, x, y, w, h, text, conf, block_num, line_num) for x, y, w, h, text, conf, block_num, line_num in ocr_results])
                 
                 conn.commit()
                 
