@@ -28,8 +28,9 @@ class HindsightDB:
         self.db_file = db_file
         client = redis.Redis(host='localhost', port=6379, db=0)
         self.db_lock = Lock(client, "hindsight_db_lock") # Use Redis Lock to ensure lock across multiple instances of HindsightDB
-        self.create_tables()
-        self.create_lock_table()
+        with self.db_lock:
+            self.create_tables()
+            self.create_lock_table()
 
     def get_connection(self):
         """Get a new connection every time for thread safety."""
