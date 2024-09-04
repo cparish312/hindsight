@@ -168,7 +168,7 @@ class ServerUploadService : LifecycleService() {
             }
             Log.d("ServerUploadService", "Uploading file: ${file.name}")
             uploadImageFile(file)
-            delay(100)
+            delay(300)
         }
         onDestroy()
     }
