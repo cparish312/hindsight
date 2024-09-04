@@ -42,10 +42,25 @@ def ingest_image(tmp_image_path):
     else:
         os.remove(tmp_image_path)
 
-    # Insert into db and run OCR
+    # Insert into db
     frame_id = db.insert_frame(timestamp, filepath, application)
     if platform.system() == 'Darwin':
-        run_ocr.run_ocr(frame_id=frame_id, path=filepath) # run_ocr inserts results into db
+        run_ocr.run_ocr_mac(frame_id=frame_id, frame_path=filepath) # run_ocr inserts results into db
+
+def run_grouped_ocr():
+    """Run OCR on all frames without OCR results"""
+    frames_without_ocr = db.get_frames_without_ocr()
+    if len(frames_without_ocr) == 0:
+        return
+    
+    print(f"Running OCR on {len(frames_without_ocr)} frames")
+    if platform.system() == 'Darwin':
+        frame_id_path = [(frame_id, filepath) for frame_id, filepath in zip(frames_without_ocr['id'], frames_without_ocr['path'])]
+        with multiprocessing.Pool(os.cpu_count() - 2) as p:
+            p.starmap(run_ocr.run_ocr_mac, frame_id_path)
+        return
+    
+    run_ocr.run_ocr_batched(df=frames_without_ocr, batch_size=20)
 
 def chromadb_process_images(frames_df):
     """Ingests frames into chromadb."""
@@ -69,9 +84,7 @@ def check_all_frames_ingested():
             application = filename_s[0]
             timestamp = int(filename_s[1])
             # Insert into db and run OCR
-            frame_id = db.insert_frame(timestamp, ms_path, application)
-            if platform.system() == 'Darwin':
-                run_ocr.run_ocr(frame_id=frame_id, path=ms_path) # run_ocr inserts results into db
+            db.insert_frame(timestamp, ms_path, application)
 
 def update_android_identifiers_file():
     """Adds any missing android identifiers to the android identifers json"""
@@ -87,6 +100,7 @@ def update_android_identifiers_file():
 
 if __name__ == "__main__":
     check_all_frames_ingested()
+    run_grouped_ocr()
     update_android_identifiers_file()
     print("Finished Backend setup")
 
@@ -98,8 +112,10 @@ if __name__ == "__main__":
         unprocessed_image_paths = [os.path.join(SCREENSHOTS_TMP_DIR, f) for f in os.listdir(SCREENSHOTS_TMP_DIR)]
         if len(unprocessed_image_paths) > 0:
             print(f"Ingesting {len(unprocessed_image_paths)} images.")
-            with multiprocessing.Pool(6) as p:
+            with multiprocessing.Pool(os.cpu_count() - 2) as p:
                 p.map(ingest_image, unprocessed_image_paths)
+
+        run_grouped_ocr() # Run OCR on any frames missing ocr results
 
         non_chromadb_processed_frames_df = db.get_non_chromadb_processed_frames_with_ocr().sort_values(by='timestamp', ascending=True)
         if len(non_chromadb_processed_frames_df) > 0:
