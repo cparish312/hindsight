@@ -4,9 +4,9 @@ from PIL import Image
 import tzlocal
 from zoneinfo import ZoneInfo
 
-import platform
+from config import RUNNING_PLATFORM
 
-if platform.system() == 'Darwin':
+if RUNNING_PLATFORM == 'Darwin':
     from ocrmac import ocrmac
 else:
     from doctr.io import DocumentFile
@@ -36,6 +36,8 @@ def run_ocr(frames, doctr_model):
                     w = (word['geometry'][1][0] * page_x) - x
                     h = (word['geometry'][1][1] * page_y) - y
                     img_ocr_res.append((x, y, w, h, word['value'], word['confidence'], block_num, line_num))
+        if len(img_ocr_res) == 0:
+            img_ocr_res = [[0, 0, 0, 0, None, 0, None, None]]
         db.insert_ocr_results(frame_ids[page_num], img_ocr_res)
 
 def run_ocr_batched(df, batch_size=20):

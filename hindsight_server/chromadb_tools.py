@@ -2,14 +2,18 @@ import os
 import pandas as pd
 import chromadb
 from chromadb import Documents, Embeddings, EmbeddingFunction
+from chromadb.utils import embedding_functions
 import sys
 
 from mlx_embedding_models.embedding import EmbeddingModel
 
 sys.path.insert(0, "../")
 from db import HindsightDB
-from config import DATA_DIR, MLX_EMBDEDDING_MODEL
+from config import DATA_DIR, MLX_EMBDEDDING_MODEL, RUNNING_PLATFORM
 import utils
+
+if RUNNING_PLATFORM == 'Darwin':
+    from mlx_embedding_models.embedding import EmbeddingModel
 
 chroma_db_path = os.path.join(DATA_DIR, "chromadb")
 
@@ -29,7 +33,10 @@ class MLXEmbeddingFunction(EmbeddingFunction):
 
 def get_chroma_collection(collection_name=DEFAULT_COLLECTION, model_id=MLX_EMBDEDDING_MODEL):
     """Returns chromadb collections."""
-    embedding_function = MLXEmbeddingFunction(model_id=model_id)
+    if RUNNING_PLATFORM == 'Darwin':
+        embedding_function = MLXEmbeddingFunction(model_id=model_id)
+    else:
+        embedding_function = embedding_functions.DefaultEmbeddingFunction()
     chroma_client = chromadb.PersistentClient(path=chroma_db_path)
     chroma_collection = chroma_client.get_or_create_collection(collection_name, embedding_function=embedding_function)
     return chroma_collection
@@ -122,6 +129,7 @@ def run_chroma_ingest(db, df, chroma_collection, ocr_results_df):
             last_document = document
 
     if len(documents) == 0:
+        db.update_chromadb_processed(frame_ids=set(df['id']))
         return
     chroma_collection.add(
         documents=documents,

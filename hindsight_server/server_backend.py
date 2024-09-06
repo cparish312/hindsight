@@ -3,13 +3,12 @@ import os
 import glob
 import shutil
 import time
-import platform
 import multiprocessing
 import pandas as pd
 
 from db import HindsightDB
 from chromadb_tools import get_chroma_collection, run_chroma_ingest_batched
-from config import RAW_SCREENSHOTS_DIR, SCREENSHOTS_TMP_DIR
+from config import RAW_SCREENSHOTS_DIR, SCREENSHOTS_TMP_DIR, RUNNING_PLATFORM
 import query.query as query
 import utils
 import run_ocr
@@ -43,7 +42,7 @@ def ingest_image(tmp_image_path):
 
     # Insert into db
     frame_id = db.insert_frame(timestamp, filepath, application)
-    if platform.system() == 'Darwin':
+    if RUNNING_PLATFORM == 'Darwin':
         run_ocr.run_ocr_mac(frame_id=frame_id, frame_path=filepath) # run_ocr inserts results into db
 
 def run_grouped_ocr():
@@ -53,7 +52,7 @@ def run_grouped_ocr():
         return
     
     print(f"Running OCR on {len(frames_without_ocr)} frames")
-    if platform.system() == 'Darwin':
+    if RUNNING_PLATFORM == 'Darwin':
         frame_id_path = [(frame_id, filepath) for frame_id, filepath in zip(frames_without_ocr['id'], frames_without_ocr['path'])]
         with multiprocessing.Pool(os.cpu_count() - 2) as p:
             p.starmap(run_ocr.run_ocr_mac, frame_id_path)
@@ -73,19 +72,22 @@ def check_all_frames_ingested():
     ingested in the frames table.
     """
     frames = db.get_frames()
-    screenshot_paths = glob.glob(f"{RAW_SCREENSHOTS_DIR}/*/*/*/*/*.jpg")
-    missing_screenshots = set(screenshot_paths) - set(frames['path'])
+    screenshot_paths = {os.path.abspath(f) for f in glob.glob(f"{RAW_SCREENSHOTS_DIR}/*/*/*/*/*.jpg")}
+    missing_screenshots = screenshot_paths - set(frames['path'])
     if len(missing_screenshots) > 0:
         print(f"Ingesting {len(missing_screenshots)} screenshots missing from frames table.")
-        for ms_path in missing_screenshots:
-            filename = ms_path.split('/')[-1]
-            filename_s = filename.replace(".jpg", "").split("_")
-            application = filename_s[0]
-            timestamp = int(filename_s[1])
+
+        sorted_screenshots = sorted(
+            ((int(path.split('/')[-1].split('_')[1]), path) for path in missing_screenshots),
+            key=lambda x: x[0]
+        )
+
+        for timestamp, ms_path in sorted_screenshots:
+            application = ms_path.split('/')[-1].split('_')[0]
             # Insert into db and run OCR
             db.insert_frame(timestamp, ms_path, application)
 
-    screenshots_missing_paths = set(frames['path']) - set(screenshot_paths)
+    screenshots_missing_paths = set(frames['path']) - screenshot_paths
     if len(screenshots_missing_paths) > 0:
         print(f"Screenshots missing path: {screenshots_missing_paths}")
 

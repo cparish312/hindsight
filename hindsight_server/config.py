@@ -21,6 +21,9 @@ if os.path.exists(API_KEY_FILE):
 else:
     SECRET_API_KEY = "NONE"
 
+
+RUNNING_PLATFORM = platform.system()
+
 """Should be able to run any LLMs in huggingface mlx-community."""
 MLX_LLM_MODEL = "mlx-community/Meta-Llama-3-8B-Instruct-8bit"
 
@@ -28,6 +31,3 @@ MLX_LLM_MODEL = "mlx-community/Meta-Llama-3-8B-Instruct-8bit"
 https://github.com/taylorai/mlx_embedding_models/blob/main/src/mlx_embedding_models/registry.py
 """
 MLX_EMBDEDDING_MODEL = "bge-large"
-
-# RUNNING_PLATFORM = platform.system()
-RUNNING_PLATFORM = "WIN"
