@@ -78,7 +78,7 @@ def check_all_frames_ingested():
         print(f"Ingesting {len(missing_screenshots)} screenshots missing from frames table.")
 
         sorted_screenshots = sorted(
-            ((int(path.split('/')[-1].split('_')[1]), path) for path in missing_screenshots),
+            ((int(path.split('/')[-1].split('_')[1].split(".")[0]), path) for path in missing_screenshots),
             key=lambda x: x[0]
         )
 
