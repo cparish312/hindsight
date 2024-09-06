@@ -251,8 +251,6 @@ class HindsightDB:
                 ''', [(frame_id, x, y, w, h, text, conf, block_num, line_num) for x, y, w, h, text, conf, block_num, line_num in ocr_results])
                 
                 conn.commit()
-                
-                print(f"{len(ocr_results)} OCR results added successfully.")
 
     def get_all_applications(self):
         """Returns all applications in the frames table."""

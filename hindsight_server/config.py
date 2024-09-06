@@ -1,4 +1,5 @@
 import os
+import platform
 from pathlib import Path
 
 BASE_DIR = Path(os.path.dirname(os.path.abspath(__file__)))
@@ -25,3 +26,5 @@ MLX_LLM_MODEL = "mlx-community/Meta-Llama-3-8B-Instruct-8bit"
 https://github.com/taylorai/mlx_embedding_models/blob/main/src/mlx_embedding_models/registry.py
 """
 MLX_EMBDEDDING_MODEL = "bge-large"
+
+RUNNING_PLATFORM = platform.system()

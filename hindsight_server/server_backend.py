@@ -3,13 +3,12 @@ import os
 import glob
 import shutil
 import time
-import platform
 import multiprocessing
 import pandas as pd
 
 from db import HindsightDB
 from chromadb_tools import get_chroma_collection, run_chroma_ingest_batched
-from config import RAW_SCREENSHOTS_DIR, SCREENSHOTS_TMP_DIR
+from config import RAW_SCREENSHOTS_DIR, SCREENSHOTS_TMP_DIR, RUNNING_PLATFORM
 import query.query as query
 import utils
 import run_ocr
@@ -43,7 +42,7 @@ def ingest_image(tmp_image_path):
 
     # Insert into db
     frame_id = db.insert_frame(timestamp, filepath, application)
-    if platform.system() == 'Darwin':
+    if RUNNING_PLATFORM == 'Darwin':
         run_ocr.run_ocr_mac(frame_id=frame_id, frame_path=filepath) # run_ocr inserts results into db
 
 def run_grouped_ocr():
@@ -53,7 +52,7 @@ def run_grouped_ocr():
         return
     
     print(f"Running OCR on {len(frames_without_ocr)} frames")
-    if platform.system() == 'Darwin':
+    if RUNNING_PLATFORM == 'Darwin':
         frame_id_path = [(frame_id, filepath) for frame_id, filepath in zip(frames_without_ocr['id'], frames_without_ocr['path'])]
         with multiprocessing.Pool(os.cpu_count() - 2) as p:
             p.starmap(run_ocr.run_ocr_mac, frame_id_path)
