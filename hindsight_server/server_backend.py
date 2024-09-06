@@ -73,8 +73,8 @@ def check_all_frames_ingested():
     ingested in the frames table.
     """
     frames = db.get_frames()
-    screenshot_paths = glob.glob(f"{RAW_SCREENSHOTS_DIR}/*/*/*/*/*.jpg")
-    missing_screenshots = set(screenshot_paths) - set(frames['path'])
+    screenshot_paths = {os.path.abspath(f) for f in glob.glob(f"{RAW_SCREENSHOTS_DIR}/*/*/*/*/*.jpg")}
+    missing_screenshots = screenshot_paths - set(frames['path'])
     if len(missing_screenshots) > 0:
         print(f"Ingesting {len(missing_screenshots)} screenshots missing from frames table.")
         for ms_path in missing_screenshots:
@@ -85,7 +85,7 @@ def check_all_frames_ingested():
             # Insert into db and run OCR
             db.insert_frame(timestamp, os.path.abspath(ms_path), application)
 
-    screenshots_missing_paths = set(frames['path']) - set(screenshot_paths)
+    screenshots_missing_paths = set(frames['path']) - screenshot_paths
     if len(screenshots_missing_paths) > 0:
         print(f"Screenshots missing path: {screenshots_missing_paths}")
 
