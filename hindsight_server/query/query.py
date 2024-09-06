@@ -1,18 +1,30 @@
 """Scripts for running LLM queries on screenshot context."""
 import gc
-import pandas as pd
-import mlx
 
 from datetime import timedelta
-
-from mlx_lm import load, generate
 
 from .prompts import get_prompt, get_summary_prompt, get_recomposition_prompt, get_decomposition_prompt, get_summary_compete_prompt
 from chromadb_tools import query_chroma, chroma_search_results_to_df, get_chroma_collection
 from db import HindsightDB
 import utils
-from config import MLX_LLM_MODEL
+from config import LLM_MODEL_NAME, RUNNING_PLATFORM
 # from query_vlm import vlm_basic_retrieved_query
+
+if RUNNING_PLATFORM == 'Darwin':
+    from mlx_lm import load, generate
+else:
+    from transformers import LlamaForCausalLM, LlamaTokenizer
+
+    def load(model_name):
+        model = LlamaForCausalLM.from_pretrained(model_name)
+        tokenizer = LlamaTokenizer.from_pretrained(model_name)
+        return model, tokenizer
+    
+    def generate(model, tokenizer, prompt, max_tokens):
+        tokens = tokenizer.encode(prompt, return_tensors='pt')
+        output = model.generate(tokens, max_new_tokens=max_tokens)
+        output_text = tokenizer.decode(output[0])
+        return output_text
 
 db = HindsightDB()
 
@@ -45,7 +57,7 @@ def basic_retrieved_query(query_text, source_apps=None, utc_milliseconds_start_d
 
     prompt = get_prompt(text=combined_text, query=query_text)
     if model is None:
-        model, tokenizer = load(MLX_LLM_MODEL) 
+        model, tokenizer = load(LLM_MODEL_NAME) 
     response = generate(model, tokenizer, prompt=prompt, max_tokens=max_tokens)
     source_frame_ids = list(chroma_search_results_df['id'])
     return response, source_frame_ids
@@ -79,7 +91,7 @@ def long_context_query(query_text, source_apps=None, utc_milliseconds_start_date
     frames_df = db.get_frames()
 
     if model is None:
-        model, tokenizer = load(MLX_LLM_MODEL) 
+        model, tokenizer = load(LLM_MODEL_NAME) 
 
     responses = list()
     for frame_id in chroma_search_results_df['id']:
@@ -104,7 +116,7 @@ def run_decomp_question_query(query_text, num_decomp_questions=4, source_apps=No
     chroma_collection = get_chroma_collection() if chroma_collection is None else chroma_collection
     decomp_prompt = get_decomposition_prompt(query_text, num_decomp_questions)
     if model is None:
-        model, tokenizer = load(MLX_LLM_MODEL) 
+        model, tokenizer = load(LLM_MODEL_NAME) 
     response = generate(model, tokenizer, prompt=decomp_prompt)
     decomp_questions = response.split("\n")[1:num_decomp_questions + 1]
 
@@ -135,8 +147,6 @@ def query_and_insert(query_id, query_text, source_apps=None, utc_milliseconds_st
         query_type = query_text_s[0]
         query_text = "/".join(query_text_s[1:])
     
-    mlx.core.metal.clear_cache()
-    
     if query_type == "b":
         response, source_frame_ids = basic_retrieved_query(query_text, source_apps=source_apps, utc_milliseconds_start_date=utc_milliseconds_start_date, 
                                         utc_milliseconds_end_date=utc_milliseconds_end_date, max_chroma_results=max_chroma_results)
@@ -148,7 +158,7 @@ def query_and_insert(query_id, query_text, source_apps=None, utc_milliseconds_st
         response, source_frame_ids = run_decomp_question_query(query_text, num_decomp_questions=4, source_apps=source_apps, utc_milliseconds_start_date=utc_milliseconds_start_date, 
                                         utc_milliseconds_end_date=utc_milliseconds_end_date, max_chroma_results=max_chroma_results)
     elif query_type == "a":
-        model, tokenizer = load(MLX_LLM_MODEL) 
+        model, tokenizer = load(LLM_MODEL_NAME) 
         chroma_collection = get_chroma_collection()
         response_b, source_frame_ids_b = basic_retrieved_query(query_text, source_apps=source_apps, utc_milliseconds_start_date=utc_milliseconds_start_date, 
                                         utc_milliseconds_end_date=utc_milliseconds_end_date, max_chroma_results=max_chroma_results, model=model, tokenizer=tokenizer,
@@ -178,4 +188,3 @@ def query_and_insert(query_id, query_text, source_apps=None, utc_milliseconds_st
         db.insert_query_result(query_id, response, source_frame_ids)
 
     gc.collect()
-    mlx.core.metal.clear_cache()
