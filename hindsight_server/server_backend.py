@@ -83,7 +83,7 @@ def check_all_frames_ingested():
             application = filename_s[0]
             timestamp = int(filename_s[1])
             # Insert into db and run OCR
-            db.insert_frame(timestamp, os.path.abspath(ms_path), application)
+            db.insert_frame(timestamp, ms_path, application)
 
     screenshots_missing_paths = set(frames['path']) - screenshot_paths
     if len(screenshots_missing_paths) > 0:
