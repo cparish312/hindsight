@@ -6,14 +6,13 @@ from random import randrange
 from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify, abort, Blueprint
 
-from config import SERVER_LOG_FILE, SECRET_API_KEY, HINDSIGHT_SERVER_DIR
+from config import SERVER_LOG_FILE, SECRET_API_KEY, HINDSIGHT_SERVER_DIR, SCREENSHOTS_TMP_DIR
 import utils
 from db import HindsightDB
 
 main_app = Blueprint('main', __name__)
 
 HOME = Path.home()
-SCREENSHOTS_TMP_DIR = HINDSIGHT_SERVER_DIR / "raw_screenshots_tmp"
 SSL_CERT = HINDSIGHT_SERVER_DIR / "server.crt"
 SSL_KEY = HINDSIGHT_SERVER_DIR / "server.key"
 
@@ -52,6 +51,7 @@ def upload_image():
         file.save(tmp_file)
         print("Saved", filename)
         return jsonify({"status": "success", "message": "File successfully uploaded"}), 200
+    return jsonify({"status": "error", "message": "No file"}), 400
 
 @main_app.route('/post_query', methods=['POST'])
 def post_query():
@@ -132,3 +132,4 @@ def ping_server():
 app = create_app()
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=6000, ssl_context=(SSL_CERT, SSL_KEY))
+    

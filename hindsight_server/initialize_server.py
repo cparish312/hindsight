@@ -7,7 +7,7 @@ import secrets
 import subprocess
 from pathlib import Path
 
-from config import API_KEY_FILE, HINDSIGHT_SERVER_DIR, BASE_DIR
+from config import API_KEY_FILE, HINDSIGHT_SERVER_DIR, BASE_DIR, SCREENSHOTS_TMP_DIR
 
 import utils
 
@@ -124,7 +124,7 @@ def initialize_server():
     
     create_ssl_keys(local_ip)
 
-    utils.make_dir(HINDSIGHT_SERVER_DIR / "raw_screenshots_tmp")
+    utils.make_dir(SCREENSHOTS_TMP_DIR)
 
 if __name__ == "__main__":
     initialize_server()

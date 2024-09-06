@@ -9,9 +9,8 @@ import pandas as pd
 
 from db import HindsightDB
 from chromadb_tools import get_chroma_collection, run_chroma_ingest_batched
-from run_server import SCREENSHOTS_TMP_DIR
-from config import RAW_SCREENSHOTS_DIR
-import query
+from config import RAW_SCREENSHOTS_DIR, SCREENSHOTS_TMP_DIR
+import query.query as query
 import utils
 import run_ocr
 
