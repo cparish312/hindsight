@@ -55,6 +55,7 @@ def run_chroma_ingest(db, df, chroma_collection, ocr_results_df):
             last_document = document
 
     if len(documents) == 0:
+        db.update_chromadb_processed(frame_ids=set(df['id']))
         return
     chroma_collection.add(
         documents=documents,
