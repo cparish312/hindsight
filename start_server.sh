@@ -7,6 +7,7 @@ python server_backend.py &
 
 # Start the uwsgi server
 uwsgi --https :6000,$HOME/.hindsight_server/server.crt,$HOME/.hindsight_server/server.key --workers 4 --wsgi-file run_server.py --callable app --master --enable-threads
+# uwsgi --https :6000,%HOMEPATH%\.hindsight_server\server.crt,%HOMEPATH%\.hindsight_server\server.key --workers 4 --wsgi-file run_server.py --callable app --master --enable-threads
 
 # If uwsgi server exits, the background Python process is also killed
 trap "kill $!" EXIT
