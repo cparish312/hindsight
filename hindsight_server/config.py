@@ -22,7 +22,8 @@ else:
     SECRET_API_KEY = "NONE"
 
 
-RUNNING_PLATFORM = platform.system()
+# RUNNING_PLATFORM = platform.system()
+RUNNING_PLATFORM = "Win"
 
 """Should be able to run any LLMs in huggingface mlx-community."""
 MLX_LLM_MODEL = "mlx-community/Meta-Llama-3-8B-Instruct-8bit"
