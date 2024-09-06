@@ -1,9 +1,12 @@
 import os
+import platform
 from pathlib import Path
 
 BASE_DIR = Path(os.path.dirname(os.path.abspath(__file__)))
 
-HOME = Path.home()
+# HOME = Path.home()
+HOME = BASE_DIR / "data/fake_home/"
+
 HINDSIGHT_SERVER_DIR = HOME / ".hindsight_server"
 DATA_DIR = HINDSIGHT_SERVER_DIR / "data"
 SCREENSHOTS_TMP_DIR = DATA_DIR / "raw_screenshots_tmp"
@@ -25,3 +28,6 @@ MLX_LLM_MODEL = "mlx-community/Meta-Llama-3-8B-Instruct-8bit"
 https://github.com/taylorai/mlx_embedding_models/blob/main/src/mlx_embedding_models/registry.py
 """
 MLX_EMBDEDDING_MODEL = "bge-large"
+
+# RUNNING_PLATFORM = platform.system()
+RUNNING_PLATFORM = "WIN"
