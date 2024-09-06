@@ -7,12 +7,12 @@ from datetime import timedelta
 
 from mlx_lm import load, generate
 
-from prompts import get_prompt, get_summary_prompt, get_recomposition_prompt, get_decomposition_prompt, get_summary_compete_prompt
+from .prompts import get_prompt, get_summary_prompt, get_recomposition_prompt, get_decomposition_prompt, get_summary_compete_prompt
 from chromadb_tools import query_chroma, chroma_search_results_to_df, get_chroma_collection
 from db import HindsightDB
 import utils
 from config import MLX_LLM_MODEL
-from query_vlm import vlm_basic_retrieved_query
+# from query_vlm import vlm_basic_retrieved_query
 
 db = HindsightDB()
 
@@ -164,8 +164,9 @@ def query_and_insert(query_id, query_text, source_apps=None, utc_milliseconds_st
         response = generate(model, tokenizer, prompt=summary_compete_prompt, max_tokens=250)
         source_frame_ids = set(source_frame_ids_b) | set(source_frame_ids_l) | set(source_frame_ids_d)
     elif query_type == "v":
-        response, source_frame_ids = vlm_basic_retrieved_query(query_text, source_apps=source_apps, utc_milliseconds_start_date=utc_milliseconds_start_date, 
-                                    utc_milliseconds_end_date=utc_milliseconds_end_date, max_chroma_results=max_chroma_results)
+        pass
+        # response, source_frame_ids = vlm_basic_retrieved_query(query_text, source_apps=source_apps, utc_milliseconds_start_date=utc_milliseconds_start_date, 
+        #                             utc_milliseconds_end_date=utc_milliseconds_end_date, max_chroma_results=max_chroma_results)
     else:
         print("Invalid query type", query_type)
         db.insert_query_result(query_id, "Invalid query type", {})
