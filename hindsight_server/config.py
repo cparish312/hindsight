@@ -4,7 +4,9 @@ from pathlib import Path
 
 BASE_DIR = Path(os.path.dirname(os.path.abspath(__file__)))
 
-HOME = Path.home()
+# HOME = Path.home()
+HOME = BASE_DIR / "data/fake_home/"
+
 HINDSIGHT_SERVER_DIR = HOME / ".hindsight_server"
 DATA_DIR = HINDSIGHT_SERVER_DIR / "data"
 SCREENSHOTS_TMP_DIR = DATA_DIR / "raw_screenshots_tmp"
