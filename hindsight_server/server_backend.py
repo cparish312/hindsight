@@ -77,11 +77,14 @@ def check_all_frames_ingested():
     missing_screenshots = screenshot_paths - set(frames['path'])
     if len(missing_screenshots) > 0:
         print(f"Ingesting {len(missing_screenshots)} screenshots missing from frames table.")
-        for ms_path in missing_screenshots:
-            filename = ms_path.split('/')[-1]
-            filename_s = filename.replace(".jpg", "").split("_")
-            application = filename_s[0]
-            timestamp = int(filename_s[1])
+
+        sorted_screenshots = sorted(
+            ((int(path.split('/')[-1].split('_')[1]), path) for path in missing_screenshots),
+            key=lambda x: x[0]
+        )
+
+        for timestamp, ms_path in sorted_screenshots:
+            application = ms_path.split('/')[-1].split('_')[0]
             # Insert into db and run OCR
             db.insert_frame(timestamp, ms_path, application)
 
