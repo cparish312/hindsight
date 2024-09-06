@@ -21,12 +21,11 @@ if os.path.exists(API_KEY_FILE):
 else:
     SECRET_API_KEY = "NONE"
 
-
 # RUNNING_PLATFORM = platform.system()
 RUNNING_PLATFORM = "Win"
 
-"""Should be able to run any LLMs in huggingface mlx-community."""
-MLX_LLM_MODEL = "mlx-community/Meta-Llama-3-8B-Instruct-8bit"
+"""Should be able to run any LLMs in huggingface mlx-community if mac. Otherwise, any transformers LLAMA model"""
+LLM_MODEL_NAME = "mlx-community/Meta-Llama-3-8B-Instruct-8bit"
 
 """Should be able to run any embedding models here:
 https://github.com/taylorai/mlx_embedding_models/blob/main/src/mlx_embedding_models/registry.py
