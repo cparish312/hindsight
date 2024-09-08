@@ -12,24 +12,27 @@ from config import LLM_MODEL_NAME, RUNNING_PLATFORM
 
 if RUNNING_PLATFORM == 'Darwin':
     from mlx_lm import load, generate
+
+    def llm_generate(pipeline, prompt, max_tokens):
+        model, tokenizer = pipeline
+        return generate(model, tokenizer, prompt=prompt, max_tokens=max_tokens)
 else:
-    from transformers import LlamaForCausalLM, LlamaTokenizer
+    import transformers
+    import torch    
 
     def load(model_name):
-        model = LlamaForCausalLM.from_pretrained(model_name)
-        tokenizer = LlamaTokenizer.from_pretrained(model_name)
-        return model, tokenizer
+        pipeline = transformers.pipeline(
+            "text-generation", model=model_name, model_kwargs={"torch_dtype": torch.bfloat16}, device_map="auto"
+        )
+        return pipeline
     
-    def generate(model, tokenizer, prompt, max_tokens):
-        tokens = tokenizer.encode(prompt, return_tensors='pt')
-        output = model.generate(tokens, max_new_tokens=max_tokens)
-        output_text = tokenizer.decode(output[0])
-        return output_text
+    def llm_generate(pipeline, prompt, max_tokens):
+        return pipeline(prompt, max_new_tokens=max_tokens)[0]['generated_text']
 
 db = HindsightDB()
 
 def basic_retrieved_query(query_text, source_apps=None, utc_milliseconds_start_date=None, utc_milliseconds_end_date=None, 
-                          max_chroma_results=100, num_contexts=20, per_usage_results=1, model=None, tokenizer=None,
+                          max_chroma_results=100, num_contexts=20, per_usage_results=1, pipeline=None,
                           max_tokens=100, chroma_collection=None):
     """Grabs the closest per_usage_results frames within a usage. Combines all contexts into a single prompt."""
     chroma_search_results = query_chroma(query_text, source_apps, utc_milliseconds_start_date, utc_milliseconds_end_date, max_chroma_results,
@@ -56,14 +59,14 @@ def basic_retrieved_query(query_text, source_apps=None, utc_milliseconds_start_d
         combined_text += t
 
     prompt = get_prompt(text=combined_text, query=query_text)
-    if model is None:
-        model, tokenizer = load(LLM_MODEL_NAME) 
-    response = generate(model, tokenizer, prompt=prompt, max_tokens=max_tokens)
+    if pipeline is None:
+        pipeline = load(LLM_MODEL_NAME) 
+    response = llm_generate(pipeline=pipeline, prompt=prompt, max_tokens=max_tokens)
     source_frame_ids = list(chroma_search_results_df['id'])
     return response, source_frame_ids
 
 def long_context_query(query_text, source_apps=None, utc_milliseconds_start_date=None, utc_milliseconds_end_date=None,
-                        max_chroma_results=100, num_contexts=10, per_usage_results=1, context_buffer=5, model=None, tokenizer=None,
+                        max_chroma_results=100, num_contexts=10, per_usage_results=1, context_buffer=5, pipeline=None,
                         max_tokens=200, chroma_collection=None):
     """Grabs the closest per_usage_results frames within a usage. For each frame, grabs the number of context_buffer frames
     before and after the frame. It then passes these contexts to the LLM to get a response for each original usage frame.
@@ -90,48 +93,48 @@ def long_context_query(query_text, source_apps=None, utc_milliseconds_start_date
 
     frames_df = db.get_frames()
 
-    if model is None:
-        model, tokenizer = load(LLM_MODEL_NAME) 
+    if pipeline is None:
+        pipeline = load(LLM_MODEL_NAME) 
 
     responses = list()
     for frame_id in chroma_search_results_df['id']:
         context_text = utils.get_context_around_frame_id(int(frame_id), frames_df, db, context_buffer=context_buffer)
         prompt = get_prompt(text=context_text, query=query_text)
-        response = generate(model, tokenizer, prompt=prompt, max_tokens=max_tokens)
+        response = llm_generate(pipeline=pipeline, prompt=prompt, max_tokens=max_tokens)
         responses.append(response)
 
     sep_str = "\n" + "-"*20 + "\n"
     combined_responses = sep_str.join(responses)
     summary_prompt = get_summary_prompt(text=combined_responses, query=query_text)
-    response = generate(model, tokenizer, prompt=summary_prompt, max_tokens=max_tokens)
+    response = llm_generate(pipeline=pipeline, prompt=summary_prompt, max_tokens=max_tokens)
     source_frame_ids = list(chroma_search_results_df['id'])
     return response, source_frame_ids
 
 
 def run_decomp_question_query(query_text, num_decomp_questions=4, source_apps=None, utc_milliseconds_start_date=None, utc_milliseconds_end_date=None, max_chroma_results=100, max_tokens=500,
-                              model=None, tokenizer=None, chroma_collection=None):
+                              pipeline=None, chroma_collection=None):
     """Uses a decompotion strategy to answer more advanced questions. The first step is to answer questions to help
     get the context needed to answer the original query. Check out README for more details.
     """
     chroma_collection = get_chroma_collection() if chroma_collection is None else chroma_collection
     decomp_prompt = get_decomposition_prompt(query_text, num_decomp_questions)
-    if model is None:
-        model, tokenizer = load(LLM_MODEL_NAME) 
-    response = generate(model, tokenizer, prompt=decomp_prompt)
+    if pipeline is None:
+        pipeline = load(LLM_MODEL_NAME) 
+    response = llm_generate(pipeline=pipeline, prompt=decomp_prompt)
     decomp_questions = response.split("\n")[1:num_decomp_questions + 1]
 
     total_source_frame_ids = set()
     q_to_res = {}
     for q in decomp_questions:
         response, source_frame_ids = long_context_query(query_text=q, source_apps=source_apps, utc_milliseconds_start_date=utc_milliseconds_start_date, 
-                                       utc_milliseconds_end_date=utc_milliseconds_end_date, max_chroma_results=max_chroma_results, model=model, 
-                                       tokenizer=tokenizer, chroma_collection=chroma_collection)
+                                       utc_milliseconds_end_date=utc_milliseconds_end_date, max_chroma_results=max_chroma_results, pipeline=pipeline, 
+                                       chroma_collection=chroma_collection)
         if response is not None:
             q_to_res[q] = response
             total_source_frame_ids.update(set(source_frame_ids))
 
     recomp_prompt = get_recomposition_prompt(query_text, q_to_res)
-    final_response = generate(model, tokenizer, prompt=recomp_prompt, max_tokens=max_tokens)
+    final_response = llm_generate(pipeline=pipeline, prompt=recomp_prompt, max_tokens=max_tokens)
     return final_response, total_source_frame_ids
 
 
@@ -158,20 +161,20 @@ def query_and_insert(query_id, query_text, source_apps=None, utc_milliseconds_st
         response, source_frame_ids = run_decomp_question_query(query_text, num_decomp_questions=4, source_apps=source_apps, utc_milliseconds_start_date=utc_milliseconds_start_date, 
                                         utc_milliseconds_end_date=utc_milliseconds_end_date, max_chroma_results=max_chroma_results)
     elif query_type == "a":
-        model, tokenizer = load(LLM_MODEL_NAME) 
+        pipeline = load(LLM_MODEL_NAME) 
         chroma_collection = get_chroma_collection()
         response_b, source_frame_ids_b = basic_retrieved_query(query_text, source_apps=source_apps, utc_milliseconds_start_date=utc_milliseconds_start_date, 
-                                        utc_milliseconds_end_date=utc_milliseconds_end_date, max_chroma_results=max_chroma_results, model=model, tokenizer=tokenizer,
+                                        utc_milliseconds_end_date=utc_milliseconds_end_date, max_chroma_results=max_chroma_results, pipeline=pipeline,
                                         chroma_collection=chroma_collection)
         response_l, source_frame_ids_l = long_context_query(query_text, source_apps=source_apps, utc_milliseconds_start_date=utc_milliseconds_start_date, 
                                         utc_milliseconds_end_date=utc_milliseconds_end_date, max_chroma_results=max_chroma_results, num_contexts=10, 
-                                        per_usage_results=1, context_buffer=5, model=model, tokenizer=tokenizer, chroma_collection=chroma_collection)
+                                        per_usage_results=1, context_buffer=5, pipeline=pipeline, chroma_collection=chroma_collection)
         response_d, source_frame_ids_d = run_decomp_question_query(query_text, num_decomp_questions=4, source_apps=source_apps, utc_milliseconds_start_date=utc_milliseconds_start_date, 
-                                        utc_milliseconds_end_date=utc_milliseconds_end_date, max_chroma_results=max_chroma_results, model=model, tokenizer=tokenizer,
+                                        utc_milliseconds_end_date=utc_milliseconds_end_date, max_chroma_results=max_chroma_results, pipeline=pipeline,
                                         chroma_collection=chroma_collection)
         method_to_text = {"Basic" : response_b, "Long Context" : response_l, "Decomposition" : response_d}
         summary_compete_prompt = get_summary_compete_prompt(method_to_text, query_text)
-        response = generate(model, tokenizer, prompt=summary_compete_prompt, max_tokens=250)
+        response = llm_generate(pipeline=pipeline, prompt=summary_compete_prompt, max_tokens=250)
         source_frame_ids = set(source_frame_ids_b) | set(source_frame_ids_l) | set(source_frame_ids_d)
     elif query_type == "v":
         pass
