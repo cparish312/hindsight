@@ -13,10 +13,10 @@ dependencies:
   - tzlocal=5.2
   - colorcet
   - matplotlib
-  - uwsgi
   - pytorch
   - pip:
       - chromadb
+      - gevent
       - opencv-python==4.9.0.80
       - tkcalendar
       - python-doctr

@@ -5,6 +5,9 @@ from pathlib import Path
 from random import randrange
 from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify, abort, Blueprint
+from gevent.pywsgi import WSGIServer
+from gevent import monkey
+monkey.patch_all()
 
 from config import SERVER_LOG_FILE, SECRET_API_KEY, HINDSIGHT_SERVER_DIR, SCREENSHOTS_TMP_DIR
 import utils
@@ -131,5 +134,7 @@ def ping_server():
 
 app = create_app()
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=6000, ssl_context=(SSL_CERT, SSL_KEY))
+    # app.run(debug=True, host='0.0.0.0', port=6000, ssl_context=(SSL_CERT, SSL_KEY))
+    http_server = WSGIServer(('0.0.0.0', 6000), app, keyfile=SSL_KEY, certfile=SSL_CERT)
+    http_server.serve_forever()
     
