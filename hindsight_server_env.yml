@@ -16,6 +16,7 @@ dependencies:
   - pytorch
   - pip:
       - chromadb
+      - portalocker
       - gevent
       - opencv-python==4.9.0.80
       - tkcalendar
