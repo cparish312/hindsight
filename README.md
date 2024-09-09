@@ -16,9 +16,9 @@ Hindsight is an android app that takes a screenshot every 2 seconds. The server 
 </a>
 
 ## Setup
-[Mac](https://github.com/cparish312/hindsight/blob/main/assets/setup_mac.md)
-[Linux](https://github.com/cparish312/hindsight/blob/main/assets/setup_linux.md)
-[Windows](https://github.com/cparish312/hindsight/blob/main/assets/setup_windows.md)
+* [Mac](https://github.com/cparish312/hindsight/blob/main/assets/setup_mac.md)
+* [Linux](https://github.com/cparish312/hindsight/blob/main/assets/setup_linux.md)
+* [Windows](https://github.com/cparish312/hindsight/blob/main/assets/setup_windows.md)
 
 ## Features
 Currently the app has 4 "working" functionalities.
