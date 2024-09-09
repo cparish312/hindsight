@@ -5,8 +5,6 @@ from chromadb import Documents, Embeddings, EmbeddingFunction
 from chromadb.utils import embedding_functions
 import sys
 
-from mlx_embedding_models.embedding import EmbeddingModel
-
 sys.path.insert(0, "../")
 from db import HindsightDB
 from config import DATA_DIR, MLX_EMBDEDDING_MODEL, RUNNING_PLATFORM
