@@ -23,7 +23,10 @@ else:
 RUNNING_PLATFORM = platform.system()
 
 """Should be able to run any LLMs in huggingface mlx-community if mac. Otherwise, any transformers LLAMA model"""
-LLM_MODEL_NAME = "mlx-community/Meta-Llama-3-8B-Instruct-8bit"
+if RUNNING_PLATFORM == 'Darwin':
+    LLM_MODEL_NAME = "mlx-community/Meta-Llama-3-8B-Instruct-8bit"
+else:
+    LLM_MODEL_NAME = "meta-llama/Meta-Llama-3.1-8B-Instruct" # For non-mac
 
 """Should be able to run any embedding models here:
 https://github.com/taylorai/mlx_embedding_models/blob/main/src/mlx_embedding_models/registry.py

@@ -16,7 +16,6 @@ dependencies:
   - numpy=1.26.4
   - colorcet
   - tzlocal
-  - uwsgi
   - pip
   - pip:
       - protobuf==4.25.3
@@ -29,3 +28,5 @@ dependencies:
       - mlx-embedding-models==0.0.9
       - mlx-lm==0.16.1
       - mlx-vlm==0.0.11
+      - portalocker
+      - gevent
