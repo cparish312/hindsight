@@ -23,7 +23,7 @@ DB_FILE = os.path.join(DATA_DIR, "hindsight.db")
 demo_apps = {'android', 'com-connor-hindsight', 'com-android-phone', 'com-android-pixeldisplayservice', 'com-android-settings',  'com-github-android', 'com-reddit-frontpage', 'com-soundcloud-android', 'com-spotify-music'}
 
 class HindsightDB:
-    def __init__(self, db_file=DB_FILE, timeout=50):
+    def __init__(self, db_file=DB_FILE):
         self.db_file = db_file
         self.lock_file = db_file + '.lock'
         self.create_tables()
@@ -31,7 +31,7 @@ class HindsightDB:
 
     def get_connection(self):
         """Get a new connection every time for thread safety."""
-        connection = sqlite3.connect(self.db_file)
+        connection = sqlite3.connect(self.db_file, timeout=50)
         connection.execute('PRAGMA journal_mode=WAL;')
         connection.execute('PRAGMA busy_timeout = 10000;')
         return connection
