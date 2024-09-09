@@ -26,7 +26,7 @@ def ingest_image(tmp_image_path):
     """Moves image into RAW_SCREENSHOTS_DIR, ingests into frames table, 
     runs OCR and ingests results.
     """
-    filename = tmp_image_path.split('/')[-1]
+    filename = os.path.basename(tmp_image_path)
     filename_s = filename.replace(".jpg", "").split("_")
     application = filename_s[0]
     timestamp = int(filename_s[1])
@@ -72,18 +72,18 @@ def check_all_frames_ingested():
     ingested in the frames table.
     """
     frames = db.get_frames()
-    screenshot_paths = {os.path.abspath(f) for f in glob.glob(f"{RAW_SCREENSHOTS_DIR}/*/*/*/*/*.jpg")}
+    screenshot_paths = {os.path.abspath(f) for f in glob.glob(os.path.join(RAW_SCREENSHOTS_DIR, '*', '*', '*', '*', '*.jpg'))}
     missing_screenshots = screenshot_paths - set(frames['path'])
     if len(missing_screenshots) > 0:
         print(f"Ingesting {len(missing_screenshots)} screenshots missing from frames table.")
 
         sorted_screenshots = sorted(
-            ((int(path.split('/')[-1].split('_')[1].split(".")[0]), path) for path in missing_screenshots),
+            ((int(os.path.basename(path).split('_')[1].split(".")[0]), path) for path in missing_screenshots),
             key=lambda x: x[0]
         )
 
         for timestamp, ms_path in sorted_screenshots:
-            application = ms_path.split('/')[-1].split('_')[0]
+            application = os.path.basename(ms_path).split('_')[0]
             # Insert into db and run OCR
             db.insert_frame(timestamp, ms_path, application)
 
