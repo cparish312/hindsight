@@ -45,7 +45,7 @@ def run_ocr_batched(df, batch_size=20):
     doctr_model = ocr_predictor(pretrained=True)
     num_batches = len(df) // batch_size + (1 if len(df) % batch_size > 0 else 0)
     for i in range(num_batches):
-        print("Batch", i)
+        print(f"OCR Batch {i} out of {num_batches}")
         start_index = i * batch_size
         end_index = start_index + batch_size
         frames_batch = df.iloc[start_index:end_index]
