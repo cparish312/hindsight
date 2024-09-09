@@ -110,7 +110,7 @@ def initialize_server():
     prefs = {"screenrecordingenabled" : False,
          "locationtrackingenabled" : False,
          "cameracaptureenabled" : False,
-         "recordwhenactive" : False,
+         "recordwhenactive" : True,
          "screenshotsperautoupload" : 100,
          "apikey" : generate_random_key(),
          "localurl" : f"""https://{local_ip}:6000/""",
