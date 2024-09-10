@@ -7,8 +7,7 @@ import numpy as np
 import pandas as pd
 from datetime import timedelta
 
-import redis
-from redis.lock import Lock
+import portalocker
 
 import tzlocal
 from zoneinfo import ZoneInfo
@@ -26,19 +25,30 @@ demo_apps = {'android', 'com-connor-hindsight', 'com-android-phone', 'com-androi
 class HindsightDB:
     def __init__(self, db_file=DB_FILE):
         self.db_file = db_file
-        client = redis.Redis(host='localhost', port=6379, db=0)
-        self.db_lock = Lock(client, "hindsight_db_lock") # Use Redis Lock to ensure lock across multiple instances of HindsightDB
-        with self.db_lock:
-            self.create_tables()
-            self.create_lock_table()
+        self.lock_file = db_file + '.lock'
+        self.create_tables()
+        self.create_lock_table()
 
     def get_connection(self):
         """Get a new connection every time for thread safety."""
-        connection = sqlite3.connect(self.db_file)
+        connection = sqlite3.connect(self.db_file, timeout=50)
         connection.execute('PRAGMA journal_mode=WAL;')
         connection.execute('PRAGMA busy_timeout = 10000;')
         return connection
+    
+    def with_lock(func):
+        """Decorator to handle database locking."""
+        def wrapper(self, *args, **kwargs):
+            with open(self.lock_file, 'a') as lock_file:
+                portalocker.lock(lock_file, portalocker.LOCK_EX)
+                try:
+                    result = func(self, *args, **kwargs)
+                finally:
+                    portalocker.unlock(lock_file)
+                return result
+        return wrapper
 
+    @with_lock
     def create_tables(self):
         # Create the "frames" table if it doesn't exist
         with self.get_connection() as conn:
@@ -157,6 +167,7 @@ class HindsightDB:
             # Commit the changes and close the connection
             conn.commit()
 
+    @with_lock
     def create_lock_table(self):
         """Table for handling db based locks."""
         with self.get_connection() as conn:
@@ -212,47 +223,44 @@ class HindsightDB:
             ''', (lock_name,))
             conn.commit()
 
-
+    @with_lock
     def insert_frame(self, timestamp, path, application):
         """Insert frame into frames table and return frame_id."""
-        with self.db_lock:
-            with self.get_connection() as conn:
-                cursor = conn.cursor()
-                try:
-                    cursor.execute('''
-                        INSERT INTO frames (timestamp, path, application)
-                        VALUES (?, ?, ?)
-                    ''', (timestamp, path, application))
-                    
-                    # Get the last inserted frame_id
-                    frame_id = cursor.lastrowid
-                    conn.commit()
-                    print(f"Frame added successfully with frame_id: {frame_id}")
-                except sqlite3.IntegrityError:
-                    # Frame already exists, get the existing frame_id
-                    cursor.execute('''
-                        SELECT id FROM frames
-                        WHERE timestamp = ? AND path = ?
-                    ''', (timestamp, path))
-                    frame_id = cursor.fetchone()[0]
-                    print(f"Frame already exists with frame_id: {frame_id}")
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            try:
+                cursor.execute('''
+                    INSERT INTO frames (timestamp, path, application)
+                    VALUES (?, ?, ?)
+                ''', (timestamp, path, application))
                 
-                return frame_id
+                # Get the last inserted frame_id
+                frame_id = cursor.lastrowid
+                conn.commit()
+                print(f"Frame added successfully with frame_id: {frame_id}")
+            except sqlite3.IntegrityError:
+                # Frame already exists, get the existing frame_id
+                cursor.execute('''
+                    SELECT id FROM frames
+                    WHERE timestamp = ? AND path = ?
+                ''', (timestamp, path))
+                frame_id = cursor.fetchone()[0]
+                print(f"Frame already exists with frame_id: {frame_id}")
+            
+            return frame_id
 
+    @with_lock
     def insert_ocr_results(self, frame_id, ocr_results):
         """Insert ocr results into ocr_results table."""
-        with self.db_lock:
-            with self.get_connection() as conn:
-                cursor = conn.cursor()
-                # Insert multiple OCR results
-                cursor.executemany('''
-                    INSERT INTO ocr_results (frame_id, x, y, w, h, text, conf, block_num, line_num)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', [(frame_id, x, y, w, h, text, conf, block_num, line_num) for x, y, w, h, text, conf, block_num, line_num in ocr_results])
-                
-                conn.commit()
-                
-                print(f"{len(ocr_results)} OCR results added successfully.")
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            # Insert multiple OCR results
+            cursor.executemany('''
+                INSERT INTO ocr_results (frame_id, x, y, w, h, text, conf, block_num, line_num)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', [(frame_id, x, y, w, h, text, conf, block_num, line_num) for x, y, w, h, text, conf, block_num, line_num in ocr_results])
+            
+            conn.commit()
 
     def get_all_applications(self):
         """Returns all applications in the frames table."""
@@ -330,6 +338,21 @@ class HindsightDB:
                 query = '''SELECT * FROM ocr_results'''
             else:
                 query = f'''SELECT * FROM ocr_results WHERE frame_id = {frame_id}'''
+            # Use pandas to read the SQL query result into a DataFrame
+            df = pd.read_sql_query(query, conn)
+            return df
+        
+    def get_frames_without_ocr(self):
+        """Select frames that have not been linked to any OCR results."""
+        with self.get_connection() as conn:
+            # Query to get the frames that do not have associated OCR results
+            query = '''
+                SELECT f.*
+                FROM frames f
+                LEFT JOIN ocr_results o ON f.id = o.frame_id
+                WHERE o.id IS NULL
+            '''
+
             # Use pandas to read the SQL query result into a DataFrame
             df = pd.read_sql_query(query, conn)
             return df
@@ -475,23 +498,23 @@ class HindsightDB:
             df = df.replace({np.nan : None})
             return df
         
+    @with_lock
     def update_chromadb_processed(self, frame_ids, value=True):
         """Updates the chromadb_processed status for a list of frame_ids."""
-        with self.db_lock:  # Ensure thread-safety
-            with self.get_connection() as conn:
-                cursor = conn.cursor()
-                # Prepare the data for the executemany function
-                data_to_update = [(value, frame_id) for frame_id in frame_ids]
-                try:
-                    cursor.executemany('''
-                        UPDATE frames
-                        SET chromadb_processed = ?
-                        WHERE id = ?
-                    ''', data_to_update)
-                    conn.commit()
-                    print(f"Updated chromadb_processed for {len(frame_ids)} frames.")
-                except sqlite3.Error as e:
-                    print(f"An error occurred while updating chromadb_processed: {e}")
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            # Prepare the data for the executemany function
+            data_to_update = [(value, frame_id) for frame_id in frame_ids]
+            try:
+                cursor.executemany('''
+                    UPDATE frames
+                    SET chromadb_processed = ?
+                    WHERE id = ?
+                ''', data_to_update)
+                conn.commit()
+                print(f"Updated chromadb_processed for {len(frame_ids)} frames.")
+            except sqlite3.Error as e:
+                print(f"An error occurred while updating chromadb_processed: {e}")
 
     def get_non_chromadb_processed_frames_with_ocr(self, frame_ids=None, impute_applications=True):
         """Select frames that have not been processed but chromadb but have associated OCR results."""
@@ -519,20 +542,20 @@ class HindsightDB:
             # Fetch the result
             max_timestamp = cursor.fetchone()[0]
             return max_timestamp
-        
+    
+    @with_lock
     def insert_annotations(self, annotations):
         """Insert annotations into annotations table."""
-        with self.db_lock:
-            with self.get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.executemany('''
-                    INSERT INTO annotations (timestamp, text)
-                    VALUES (?, ?)
-                ''', [(a['timestamp'], a['text']) for a in annotations])
-                
-                conn.commit()
-                
-                print(f"{len(annotations)} annotations added successfully.")
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.executemany('''
+                INSERT INTO annotations (timestamp, text)
+                VALUES (?, ?)
+            ''', [(a['timestamp'], a['text']) for a in annotations])
+            
+            conn.commit()
+            
+            print(f"{len(annotations)} annotations added successfully.")
 
     def get_annotations(self):
         """Returns all annotations."""
@@ -542,19 +565,19 @@ class HindsightDB:
             df = df.dropna()
             return df
 
+    @with_lock
     def insert_locations(self, locations):
         """Insert locations into locations table."""
-        with self.db_lock:
-            with self.get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.executemany('''
-                    INSERT INTO locations (latitude, longitude, timestamp)
-                    VALUES (?, ?, ?)
-                ''', [(l['latitude'], l['longitude'], l['timestamp']) for l in locations])
-                
-                conn.commit()
-                
-                print(f"{len(locations)} locations added successfully.")
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.executemany('''
+                INSERT INTO locations (latitude, longitude, timestamp)
+                VALUES (?, ?, ?)
+            ''', [(l['latitude'], l['longitude'], l['timestamp']) for l in locations])
+            
+            conn.commit()
+            
+            print(f"{len(locations)} locations added successfully.")
 
     def get_locations(self):
         """Returns all locations."""
@@ -563,22 +586,22 @@ class HindsightDB:
             df = pd.read_sql_query(query, conn)
             return df
         
+    @with_lock
     def add_label(self, frame_id, label, value=None):
-        with self.db_lock:
-            with self.get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute(f'''INSERT INTO labels (frame_id, label, value)
-                VALUES (?, ?, ?)''', (frame_id, label, value))
-                conn.commit()
-                print(f"Successfully added label {label}:{value} for {frame_id}")
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(f'''INSERT INTO labels (frame_id, label, value)
+            VALUES (?, ?, ?)''', (frame_id, label, value))
+            conn.commit()
+            print(f"Successfully added label {label}:{value} for {frame_id}")
 
+    @with_lock
     def get_frames_with_label(self, label, value=None):
-        with self.db_lock:
-            with self.get_connection() as conn:
-                query = f"""SELECT frame_id FROM labels WHERE label = '{label}'
-                        AND value = '{value}'"""
-                df = pd.read_sql_query(query, conn)
-                return set(df['frame_id'])
+        with self.get_connection() as conn:
+            query = f"""SELECT frame_id FROM labels WHERE label = '{label}'
+                    AND value = '{value}'"""
+            df = pd.read_sql_query(query, conn)
+            return set(df['frame_id'])
 
     def copy_database(self, frame_ids, db_file, frames_dir_path):
         """

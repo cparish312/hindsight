@@ -5,15 +5,17 @@ from pathlib import Path
 from random import randrange
 from werkzeug.utils import secure_filename
 from flask import Flask, request, jsonify, abort, Blueprint
+from gevent.pywsgi import WSGIServer
+from gevent import monkey
+monkey.patch_all()
 
-from config import SERVER_LOG_FILE, SECRET_API_KEY, HINDSIGHT_SERVER_DIR
+from config import SERVER_LOG_FILE, SECRET_API_KEY, HINDSIGHT_SERVER_DIR, SCREENSHOTS_TMP_DIR
 import utils
 from db import HindsightDB
 
 main_app = Blueprint('main', __name__)
 
 HOME = Path.home()
-SCREENSHOTS_TMP_DIR = HINDSIGHT_SERVER_DIR/ "raw_screenshots_tmp"
 SSL_CERT = HINDSIGHT_SERVER_DIR / "server.crt"
 SSL_KEY = HINDSIGHT_SERVER_DIR / "server.key"
 
@@ -52,6 +54,7 @@ def upload_image():
         file.save(tmp_file)
         print("Saved", filename)
         return jsonify({"status": "success", "message": "File successfully uploaded"}), 200
+    return jsonify({"status": "error", "message": "No file"}), 400
 
 @main_app.route('/post_query', methods=['POST'])
 def post_query():
@@ -129,6 +132,9 @@ def ping_server():
         abort(401)
     return jsonify({'status': 'success', 'message': 'Server is reachable'}), 200
 
+app = create_app()
 if __name__ == '__main__':
-    app = create_app()
-    app.run(debug=True, host='0.0.0.0', port=6000, ssl_context=(SSL_CERT, SSL_KEY))
+    # app.run(debug=True, host='0.0.0.0', port=6000, ssl_context=(SSL_CERT, SSL_KEY))
+    http_server = WSGIServer(('0.0.0.0', 6000), app, keyfile=SSL_KEY, certfile=SSL_CERT)
+    http_server.serve_forever()
+    

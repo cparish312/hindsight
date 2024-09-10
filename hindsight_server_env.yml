@@ -2,6 +2,7 @@ name: hindsight_server
 channels:
   - conda-forge
   - defaults
+  - pytorch-nightly
 dependencies:
   - flask=3.0.3
   - numpy=1.26.4
@@ -12,8 +13,13 @@ dependencies:
   - tzlocal=5.2
   - colorcet
   - matplotlib
-  - gunicorn
+  - pytorch
+  - transformers
+  - torchvision
   - pip:
       - chromadb
+      - portalocker
+      - gevent
       - opencv-python==4.9.0.80
       - tkcalendar
+      - python-doctr

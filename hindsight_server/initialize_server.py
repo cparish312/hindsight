@@ -7,7 +7,7 @@ import secrets
 import subprocess
 from pathlib import Path
 
-from config import API_KEY_FILE, HINDSIGHT_SERVER_DIR, BASE_DIR
+from config import API_KEY_FILE, HINDSIGHT_SERVER_DIR, BASE_DIR, SCREENSHOTS_TMP_DIR
 
 import utils
 
@@ -89,17 +89,17 @@ def create_ssl_keys(local_ip):
     fill_in_file(BASE_DIR / "res/san.cnf", HINDSIGHT_SERVER_DIR / "san.cnf", 
                 "PYTHON_CONFIG_INSERT_IP_HERE", local_ip)
     
-    subprocess.call(["openssl", "req", "-new", "-nodes", "-keyout", HINDSIGHT_SERVER_DIR / "server.key", "-out",
-                    HINDSIGHT_SERVER_DIR / "server.csr", "-config", HINDSIGHT_SERVER_DIR / "san.cnf"])
+    subprocess.call(["openssl", "req", "-new", "-nodes", "-keyout", str(HINDSIGHT_SERVER_DIR / "server.key"), "-out",
+                    str(HINDSIGHT_SERVER_DIR / "server.csr"), "-config", str(HINDSIGHT_SERVER_DIR / "san.cnf")])
     
-    subprocess.call(["openssl", "x509", "-req", "-days", "365", "-in", HINDSIGHT_SERVER_DIR / "server.csr",
-                    "-signkey", HINDSIGHT_SERVER_DIR / "server.key", "-out", HINDSIGHT_SERVER_DIR / "server.crt",
-                    "-extensions", "v3_ca", "-extfile", HINDSIGHT_SERVER_DIR / "san.cnf"])
+    subprocess.call(["openssl", "x509", "-req", "-days", "365", "-in", str(HINDSIGHT_SERVER_DIR / "server.csr"),
+                    "-signkey", str(HINDSIGHT_SERVER_DIR / "server.key"), "-out", str(HINDSIGHT_SERVER_DIR / "server.crt"),
+                    "-extensions", "v3_ca", "-extfile", str(HINDSIGHT_SERVER_DIR / "san.cnf")])
     
     app_raw_res_dir = BASE_DIR / "../hindsight_android/app/src/main/res/raw/"
     utils.make_dir(app_raw_res_dir)
-    der_dest = app_raw_res_dir / "hindsight_server.der"
-    subprocess.call(["openssl", "x509", "-outform", "der", "-in", HINDSIGHT_SERVER_DIR / "server.crt", "-out",
+    der_dest = str(app_raw_res_dir / "hindsight_server.der")
+    subprocess.call(["openssl", "x509", "-outform", "der", "-in", str(HINDSIGHT_SERVER_DIR / "server.crt"), "-out",
                     der_dest])
 
 # Write to server info to 
@@ -110,7 +110,7 @@ def initialize_server():
     prefs = {"screenrecordingenabled" : False,
          "locationtrackingenabled" : False,
          "cameracaptureenabled" : False,
-         "recordwhenactive" : False,
+         "recordwhenactive" : True,
          "screenshotsperautoupload" : 100,
          "apikey" : generate_random_key(),
          "localurl" : f"""https://{local_ip}:6000/""",
@@ -124,7 +124,7 @@ def initialize_server():
     
     create_ssl_keys(local_ip)
 
-    utils.make_dir(HINDSIGHT_SERVER_DIR / "raw_screenshots_tmp")
+    utils.make_dir(SCREENSHOTS_TMP_DIR)
 
 if __name__ == "__main__":
     initialize_server()

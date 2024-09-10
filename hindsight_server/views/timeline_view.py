@@ -301,7 +301,7 @@ class TimelineViewer:
 
 def main():
     root = tk.Tk()
-    app = TimelineViewer(root, front_camera=True)
+    app = TimelineViewer(root, front_camera=None)
     root.protocol("WM_DELETE_WINDOW", app.on_window_close)  # Handle window close event
     root.mainloop()
 
