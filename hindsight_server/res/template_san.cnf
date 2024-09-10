@@ -6,12 +6,12 @@ req_extensions     = req_ext
 distinguished_name = dn
 
 [ dn ]
-C=${example_country} # US
-ST=${example_state} # MA
-L=${example_city} # Cambridge
-O=${example_org} # Hindsight
-OU=${name} # connor
-emailAddress=${example.gmail.com}
+C=US
+ST=MA
+L=Cambridge
+O=Hindsight
+OU=John
+emailAddress=john@gmail.com
 CN = PYTHON_CONFIG_INSERT_IP_HERE
 
 [ req_ext ]
@@ -22,4 +22,3 @@ IP.1 = PYTHON_CONFIG_INSERT_IP_HERE
 
 [ v3_ca ]
 subjectAltName = @alt_names
-

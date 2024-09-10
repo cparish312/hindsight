@@ -9,7 +9,7 @@
         * `ngrok http https://localhost:6000`
         * Set `INTERNET_URL` equal to the ngrok forwarding address (should end in `.ngrok-free.app`) at the top of `hindsight_server/initialize_server.py`
     * Copy `hindsight_server/res/template_san.cnf` to `hindsight_server/res/san.cnf`
-    * Fill in and replace the `${}` sections in `hindsight_server/res/san.cnf`
+    * Fill in sections under dn besides CN in `hindsight_server/res/san.cnf`
     * Run: `hindsight_server/initialize_server.py`
 
 3) **Running**
