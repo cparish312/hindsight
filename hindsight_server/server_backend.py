@@ -37,7 +37,7 @@ def ingest_image(tmp_image_path):
     if not os.path.exists(filepath):
         shutil.move(tmp_image_path, filepath)
         print(f"File saved to {filepath}")
-    else:
+    elif os.path.exists(tmp_image_path):
         os.remove(tmp_image_path)
 
     # Insert into db
