@@ -321,10 +321,11 @@ class HindsightDB:
             # Use pandas to read the SQL query result into a DataFrame
             df = pd.read_sql_query(query, conn, params=params if len(params) > 0 else None)
             # df = df.loc[df['application'].isin(demo_apps)]
+
+            df['application_org'] = df['application'].copy()
             if impute_applications:
                 df = utils.impute_applications(df)
 
-            df['application_org'] = df['application'].copy()
             if application_alias:
                 id_to_alias = utils.get_identifiers_to_alias()
                 df['application'] = df['application'].map(id_to_alias)
