@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
@@ -30,6 +31,7 @@ import com.connor.hindsight.ui.components.ToggleButton
 import com.connor.hindsight.ui.components.observeDirectory
 import com.connor.hindsight.utils.getImageDirectory
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import androidx.compose.foundation.rememberScrollState
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -41,6 +43,7 @@ fun MainScreen(
     onNavigateToAnnotations:() -> Unit,
 ) {
     val context = LocalContext.current
+    val scrollState = rememberScrollState()
 
     LaunchedEffect(key1 = mainViewModel) {
         mainViewModel.events.collect { event ->
@@ -61,7 +64,7 @@ fun MainScreen(
     }
 
     Column(
-        modifier = Modifier.padding(16.dp)
+        modifier = Modifier.padding(16.dp).verticalScroll(scrollState)
     ) {
         val screenRecordingEnabled = mainViewModel.screenRecordingEnabled.collectAsState()
         val isUploading = mainViewModel.isUploading.collectAsState()
