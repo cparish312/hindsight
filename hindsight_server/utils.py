@@ -1,5 +1,6 @@
 import os
 import json
+import hashlib
 import numpy as np
 import pandas as pd
 from collections import defaultdict
@@ -174,3 +175,16 @@ def get_aliases_identifiers(aliases):
 def save_identifiers_to_alias(id_to_alias):
     with open(ANDROID_IDENTIFIERS_ALIAS_FILE, 'w') as outfile:
         json.dump(id_to_alias, outfile, indent=4)
+
+BUF_SIZE = 65536
+def hash_file(f_path):
+    md5 = hashlib.md5()
+
+    with open(f_path, 'rb') as f:
+        while True:
+            data = f.read(BUF_SIZE)
+            if not data:
+                break
+            md5.update(data)
+    
+    return md5.hexdigest()
