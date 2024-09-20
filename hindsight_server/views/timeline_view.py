@@ -7,8 +7,7 @@ import numpy as np
 import pandas as pd
 import tkinter as tk
 import colorcet as cc
-from tkinter import ttk
-from tkinter import messagebox
+from tkinter import ttk, messagebox
 from PIL import Image, ImageTk
 
 import tzlocal
@@ -31,7 +30,7 @@ class Screenshot:
     timestamp: datetime.timestamp
 
 class TimelineViewer:
-    def __init__(self, master, frame_id = None, max_width=1536, max_height=800, images_df=None, front_camera=None):
+    def __init__(self, master: tk.Tk, frame_id = None, max_width=1536, max_height=600, images_df=None, front_camera=None):
         self.master = master
         self.db = HindsightDB()
         self.images_df = self.get_images_df(front_camera) if images_df is None else images_df
@@ -39,7 +38,8 @@ class TimelineViewer:
         self.max_frames_index = max(self.images_df.index)
         self.app_color_map = self.get_app_color_map()
         self.max_width = max_width
-        self.max_height = max_height - 200
+        self.max_height = max_height
+        self.full_screen = False
 
         self.screenshots_on_timeline = 40 
 
@@ -53,10 +53,9 @@ class TimelineViewer:
         self.dragging = False
         self.drag_start = None
         self.drag_end = None
+        self.exit_flag = False
 
         self.setup_gui()
-
-        self.exit_flag = False
 
     def get_images_df(self, front_camera):
         """Gets a DataFrame of all images at the time of inititation"""
@@ -94,6 +93,7 @@ class TimelineViewer:
         self.search_button = ttk.Button(self.top_frame, text="Search", command=self.open_search_view)
         self.search_button.pack(side=tk.RIGHT)
         
+        # covers the canvas to allow drag selection
         self.video_label = ttk.Label(self.master)
         self.video_label.pack()
         self.video_label.bind("<Button-1>", self.start_drag)
@@ -106,15 +106,26 @@ class TimelineViewer:
 
         self.timeline_canvas = tk.Canvas(self.master, height=50)
         self.timeline_canvas.pack(fill=tk.X, padx=5, pady=5)
-        self.master.bind('<Configure>', lambda e: self.update_timeline(self.displayed_frame_num)) # Update timeline when frame changed
+
+        self.master.bind('<Configure>', lambda e: self.handle_resize())
+        
+        self.master.bind('<Escape>', lambda e: self.switch_fullscreen(False))
+        self.master.bind('f', lambda e: self.switch_fullscreen())
+        self.master.bind('F', lambda e: self.switch_fullscreen())
 
         self.master.bind("<Right>", self.click_right)
         self.master.bind("<Left>", self.click_left)
         
-        self.displayed_frame_num = self.scroll_frame_num
-        screenshot = self.get_screenshot(self.displayed_frame_num)
-        self.display_frame(screenshot, self.displayed_frame_num)
-        self.master.after(40, self.update_frame_periodically)
+        self.displayed_frame_num = -1 # ensure that the next refresh picks up a fresh frame
+        self.update_frame_periodically() # begin update loop
+
+    def handle_resize(self):
+        self.update_timeline(self.scroll_frame_num)
+        self.update_frame_periodically(forced_update=True)
+
+    def switch_fullscreen(self, back_forth=True):
+        self.full_screen = not self.full_screen if back_forth else False
+        self.master.attributes("-fullscreen", 1 if self.full_screen else 0)
     
     def resize_screenshot(self, screenshot, max_width, max_height):
         height, width, _ = screenshot.image.shape
@@ -141,14 +152,14 @@ class TimelineViewer:
         screenshot_resized = self.resize_screenshot(screenshot, self.max_width, self.max_height)
         return screenshot_resized
 
-    def update_frame_periodically(self):
+    def update_frame_periodically(self, forced_update=False):
         # Check if the current scroll position has a preloaded frame
         if self.scroll_frame_num != self.displayed_frame_num:
             screenshot = self.get_screenshot(self.scroll_frame_num)
             self.display_frame(screenshot, self.scroll_frame_num)
 
         # Schedule the next update
-        if not self.exit_flag:
+        if not self.exit_flag and not forced_update:
             self.master.after(10, self.update_frame_periodically)
 
     def get_apps_near(self, current_frame_num):
@@ -232,13 +243,11 @@ class TimelineViewer:
         """Move to the next frame on the right."""
         if self.scroll_frame_num < self.max_frames_index:
             self.scroll_frame_num += 1
-            self.update_frame_periodically()  # Force update to display the new frame
 
     def click_right(self, event):
         """Move to the previous frame on the left."""
         if self.scroll_frame_num > 0:
             self.scroll_frame_num -= 1
-            self.update_frame_periodically() 
 
     def start_drag(self, event):
         self.dragging = True
