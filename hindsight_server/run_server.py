@@ -50,10 +50,15 @@ def upload_image():
         return jsonify({"status": "error", "message": "No selected file"}), 400
     if file:
         filename = secure_filename(file.filename)
-        tmp_file = os.path.join(SCREENSHOTS_TMP_DIR, filename)
-        file.save(tmp_file)
-        print("Saved", filename)
-        return jsonify({"status": "success", "message": "File successfully uploaded"}), 200
+        tmp_file_path = os.path.join(SCREENSHOTS_TMP_DIR, filename)
+        try:
+            with open(tmp_file_path, 'wb') as tmp_file:
+                file.save(tmp_file)
+            print("Saved", filename)
+            return jsonify({"status": "success", "message": "File successfully uploaded"}), 200
+        except Exception as e:
+            print(f"Error saving file: {e}")
+            return jsonify({"status": "error", "message": "Failed to save file"}), 500
     return jsonify({"status": "error", "message": "No file"}), 400
 
 @main_app.route('/post_query', methods=['POST'])
