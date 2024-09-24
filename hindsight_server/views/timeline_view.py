@@ -58,22 +58,30 @@ def get_app_color_map(images_df: pd.DataFrame):
     return {app: hex_colors[i] for i, app in enumerate(unique_apps)}
 
 def resize_screenshot(screenshot: Screenshot, max_width: int, max_height: int):
-    print((max_width, max_height))
     height, width, _ = screenshot.image.shape
-    if width > max_width or height > max_height:
-        scaling_factor = min(float(max_width) / width, float(max_height) / height)
-        (sizex, sizey) = (int(width * scaling_factor), int(height * scaling_factor))
-        # max is a hack to prevent / 0 exceptions on startup
-        sizex = max(1, sizex)
-        sizey = max(1, sizey)
-        print('sizes:',(sizex, sizey))
-        screenshot.image = cv2.resize(screenshot.image, (sizex, sizey), interpolation=cv2.INTER_AREA)
-        if screenshot.text_df is not None:
-            screenshot.text_df.loc[:, 'x'] = screenshot.text_df['x'] * scaling_factor
-            screenshot.text_df.loc[:, 'y'] = screenshot.text_df['y'] * scaling_factor
-            screenshot.text_df.loc[:, 'w'] = screenshot.text_df['w'] * scaling_factor
-            screenshot.text_df.loc[:, 'h'] = screenshot.text_df['h'] * scaling_factor
+    size_ratios = float(max_width) / float(width), float(max_height) / float(height)
+    scaling_factor = min(size_ratios)
+    # max 1 is a hack to prevent / 0 exceptions on startup
+    display_size = (max(1, int(width * scaling_factor)), max(1, int(height * scaling_factor)))
+    xoffset, yoffset = 0, 0
+    if size_ratios.index(scaling_factor) == 0:
+        yoffset = (max_height - display_size[1]) / 2.0
+    else:
+        xoffset = (max_width - display_size[0]) / 2.0
+    screenshot.image = cv2.resize(screenshot.image, display_size, interpolation=cv2.INTER_AREA)
+    if screenshot.text_df is not None:
+        screenshot.text_df.loc[:, 'x'] = screenshot.text_df['x'] * scaling_factor + xoffset
+        screenshot.text_df.loc[:, 'y'] = screenshot.text_df['y'] * scaling_factor + yoffset
+        screenshot.text_df.loc[:, 'w'] = screenshot.text_df['w'] * scaling_factor
+        screenshot.text_df.loc[:, 'h'] = screenshot.text_df['h'] * scaling_factor
+    
     return screenshot
+
+def rectangles_overlap(rect1, rect2):
+    """Check if two rectangles overlap. Rectangles are defined as (x1, y1, x2, y2)."""
+    x1, y1, x2, y2 = rect1
+    rx1, ry1, rx2, ry2 = rect2
+    return not (rx1 > x2 or rx2 < x1 or ry1 > y2 or ry2 < y1)
 
 class TimelineViewer:
     def __init__(self, root: Tk, database: HindsightDB, front_camera=None):
@@ -111,11 +119,14 @@ class TimelineViewer:
         self.drag_end = None
         self.exit_flag = False
 
+        # draw containers
         self.setup_gui()
+        # draw initial frame
+        self.update_frame()
     
     def setup_gui(self):
 
-        self.top_frame = ttk.Frame(self.master, padding='5 5 5 5', style='Frame1.TFrame')
+        self.top_frame = ttk.Frame(self.master, padding='5 5 5 5', style='1.TFrame')
         self.top_frame.grid(column=0, row=0, sticky='ew')
         self.top_frame.columnconfigure(0, weight=1) # expand top row's column to fill container
 
@@ -146,13 +157,10 @@ class TimelineViewer:
         self.master.winfo_toplevel().bind("<Right>", self.click_right)
         self.master.winfo_toplevel().bind("<Left>", self.click_left)
 
-        # draw initial frame
-        self.update_frame()
-
     def handle_resize(self):
         self.max_width = self.master.winfo_toplevel().winfo_width()
         self.max_height = self.master.winfo_toplevel().winfo_height()
-        print('size ', (self.max_width, self.max_height))
+        print('resized to', (self.max_width, self.max_height))
         self.master.winfo_toplevel().update() # evaluate geometry manager for cases such as fullscreen and startup
         self.update_frame()
 
@@ -203,13 +211,14 @@ class TimelineViewer:
     def update_frame(self):
         self.update_screenshot()
         self.update_timeline()
-        self.frame_timestamp.set(f"{self.displayed_image.timestamp.strftime('%A, %Y-%m-%d %H:%M')}")
+        self.frame_timestamp.set(f"{self.displayed_screenshot.timestamp.strftime('%A, %Y-%m-%d %H:%M')}")
 
     def update_screenshot(self):
+        width, height = ( self.video_label.winfo_width(), self.video_label.winfo_height() )
         screenshot = resize_screenshot(
             self.get_screenshot(self.scroll_frame_num),
-            self.video_label.winfo_width(),
-            self.video_label.winfo_height()
+            width,
+            height
         )
         im_row = self.images_df.iloc[self.scroll_frame_num]
         print(f"frame_num: {self.scroll_frame_num} frame_id: {im_row['id']}")
@@ -218,7 +227,7 @@ class TimelineViewer:
         imgtk = ImageTk.PhotoImage(image=img)
         self.video_label.imgtk = imgtk
         self.video_label.configure(image=imgtk)
-        self.displayed_image = screenshot
+        self.displayed_screenshot = screenshot
 
     def bind_scroll_event(self):
         # Detect platform and bind the appropriate event
@@ -274,12 +283,6 @@ class TimelineViewer:
         self.dragging = False
         self.copy_texts_within_drag_area()
 
-    def rectangles_overlap(self, rect1, rect2):
-        """Check if two rectangles overlap. Rectangles are defined as (x1, y1, x2, y2)."""
-        x1, y1, x2, y2 = rect1
-        rx1, ry1, rx2, ry2 = rect2
-        return not (rx1 > x2 or rx2 < x1 or ry1 > y2 or ry2 < y1)
-
     def copy_texts_within_drag_area(self):
         """Gets all text in the area the user has dragged"""
         if self.drag_start is None or self.drag_end is None:
@@ -289,10 +292,10 @@ class TimelineViewer:
         x2 = max(self.drag_start[0], self.drag_end[0]) 
         y2 = max(self.drag_start[1], self.drag_end[1])
 
-        text_df = self.displayed_image.text_df
+        text_df = self.displayed_screenshot.text_df
         selected_texts = []
         if text_df is not None:
-            texts_in_area = text_df.apply(lambda row: self.rectangles_overlap((x1, y1, x2, y2), (row['x'], row['y'], row['x'] + row['w'], row['y'] + row['h'])), axis=1)
+            texts_in_area = text_df.apply(lambda row: rectangles_overlap((x1, y1, x2, y2), (row['x'], row['y'], row['x'] + row['w'], row['y'] + row['h'])), axis=1)
             overlapping_texts = text_df[texts_in_area]
             selected_texts.extend(overlapping_texts['text'].tolist())
         
@@ -323,10 +326,10 @@ def main():
     root = Tk()
     # Initialize style
     s = ttk.Style()
-    # Create style used by default for all Frames
-    s.configure('TFrame', background='green')
-    s.configure('Frame1.TFrame', background='red')
-    s.configure('1.TLabel', background='blue')
+    # frame styles for debugging
+    # s.configure('TFrame', background='green') # default frame style
+    # s.configure('1.TFrame', background='red')
+    # s.configure('1.TLabel', background='blue')
 
     root.title("Hindsight Server GUI")
     app = TimelineViewer(root, database=HindsightDB(), front_camera=None)
