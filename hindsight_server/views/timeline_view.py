@@ -124,7 +124,6 @@ class TimelineViewer:
         self.update_frame()
     
     def setup_gui(self):
-
         self.top_frame = ttk.Frame(self.master, padding='5 5 5 5', style='1.TFrame')
         self.top_frame.grid(column=0, row=0, sticky='ew')
         self.top_frame.columnconfigure(0, weight=1) # expand top row's column to fill container
@@ -160,12 +159,14 @@ class TimelineViewer:
         self.max_width = self.master.winfo_toplevel().winfo_width()
         self.max_height = self.master.winfo_toplevel().winfo_height()
         print('resized to', (self.max_width, self.max_height))
+        self.master.winfo_toplevel().wm_attributes("-topmost", 1)
         self.master.winfo_toplevel().update() # evaluate geometry manager for cases such as fullscreen and startup
         self.update_frame()
 
     def switch_fullscreen(self, event=None):
         self.full_screen = not self.full_screen
-        self.master.winfo_toplevel().attributes("-fullscreen", 1 if self.full_screen else 0)
+        self.master.winfo_toplevel().wm_attributes("-fullscreen", 1 if self.full_screen else 0)
+        self.master.winfo_toplevel().wm_attributes("-topmost", 1)
 
     def handle_escape(self, event):
         if self.full_screen:
