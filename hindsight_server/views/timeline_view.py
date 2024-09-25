@@ -99,7 +99,6 @@ class TimelineViewer:
 
         self.db = database
         self.images_df = get_images_df(self.db, front_camera)
-        self.num_frames = len(self.images_df)
         self.max_frames_index = int(max(self.images_df.index)) # cast to int to ensure we have the right datatype
         self.app_color_map = get_app_color_map(self.images_df)
         self.max_width = max_width
@@ -147,26 +146,32 @@ class TimelineViewer:
         self.time_label.grid(column=0, row=3)
         
         self.bind_scroll_event()
-        self.master.bind('<Configure>', lambda e: self.handle_resize())
-        self.master.bind('<Destroy>', lambda e: self.on_window_close())
+        self.master.bind('<Configure>', self.handle_resize)
+        self.master.bind('<Destroy>', self.on_window_close)
         
-        self.master.winfo_toplevel().bind('<Escape>', lambda e: self.master.winfo_toplevel().destroy())
-        self.master.winfo_toplevel().bind('f', lambda e: self.switch_fullscreen())
-        self.master.winfo_toplevel().bind('F', lambda e: self.switch_fullscreen())
+        self.master.winfo_toplevel().bind('<Escape>', self.handle_escape)
+        self.master.winfo_toplevel().bind('f', self.switch_fullscreen)
+        self.master.winfo_toplevel().bind('F', self.switch_fullscreen)
 
-        self.master.winfo_toplevel().bind("<Right>", self.click_right)
-        self.master.winfo_toplevel().bind("<Left>", self.click_left)
+        self.master.winfo_toplevel().bind("<Right>", self.handle_right)
+        self.master.winfo_toplevel().bind("<Left>", self.handle_left)
 
-    def handle_resize(self):
+    def handle_resize(self, event):
         self.max_width = self.master.winfo_toplevel().winfo_width()
         self.max_height = self.master.winfo_toplevel().winfo_height()
         print('resized to', (self.max_width, self.max_height))
         self.master.winfo_toplevel().update() # evaluate geometry manager for cases such as fullscreen and startup
         self.update_frame()
 
-    def switch_fullscreen(self, back_forth=True):
-        self.full_screen = not self.full_screen if back_forth else False
+    def switch_fullscreen(self, event=None):
+        self.full_screen = not self.full_screen
         self.master.winfo_toplevel().attributes("-fullscreen", 1 if self.full_screen else 0)
+
+    def handle_escape(self, event):
+        if self.full_screen:
+            self.switch_fullscreen()
+        else:
+            self.master.winfo_toplevel().destroy()
 
     def get_screenshot(self, i):
         """Loads and resizes the screenshot."""
@@ -263,10 +268,10 @@ class TimelineViewer:
     def on_scroll_down(self, event):
         self.scroll_frames(1)
 
-    def click_left(self, event):
+    def handle_left(self, event):
         self.scroll_frames(1)
 
-    def click_right(self, event):
+    def handle_right(self, event):
         self.scroll_frames(-1)
 
     def start_drag(self, event):
@@ -318,7 +323,7 @@ class TimelineViewer:
         SearchViewer(search_window)
 
     # When the window is closed, you should also gracefully exit the preload thread
-    def on_window_close(self):
+    def on_window_close(self, event):
         print('setting exit flag')
         self.exit_flag = True
 
