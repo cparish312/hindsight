@@ -17,7 +17,7 @@ from config import ANDROID_IDENTIFIERS_ALIAS_FILE
 
 def make_dir(d):
     if not os.path.exists(d):
-        os.makedirs(d)
+        os.makedirs(d, exist_ok=True)
 
 remove_applications = {"com-google-android-inputmethod-latin"}
 def impute_applications(df):
