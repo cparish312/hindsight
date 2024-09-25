@@ -155,18 +155,19 @@ class TimelineViewer:
         self.master.winfo_toplevel().bind("<Right>", self.handle_right)
         self.master.winfo_toplevel().bind("<Left>", self.handle_left)
 
+        self.master.winfo_toplevel().update() # evaluate geometry manager for cases such as fullscreen and startup
+
     def handle_resize(self, event):
         self.max_width = self.master.winfo_toplevel().winfo_width()
         self.max_height = self.master.winfo_toplevel().winfo_height()
         print('resized to', (self.max_width, self.max_height))
-        self.master.winfo_toplevel().wm_attributes("-topmost", 1)
-        self.master.winfo_toplevel().update() # evaluate geometry manager for cases such as fullscreen and startup
         self.update_frame()
 
     def switch_fullscreen(self, event=None):
         self.full_screen = not self.full_screen
         self.master.winfo_toplevel().wm_attributes("-fullscreen", 1 if self.full_screen else 0)
-        self.master.winfo_toplevel().wm_attributes("-topmost", 1)
+        self.master.winfo_toplevel().update() # evaluate geometry manager for cases such as fullscreen and startup
+        self.update_frame()
 
     def handle_escape(self, event):
         if self.full_screen:
