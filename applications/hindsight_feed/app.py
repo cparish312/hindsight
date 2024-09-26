@@ -12,7 +12,8 @@ app = Flask(__name__)
 
 app.config['LOCAL_DOCS_PATH'] = GENERATOR_DATA_DIR
 
-content_generators = list()
+content_generators = [ExaTopicFeeder(name="exa_topic_local_ai", description="ExaTopicFeeder for getting information on local ai", 
+                                     topic="local Artificial Intelligence", min_num_contents=10)]
 feed_generator = FeedGenerator(content_generators=content_generators)
 
 @app.route('/local/docs/<path:filename>')
