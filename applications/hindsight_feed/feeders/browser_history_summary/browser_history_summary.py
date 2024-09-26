@@ -15,6 +15,7 @@ from feeders.browser_history_summary.chromadb_tools import ingest_all_browser_hi
 from feeders.content_generator import ContentGenerator
 from config import GENERATOR_DATA_DIR, DATA_DIR
 
+LLM_MODEL_NAME = "mlx-community/Meta-Llama-3.1-8B-Instruct-8bit"
 
 RUNNING_PLATFORM = platform.system()
 
@@ -36,8 +37,6 @@ else:
     
     def llm_generate(pipeline, prompt, max_tokens):
         return pipeline(prompt, max_new_tokens=max_tokens)[0]['generated_text']
-
-LLM_MODEL_NAME = "mlx-community/Meta-Llama-3.1-8B-Instruct-8bit"
 
 print(os.path.abspath(DATA_DIR))
 history_pages_dir = os.path.join(DATA_DIR, "history_pages")
