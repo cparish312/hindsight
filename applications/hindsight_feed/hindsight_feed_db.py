@@ -1,7 +1,7 @@
 import os
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, FLOAT, DateTime
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, scoped_session
 
 from datetime import datetime
 
@@ -42,7 +42,7 @@ class ContentGenerator(Base):
 
 # Database connection
 engine = create_engine(f'sqlite:///{db_path}')
-Session = sessionmaker(bind=engine)
+Session = scoped_session(sessionmaker(bind=engine))
 session = Session()
 
 Base.metadata.create_all(engine)
