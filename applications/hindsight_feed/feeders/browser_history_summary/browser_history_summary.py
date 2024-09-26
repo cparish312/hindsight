@@ -78,7 +78,7 @@ class BrowserSummaryFeeder(ContentGenerator):
             print(f"Failed request for {row['url']}")
             html_content = ""
         with open(html_path, 'w') as outfile:
-            outfile.write(html_content)
+            outfile.write(str(html_content))
         return html_content
     
     def add_html_text(self, df):
