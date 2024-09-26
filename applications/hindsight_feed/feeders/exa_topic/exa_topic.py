@@ -2,8 +2,6 @@ import sys
 import pandas as pd
 from exa_py import Exa
 
-sys.path.insert(0, "../../")
-
 import utils
 from db import fetch_contents, df_add_contents
 from feeders.content_generator import ContentGenerator
@@ -50,4 +48,5 @@ class ExaTopicFeeder(ContentGenerator):
         print(f"{self.name} fetching content")
         exa_results = self.get_content()
         exa_results['content_generator_id'] = self.id
+        exa_results['published_date'] = pd.to_datetime(exa_results['published_date'])
         df_add_contents(exa_results)

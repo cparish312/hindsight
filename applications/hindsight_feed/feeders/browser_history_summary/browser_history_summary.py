@@ -1,13 +1,12 @@
 import os
 import sys
 import html
+import platform
 import requests
 from datetime import datetime, timedelta
 
 from bs4 import BeautifulSoup
 from bs4.element import Comment
-
-from mlx_lm import load, generate
 
 import utils
 import db 
@@ -16,7 +15,29 @@ from feeders.browser_history_summary.chromadb_tools import ingest_all_browser_hi
 from feeders.content_generator import ContentGenerator
 from config import GENERATOR_DATA_DIR, DATA_DIR
 
-MLX_LLM_MODEL = "mlx-community/Meta-Llama-3.1-8B-Instruct-8bit"
+
+RUNNING_PLATFORM = platform.system()
+
+if RUNNING_PLATFORM == 'Darwin':
+    from mlx_lm import load, generate
+
+    def llm_generate(pipeline, prompt, max_tokens):
+        model, tokenizer = pipeline
+        return generate(model, tokenizer, prompt=prompt, max_tokens=max_tokens)
+else:
+    import transformers
+    import torch    
+
+    def load(model_name):
+        pipeline = transformers.pipeline(
+            "text-generation", model=model_name, model_kwargs={"torch_dtype": torch.bfloat16}, device_map="auto"
+        )
+        return pipeline
+    
+    def llm_generate(pipeline, prompt, max_tokens):
+        return pipeline(prompt, max_new_tokens=max_tokens)[0]['generated_text']
+
+LLM_MODEL_NAME = "mlx-community/Meta-Llama-3.1-8B-Instruct-8bit"
 
 print(os.path.abspath(DATA_DIR))
 history_pages_dir = os.path.join(DATA_DIR, "history_pages")
@@ -209,7 +230,7 @@ class BrowserSummaryFeeder(ContentGenerator):
         self.summarized_html_texts.add(html_text) 
 
         topic = self.topic if self.gen_type != "TopicBrowserSummaryFeeder" else None
-        summary_text = generate(self.model, self.tokenizer, prompt=self.get_summarize_prompt(html_text, topic=topic), max_tokens=30)
+        summary_text = llm_generate(self.pipeline, prompt=self.get_summarize_prompt(html_text, topic=topic), max_tokens=30)
         summary_text = summary_text.split('.')[0]
         # print("HTML text:", html_text)
         # print()
@@ -311,7 +332,7 @@ class YesterdayBrowserSummaryFeeder(BrowserSummaryFeeder):
                     ranking_score=100, content_generator_id=self.id, thumbnail_url=thumbnail_url)
 
         
-        self.model, self.tokenizer = load(MLX_LLM_MODEL) 
+        self.pipeline = load(LLM_MODEL_NAME) 
         self.generate_full_html(history, topic=title, html_path=summary_html_page_path)
                                               
         # yesterday_summary_prompt = self.get_yesterday_summary_prompt(history)
@@ -383,7 +404,7 @@ class TopicBrowserSummaryFeeder(BrowserSummaryFeeder):
         db.add_content(title, url=html_page_url, published_date=now_utc, 
                     ranking_score=101, content_generator_id=self.id, thumbnail_url=thumbnail_url)
         
-        self.model, self.tokenizer = load(MLX_LLM_MODEL) 
+        self.pipeline = load(LLM_MODEL_NAME) 
         summary_html_content_path = summary_html_page_path.replace(".html", "_content.html")
         self.generate_html_content(history, html_path=summary_html_content_path)
                                               

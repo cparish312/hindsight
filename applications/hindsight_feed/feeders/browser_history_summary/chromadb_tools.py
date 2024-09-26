@@ -5,7 +5,7 @@ from pathlib import Path
 import chromadb
 from chromadb.utils import embedding_functions
 
-from applications.hindsight_feed.feeders.browser_history_summary.browser_history import get_browser_history
+from feeders.browser_history_summary.browser_history import get_browser_history
 
 from config import DATA_DIR
 

@@ -13,10 +13,7 @@ dependencies:
   - sqlalchemy
   - bs4
   - pytorch
-  - torch
-  - transformers
-  - torchvision
-  - accelerate
   - pip:
       - chromadb
+      - mlx-lm==0.16.1
       - exa_py
