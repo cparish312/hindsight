@@ -24,7 +24,7 @@ Hindsight is an android app that takes a screenshot every 2 seconds. The server 
 For querying setup you will need to setup the [huggingface cli](https://huggingface.co/docs/huggingface_hub/main/en/guides/cli) and if you want to use a restricted model, such as llama, you will need to request access on huggingface. You can change the LLM model within `hindsight_server/config.py`.
 
 ## Viewing Your Data
-`cd hindsight_server`
+Enter the hindsight_server directory by running: `cd hindsight_server`
 * `python views/timeline_view.py`: To view the screenshots on a timeline
 * `python views/search_view.py`: To search the screenshots by text or embedding
 * `python views/query_view.py`: To query the screenshots using a local LLM
