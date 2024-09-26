@@ -16,6 +16,7 @@ dependencies:
   - pytorch
   - transformers
   - torchvision
+  - accelerate
   - pip:
       - chromadb
       - portalocker
