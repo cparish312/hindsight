@@ -20,6 +20,9 @@ Hindsight is an android app that takes a screenshot every 2 seconds. The server 
 * [Linux](https://github.com/cparish312/hindsight/blob/main/assets/setup_linux.md)
 * [Windows](https://github.com/cparish312/hindsight/blob/main/assets/setup_windows.md)
 
+### Querying
+For querying setup you will need to setup the [huggingface cli](https://huggingface.co/docs/huggingface_hub/main/en/guides/cli) and if you want to use a restricted model, such as llama, you will need to request access on huggingface. You can change the LLM model within `hindsight_server/config.py`.
+
 ## Features
 Currently the app has 4 "working" functionalities.
 1) **Screen Recording:** Toggle screen recording on or off.
