@@ -23,12 +23,17 @@ Hindsight is an android app that takes a screenshot every 2 seconds. The server 
 ### Querying
 For querying setup you will need to setup the [huggingface cli](https://huggingface.co/docs/huggingface_hub/main/en/guides/cli) and if you want to use a restricted model, such as llama, you will need to request access on huggingface. You can change the LLM model within `hindsight_server/config.py`.
 
+## Viewing Your Data
+`cd hindsight_server`
+* `python views/timeline_view.py`: To view the screenshots on a timeline
+* `python views/search_view.py`: To search the screenshots by text or embedding
+* `python views/query_view.py`: To query the screenshots using a local LLM
+
 ## Features
 Currently the app has 4 "working" functionalities.
 1) **Screen Recording:** Toggle screen recording on or off.
 2) **Location Tracking:** Will save the last retrieved location every 2 seconds (if it has changed). Currently only works if screen recording is also enabled. Also be sure to give location tracking permissions.
 3) **Server Upload:** Upload screenshots directly to your server.
-* The screenshots timeline can be viewed and searched by running `python timeline_view.py`
 4) **Query:** Run natural language queries against the text in your screenshots. There are 3 types of querying techniques currently available:
     1) Basic (Default or start query with `b/`): Uses top N contexts retreived by chromadb and feeds them to a single LLM call
     2) Long Context (start query with `l/`): For each top N contexts grabs the frames immediately before and after. For each context, the frames are combined and fed to an LLM. Finally, all of the results are fed to a summary LLM call to generate the response.
