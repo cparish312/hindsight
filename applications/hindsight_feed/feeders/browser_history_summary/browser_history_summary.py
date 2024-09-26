@@ -73,7 +73,7 @@ class BrowserSummaryFeeder(ContentGenerator):
                 return infile.read()
         try:
             response = requests.get(row['url'], timeout=5)
-            html_content = response.text
+            html_content = response.text.encode("utf-8")
         except:
             print(f"Failed request for {row['url']}")
             html_content = ""
