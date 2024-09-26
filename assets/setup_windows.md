@@ -19,7 +19,8 @@
 
 ### App
 1) Open `hindsight_android` in Android Studio.
-2) You should be good to run the app on your device!
+2) Activate developer mode on your device.
+3) You should be good to run the app on your device!
 
 ### Changing Wifi
 * Note when the computer wifi changes, querying should still work using ngrok, but in order to upload images again you will need to:
