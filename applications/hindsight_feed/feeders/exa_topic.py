@@ -24,7 +24,7 @@ class ExaTopicFeeder(ContentGenerator):
             num_results=25,
             text=True,
             highlights=True,
-            start_published_date="2024-07-25"
+            start_published_date=None
             )
         
         results_l = list()
