@@ -1,4 +1,5 @@
 import sys
+import os
 import pandas as pd
 from exa_py import Exa
 
@@ -6,8 +7,14 @@ import utils
 from hindsight_feed_db import fetch_contents, df_add_contents
 from feeders.content_generator import ContentGenerator
 
-# with open()
-EXA_API_KEY = "6d382b4c-1e88-4e00-958d-1d69182b9c1b"
+from config import DATA_DIR
+
+exa_api_key_f = os.path.join(DATA_DIR, "exa_api.key")
+if os.path.exists(exa_api_key_f):
+    with open(exa_api_key_f, 'r') as infile:
+        EXA_API_KEY = infile.read().strip()
+else:
+    raise(ValueError(f"Missing {exa_api_key_f}"))
 
 class ExaTopicFeeder(ContentGenerator):
     def __init__(self, name, description, topic, min_num_contents=10):
@@ -50,4 +57,5 @@ class ExaTopicFeeder(ContentGenerator):
         exa_results = self.get_content()
         exa_results['content_generator_id'] = self.id
         exa_results['published_date'] = pd.to_datetime(exa_results['published_date'])
+        exa_results['published_date'] = exa_results['published_date'].fillna(pd.Timestamp.now())
         df_add_contents(exa_results)
