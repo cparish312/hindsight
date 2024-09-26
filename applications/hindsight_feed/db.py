@@ -28,6 +28,7 @@ class Content(Base):
     viewed = Column(Boolean, default=False)
     url_is_local = Column(Boolean, default=False)
     timestamp = Column(DateTime, default=datetime.utcnow)
+    last_modified_timestamp = Column(DateTime, default=datetime.utcnow)
 
     def __repr__(self):
         return f"<Content(title={self.title}, url={self.url}, published_date={self.published_date}, score={self.score}, clicked={self.clicked})>"
@@ -71,18 +72,21 @@ def content_clicked(id):
     if content:
         content.clicked = True
         content.viewed = True
+        content.last_modified_timestamp = datetime.utcnow()
         session.commit()
 
 def update_content_score(id, score):
     content = session.query(Content).get(id)
     if content:
         content.score = score
+        content.last_modified_timestamp = datetime.utcnow()
         session.commit()
 
 def content_viewed(id):
     content = session.query(Content).get(id)
     if content:
         content.viewed = True
+        content.last_modified_timestamp = datetime.utcnow()
         session.commit()
 
 def fetch_contents(non_viewed=False, content_generator_id=None):
