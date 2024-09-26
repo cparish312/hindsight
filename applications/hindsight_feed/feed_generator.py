@@ -1,4 +1,4 @@
-from db import fetch_contents
+from hindsight_feed_db import fetch_contents
 
 class FeedGenerator():
     def __init__(self, content_generators=None):

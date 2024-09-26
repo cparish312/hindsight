@@ -3,9 +3,10 @@ import pandas as pd
 from exa_py import Exa
 
 import utils
-from db import fetch_contents, df_add_contents
+from hindsight_feed_db import fetch_contents, df_add_contents
 from feeders.content_generator import ContentGenerator
 
+# with open()
 EXA_API_KEY = "6d382b4c-1e88-4e00-958d-1d69182b9c1b"
 
 class ExaTopicFeeder(ContentGenerator):

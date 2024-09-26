@@ -1,7 +1,7 @@
 import os
 import time
 from flask import Flask, render_template, request, jsonify, send_from_directory, Response
-from db import update_content_score, content_clicked, content_viewed
+from hindsight_feed_db import update_content_score, content_clicked, content_viewed
 from feed_generator import FeedGenerator
 from feeders.exa_topic.exa_topic import ExaTopicFeeder
 from feeders.browser_history_summary.browser_history_summary import YesterdayBrowserSummaryFeeder, TopicBrowserSummaryFeeder

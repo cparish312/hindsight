@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 from bs4.element import Comment
 
 import utils
-import db 
+import hindsight_feed_db 
 from feeders.browser_history_summary.browser_history import get_browser_history
 from feeders.browser_history_summary.chromadb_tools import ingest_all_browser_history, get_chroma_collection, chroma_search_results_to_df
 from feeders.content_generator import ContentGenerator
@@ -38,7 +38,6 @@ else:
     def llm_generate(pipeline, prompt, max_tokens):
         return pipeline(prompt, max_new_tokens=max_tokens)[0]['generated_text']
 
-print(os.path.abspath(DATA_DIR))
 history_pages_dir = os.path.join(DATA_DIR, "history_pages")
 utils.make_dir(history_pages_dir)
 
@@ -305,7 +304,7 @@ class YesterdayBrowserSummaryFeeder(BrowserSummaryFeeder):
         return prompt
 
     def add_content(self):
-        contents = db.fetch_contents(non_viewed=False, content_generator_id=self.id)
+        contents = hindsight_feed_db.fetch_contents(non_viewed=False, content_generator_id=self.id)
         yesterday_start, yesterday_end = self.get_yesterday_dates()
         if contents:
             # last_published_date = max([datetime.strptime(c.published_date, "%Y-%m-%d %H:%M:%S.%f") for c in contents])
@@ -327,7 +326,7 @@ class YesterdayBrowserSummaryFeeder(BrowserSummaryFeeder):
         thumbnail_url = ""
         html_page_url = f"""/local/docs/{summary_html_page_path.replace(GENERATOR_DATA_DIR, "")}"""
 
-        db.add_content(title, url=html_page_url, published_date=now_utc, 
+        hindsight_feed_db.add_content(title, url=html_page_url, published_date=now_utc, 
                     ranking_score=100, content_generator_id=self.id, thumbnail_url=thumbnail_url)
 
         
@@ -400,7 +399,7 @@ class TopicBrowserSummaryFeeder(BrowserSummaryFeeder):
         stream_html_path = html_page_url.replace('/local/docs/', '/stream/docs/')
         self.generate_html_base(topic=self.topic, html_path=summary_html_page_path, stream_html_path=stream_html_path)
 
-        db.add_content(title, url=html_page_url, published_date=now_utc, 
+        hindsight_feed_db.add_content(title, url=html_page_url, published_date=now_utc, 
                     ranking_score=101, content_generator_id=self.id, thumbnail_url=thumbnail_url)
         
         self.pipeline = load(LLM_MODEL_NAME) 

@@ -1,7 +1,7 @@
 import sys
 sys.path.insert(0, "../")
 
-from db import add_content_generator
+from hindsight_feed_db import add_content_generator
 
 class ContentGenerator():
     def __init__(self, name, gen_type, description=None):
