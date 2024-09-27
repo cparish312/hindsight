@@ -26,19 +26,22 @@ if RUNNING_PLATFORM == 'Darwin':
         model, tokenizer = pipeline
         return generate(model, tokenizer, prompt=prompt, max_tokens=max_tokens)
 else:
-    import transformers
-    import torch
-
-    LLM_MODEL_NAME = "meta-llama/Llama-3.2-1B-Instruct"
+    from transformers import AutoTokenizer, AutoModelForCausalLM
 
     def load(model_name):
-        pipeline = transformers.pipeline(
-            "text-generation", model=model_name, model_kwargs={"torch_dtype": torch.bfloat16}, device_map="auto"
-        )
-        return pipeline
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        model = AutoModelForCausalLM.from_pretrained(model_name)
+        return model, tokenizer
     
     def llm_generate(pipeline, prompt, max_tokens):
-        return pipeline(prompt, max_new_tokens=max_tokens)[0]['generated_text']
+        model, tokenizer = pipeline
+
+        inputs = tokenizer(prompt, return_tensors="pt")
+
+        outputs = model.generate(**inputs, max_length=max_tokens)
+
+        generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        return generated_text
 
 class BrowserSummaryFeeder(ContentGenerator):
     def __init__(self, name, description, gen_type="BrowserSummaryFeeder", parameters=None):
