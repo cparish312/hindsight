@@ -29,6 +29,7 @@ class Content(Base):
     url_is_local = Column(Boolean, default=False)
     timestamp = Column(DateTime, default=datetime.utcnow)
     last_modified_timestamp = Column(DateTime, default=datetime.utcnow)
+    content_generator_specific_data = Column(JSON, nullable=True) 
 
     def __repr__(self):
         return f"<Content(title={self.title}, url={self.url}, published_date={self.published_date}, score={self.score}, clicked={self.clicked})>"
@@ -48,22 +49,37 @@ session = Session()
 
 Base.metadata.create_all(engine)
 
-def add_content(title, url, published_date, ranking_score, content_generator_id, thumbnail_url=None):
-    new_content = Content(title=title, url=url, published_date=published_date, ranking_score=ranking_score,
-                          content_generator_id=content_generator_id, thumbnail_url=thumbnail_url,
-                          url_is_local=utils.is_local_url(url))
-    session.add(new_content)
-    session.commit()
+def add_content(title, url, published_date, ranking_score, content_generator_id, thumbnail_url=None, content_generator_specific_data=None):
+    existing_content = session.query(Content).filter_by(url=url).first()
+    if existing_content is None:
+        new_content = Content(title=title, url=url, published_date=published_date, ranking_score=ranking_score,
+                            content_generator_id=content_generator_id, thumbnail_url=thumbnail_url,
+                            url_is_local=utils.is_local_url(url), content_generator_specific_data=content_generator_specific_data)
+        session.add(new_content)
+        session.commit()
+    else:
+        print(f"Content with URL '{url}' already exists in the database.")
 
 def df_add_contents(df):
     contents = []
+    if "content_generator_specific_data" not in df.columns:
+        df["content_generator_specific_data"] = None
+
     for _, row in df.iterrows():
-        contents.append(Content(title=row['title'], url=row['url'], published_date=row['published_date'], 
-                                ranking_score=row['ranking_score'], thumbnail_url=row['thumbnail_url'],
-                                content_generator_id=row['content_generator_id'], url_is_local=utils.is_local_url(row['url'])))
+        existing_content = session.query(Content).filter_by(url=row['url']).first()
+        if existing_content is None:
+            contents.append(Content(title=row['title'], url=row['url'], published_date=row['published_date'], 
+                                    ranking_score=row['ranking_score'], thumbnail_url=row['thumbnail_url'],
+                                    content_generator_id=row['content_generator_id'], url_is_local=utils.is_local_url(row['url']),
+                                    content_generator_specific_data=row["content_generator_specific_data"]))
+        else:
+            print(f"Content with URL '{row['url']}' already exists in the database and will not be added.")
     try:
-        session.bulk_save_objects(contents)
-        session.commit()
+        if contents:
+            session.bulk_save_objects(contents)
+            session.commit()
+        else:
+            print("No new contents to add.")
     except Exception as e:
         print(f"Failed to add contents: {e}")
         session.rollback()

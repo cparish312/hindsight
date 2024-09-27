@@ -11,3 +11,10 @@ GENERATOR_DATA_DIR = os.path.join(DATA_DIR, "generator_data")
 
 HISTORY_PAGES_DIR = os.path.join(DATA_DIR, "history_pages")
 os.makedirs(HISTORY_PAGES_DIR, exist_ok=True)
+
+exa_api_key_f = os.path.join(DATA_DIR, "exa_api.key")
+if os.path.exists(exa_api_key_f):
+    with open(exa_api_key_f, 'r') as infile:
+        EXA_API_KEY = infile.read().strip()
+else:
+    raise(ValueError(f"Missing {exa_api_key_f}"))

@@ -16,7 +16,11 @@ app.config['LOCAL_DOCS_PATH'] = GENERATOR_DATA_DIR
 # content_generators = [ExaTopicFeeder(name="exa_topic_local_ai", description="ExaTopicFeeder for getting information on local ai", 
 #                                      topic="local Artificial Intelligence", min_num_contents=10),
 #                     ExaTopicFeeder(name="exa_topic_personal_ai", description="ExaTopicFeeder for getting information on personal ai", 
-#                     topic="personal Artificial Intelligence", min_num_contents=10)]
+#                     topic="personal Artificial Intelligence", min_num_contents=10),
+#                     ExaTopicFeeder(name="exa_topic_personal_feed", description="ExaTopicFeeder for getting information on personal feed", 
+#                     topic="personal feed where you can control your own algorithmn", min_num_contents=10),
+#                     ExaTopicFeeder(name="exa_topic_personal_exa_feed", description="ExaTopicFeeder for getting information on personal exa feed", 
+#                     topic="personal feed using exa.ai", min_num_contents=10)]
 content_generators = None
 feed_generator = FeedGenerator(content_generators=content_generators)
 print("Number of Content Generators", len(feed_generator.content_generators))
