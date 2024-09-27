@@ -1,4 +1,7 @@
 import os
+import re
+import html
+import unicodedata
 import hashlib
 import requests
 from bs4 import BeautifulSoup
@@ -92,7 +95,36 @@ def tag_visible(element):
         return False
     return True
 
-def html_to_text(body):
+def clean_text(text):
+    # Replace escape sequences '\\n', '\\t', '\\r' with their actual characters
+    text = text.replace('\\n', '\n').replace('\\t', ' ').replace('\\r', ' ')
+    
+    # Attempt to decode unicode escape sequences
+    try:
+        text = text.encode('utf-8').decode('unicode_escape')
+    except UnicodeDecodeError:
+        pass  # If decoding fails, leave the text as is
+    
+    text = html.unescape(text)
+    
+    # Replace multiple newlines in a row with a single newline
+    text = re.sub(r'\n\s*\n+', '\n', text)
+    
+    # Remove multiple spaces
+    text = re.sub(' +', ' ', text)
+    
+    # Normalize unicode characters
+    text = unicodedata.normalize('NFC', text)
+    
+    # Remove any remaining non-printable characters except newline
+    text = ''.join(c for c in text if c.isprintable() or c == '\n')
+    
+    # Strip leading and trailing whitespace and newlines
+    text = text.strip()
+    
+    return text
+
+def html_to_text(body, clean=True):
     soup = BeautifulSoup(body, 'html.parser')
     texts = soup.findAll(text=True)
     visible_texts = filter(tag_visible, texts)  
@@ -100,4 +132,7 @@ def html_to_text(body):
     for t in visible_texts:
         t = t.strip()
         texts.append(t)
-    return u" ".join(texts).strip()
+    text = u" ".join(texts).strip()
+    if clean:
+        text = clean_text(text)
+    return text

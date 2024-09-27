@@ -23,8 +23,8 @@ class FeedGenerator():
     def get_database_generators(self):
         content_generator_rows = fetch_content_generators()
         content_generators = list()
-        for content_generator_row in content_generator_rows:
-            content_generators.append(create_content_generator(content_generator_row))
+        # for content_generator_row in content_generator_rows:
+        #     content_generators.append(create_content_generator(content_generator_row))
         return content_generators
 
     def gen_contents(self):
@@ -37,7 +37,7 @@ class FeedGenerator():
         content_generator.add_content()
 
     def get_contents(self):
-        # contents = fetch_contents(non_viewed=True)
-        contents = fetch_contents(non_viewed=False)
+        contents = fetch_contents(non_viewed=True)
+        # contents = fetch_contents(non_viewed=False)
         contents = sorted(contents, key=lambda a: (a.ranking_score, a.timestamp), reverse=True)
         return contents
