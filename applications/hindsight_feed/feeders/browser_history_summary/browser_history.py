@@ -1,5 +1,4 @@
 import os
-import hashlib
 from sys import platform
 import shutil
 import sqlite3
@@ -16,6 +15,7 @@ from zoneinfo import ZoneInfo
 local_timezone = tzlocal.get_localzone()
 video_timezone = ZoneInfo("UTC")
 
+from utils import positive_hash
 from config import DATA_DIR
 
 # Function to create directory if it doesn't exis
@@ -181,15 +181,6 @@ def get_arc_history(db_file=ARC_HISTORY_FILE, db_file_tmp=ARC_TMP_FILE):
     history['browser'] = "Arc"
     print(f"{len(history)} urls from Arc")
     return history
-
-def positive_hash(obj):
-    # Convert the object to string and encode to bytes
-    obj_str = str(obj).encode()
-    hash_object = hashlib.sha256(obj_str)  # Using SHA-256 hash function
-    hash_digest = hash_object.digest()  # Get the bytes of the hash
-    # Convert bytes to a positive integer
-    hash_int = int.from_bytes(hash_digest, 'big') 
-    return int(hash_int % ((1 << 61) - 1))
 
 # Function to retrieve and preprocess browser history from all browsers
 def get_browser_history(kw_filter=True):

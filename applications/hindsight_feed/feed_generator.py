@@ -29,7 +29,8 @@ class FeedGenerator():
 
     def gen_contents(self):
         for content_generator in self.content_generators:
-            content_generator.add_content()
+            if not isinstance(content_generator, TopicBrowserSummaryFeeder):
+                content_generator.add_content()
 
     def add_content_generator(self, content_generator):
         self.content_generators.append(content_generator)

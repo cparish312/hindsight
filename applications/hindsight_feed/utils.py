@@ -1,4 +1,5 @@
 import os
+import hashlib
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
@@ -8,6 +9,8 @@ import pandas as pd
 import tzlocal
 from zoneinfo import ZoneInfo
 
+from config import HISTORY_PAGES_DIR
+
 local_timezone = tzlocal.get_localzone()
 video_timezone = ZoneInfo("UTC")
 
@@ -15,17 +18,37 @@ def make_dir(d):
     if not os.path.exists(d):
         os.makedirs(d)
 
+def positive_hash(obj):
+    # Convert the object to string and encode to bytes
+    obj_str = str(obj).encode()
+    hash_object = hashlib.sha256(obj_str)  # Using SHA-256 hash function
+    hash_digest = hash_object.digest()  # Get the bytes of the hash
+    # Convert bytes to a positive integer
+    hash_int = int.from_bytes(hash_digest, 'big') 
+    return int(hash_int % ((1 << 61) - 1))
+
+def get_html(url):
+    url_hash = positive_hash(url)
+    html_path = os.path.join(HISTORY_PAGES_DIR, f"{url_hash}.html")
+    if os.path.exists(html_path):
+        with open(html_path, 'r') as infile:
+            return infile.read()
+    try:
+        response = requests.get(url, timeout=5)
+        html_content = response.text.encode("utf-8")
+    except:
+        print(f"Failed request for {url}")
+        html_content = ""
+    with open(html_path, 'w') as outfile:
+        outfile.write(str(html_content))
+    return html_content
+
 def get_thumbnail_url(source_url, html_content=None):
     if html_content is None:
-        try:
-            response = requests.get(source_url)
-            html_content = response.content
-        except Exception as e:
-            print(f"Failed to get thumbnail for {source_url} with error: {e}")
-            return None
-        if response.status_code != 200:
-            return None  # Ensure the request was successful
-
+        html_content = get_html(source_url)
+    
+    if html_content == "":
+        return None
     soup = BeautifulSoup(html_content, 'html.parser')
     
     # First, try to find the 'og:image' content

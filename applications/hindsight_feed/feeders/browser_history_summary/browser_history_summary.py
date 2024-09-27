@@ -13,7 +13,7 @@ import hindsight_feed_db
 from feeders.browser_history_summary.browser_history import get_browser_history
 from feeders.browser_history_summary.chromadb_tools import ingest_all_browser_history, get_chroma_collection, chroma_search_results_to_df
 from feeders.content_generator import ContentGenerator
-from config import GENERATOR_DATA_DIR, DATA_DIR
+from config import GENERATOR_DATA_DIR
 
 LLM_MODEL_NAME = "mlx-community/Meta-Llama-3.1-8B-Instruct-8bit"
 
@@ -37,9 +37,6 @@ else:
     
     def llm_generate(pipeline, prompt, max_tokens):
         return pipeline(prompt, max_new_tokens=max_tokens)[0]['generated_text']
-
-history_pages_dir = os.path.join(DATA_DIR, "history_pages")
-utils.make_dir(history_pages_dir)
 
 class BrowserSummaryFeeder(ContentGenerator):
     def __init__(self, name, description, gen_type="BrowserSummaryFeeder", parameters=None):
@@ -65,24 +62,9 @@ class BrowserSummaryFeeder(ContentGenerator):
             t = t.strip()
             texts.append(t)
         return u" ".join(texts).strip()
-
-    def get_html(self, row):
-        html_path = os.path.join(history_pages_dir, f"{row['url_hash']}.html")
-        if os.path.exists(html_path):
-            with open(html_path, 'r') as infile:
-                return infile.read()
-        try:
-            response = requests.get(row['url'], timeout=5)
-            html_content = response.text.encode("utf-8")
-        except:
-            print(f"Failed request for {row['url']}")
-            html_content = ""
-        with open(html_path, 'w') as outfile:
-            outfile.write(str(html_content))
-        return html_content
     
     def add_html_text(self, df):
-        df['html'] = df.apply(lambda row: self.get_html(row), axis=1)
+        df['html'] = df['url'].apply(lambda x: utils.get_html(x))
         df['html_text'] = df['html'].apply(lambda x: self.text_from_html(x))
         df = df.dropna(subset=['html_text'])
         df = df.drop_duplicates(subset=['html_text'])
@@ -217,7 +199,7 @@ class BrowserSummaryFeeder(ContentGenerator):
 
     def get_url_summary_html(self, row):
         # Check for thumbnail and adjust HTML accordingly
-        html_body = self.get_html(row)
+        html_body = utils.get_html(row['url'])
         html_text = self.text_from_html(html_body)
         if html_text is None:
             return None
