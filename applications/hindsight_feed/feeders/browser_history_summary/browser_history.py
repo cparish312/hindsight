@@ -28,7 +28,7 @@ def find_firefox_profile():
     elif platform == "win32":
         profile_path = Path(os.path.expanduser(r"~\AppData\Roaming\Mozilla\Firefox\Profiles"))
 
-    profiles = list(profile_path.glob("*.default-release"))
+    profiles = list(profile_path.glob("*.default-*"))
     if profiles:
         return max(profiles, key=os.path.getmtime)
     return None
