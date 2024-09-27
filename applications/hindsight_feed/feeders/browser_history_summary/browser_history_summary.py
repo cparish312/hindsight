@@ -48,7 +48,7 @@ class BrowserSummaryFeeder(ContentGenerator):
     
     def add_html_text(self, df):
         df['html'] = df['url'].apply(lambda x: utils.get_html(x))
-        df['html_text'] = df['html'].apply(lambda x: utils.text_from_html(x))
+        df['html_text'] = df['html'].apply(lambda x: utils.html_to_text(x))
         df = df.dropna(subset=['html_text'])
         df = df.drop_duplicates(subset=['html_text'])
         df = df.loc[df['html_text'].str.len() > 10]
@@ -183,7 +183,7 @@ class BrowserSummaryFeeder(ContentGenerator):
     def get_url_summary_html(self, row):
         # Check for thumbnail and adjust HTML accordingly
         html_body = utils.get_html(row['url'])
-        html_text = utils.text_from_html(html_body)
+        html_text = utils.html_to_text(html_body)
         if html_text is None:
             return None
         elif len(html_text) < 80:
