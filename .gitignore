@@ -14,5 +14,4 @@ hindsight_server/query/__pycache__/
 hindsight_server/views/__pycache__/
 
 applications/hindsight_feed/__pycache__
-applications/hindsight_feed/feeders/
 applications/hindsight_feed/data/
