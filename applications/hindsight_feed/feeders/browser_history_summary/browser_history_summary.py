@@ -45,27 +45,10 @@ class BrowserSummaryFeeder(ContentGenerator):
         self.data_dir = os.path.join(GENERATOR_DATA_DIR, f"{self.gen_type}/{self.id}")
         print(os.path.abspath(self.data_dir))
         utils.make_dir(self.data_dir)
-
-    def tag_visible(self, element):
-        if element.parent.name in ['style', 'script', 'head', 'title', 'meta', '[document]']:
-            return False
-        if isinstance(element, Comment):
-            return False
-        return True
-
-    def text_from_html(self, body):
-        soup = BeautifulSoup(body, 'html.parser')
-        texts = soup.findAll(text=True)
-        visible_texts = filter(self.tag_visible, texts)  
-        texts = list()
-        for t in visible_texts:
-            t = t.strip()
-            texts.append(t)
-        return u" ".join(texts).strip()
     
     def add_html_text(self, df):
         df['html'] = df['url'].apply(lambda x: utils.get_html(x))
-        df['html_text'] = df['html'].apply(lambda x: self.text_from_html(x))
+        df['html_text'] = df['html'].apply(lambda x: utils.text_from_html(x))
         df = df.dropna(subset=['html_text'])
         df = df.drop_duplicates(subset=['html_text'])
         df = df.loc[df['html_text'].str.len() > 10]
@@ -200,7 +183,7 @@ class BrowserSummaryFeeder(ContentGenerator):
     def get_url_summary_html(self, row):
         # Check for thumbnail and adjust HTML accordingly
         html_body = utils.get_html(row['url'])
-        html_text = self.text_from_html(html_body)
+        html_text = utils.text_from_html(html_body)
         if html_text is None:
             return None
         elif len(html_text) < 80:
