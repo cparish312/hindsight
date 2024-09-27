@@ -10,6 +10,7 @@ from config import GENERATOR_DATA_DIR
 
 app = Flask(__name__)
 
+app.config['SERVER_NAME'] = 'localhost:5000'
 app.config['LOCAL_DOCS_PATH'] = GENERATOR_DATA_DIR
 
 # content_generators = [ExaTopicFeeder(name="exa_topic_local_ai", description="ExaTopicFeeder for getting information on local ai", 
