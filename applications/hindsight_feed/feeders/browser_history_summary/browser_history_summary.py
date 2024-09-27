@@ -27,7 +27,9 @@ if RUNNING_PLATFORM == 'Darwin':
         return generate(model, tokenizer, prompt=prompt, max_tokens=max_tokens)
 else:
     import transformers
-    import torch    
+    import torch
+
+    LLM_MODEL_NAME = "meta-llama/Llama-3.2-1B-Instruct"
 
     def load(model_name):
         pipeline = transformers.pipeline(
@@ -174,7 +176,6 @@ class BrowserSummaryFeeder(ContentGenerator):
         base_html = styles + place_holder_html
         with open(html_path, 'w') as outfile:
             outfile.write(base_html)
-
 
     def append_to_html(self, html_text, html_path):
         with open(html_path, 'a') as outfile:
