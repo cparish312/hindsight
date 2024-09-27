@@ -12,7 +12,7 @@ from config import DATA_DIR
 Base = declarative_base()
 
 base_dir = os.path.dirname(os.path.abspath(__file__))
-db_path = os.path.join(DATA_DIR, 'personal_feed.db')
+db_path = os.path.join(DATA_DIR, 'hindsight_feed.db')
 
 class Content(Base):
     __tablename__ = 'content'
