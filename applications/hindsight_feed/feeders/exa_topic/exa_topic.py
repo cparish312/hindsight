@@ -18,7 +18,7 @@ else:
 
 class ExaTopicFeeder(ContentGenerator):
     def __init__(self, name, description, topic, min_num_contents=10):
-        super().__init__(name=name, description=description, gen_type="ExaTopicFeeder")
+        super().__init__(name=name, description=description, gen_type="ExaTopicFeeder", parameters={"topic" : topic, "min_num_contents" : min_num_contents})
         self.topic = topic
         self.min_num_contents = min_num_contents
     

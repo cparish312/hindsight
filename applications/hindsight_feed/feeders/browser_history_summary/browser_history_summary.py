@@ -42,8 +42,8 @@ history_pages_dir = os.path.join(DATA_DIR, "history_pages")
 utils.make_dir(history_pages_dir)
 
 class BrowserSummaryFeeder(ContentGenerator):
-    def __init__(self, name, description, gen_type="BrowserSummaryFeeder"):
-        super().__init__(name=name, description=description, gen_type=gen_type)
+    def __init__(self, name, description, gen_type="BrowserSummaryFeeder", parameters=None):
+        super().__init__(name=name, description=description, gen_type=gen_type, parameters=parameters)
         self.gen_type = gen_type
         self.data_dir = os.path.join(GENERATOR_DATA_DIR, f"{self.gen_type}/{self.id}")
         print(os.path.abspath(self.data_dir))
@@ -340,7 +340,9 @@ class YesterdayBrowserSummaryFeeder(BrowserSummaryFeeder):
 class TopicBrowserSummaryFeeder(BrowserSummaryFeeder):
 
     def __init__(self, name, description, topic, n_chroma_res=200, distance_threshold=1.2, topic_urls=None):
-        super().__init__(name=name, description=description, gen_type="TopicBrowserSummaryFeeder")
+        parameters = {"topic" : topic, "n_chroma_res" : n_chroma_res, 
+                      "distance_threshold" : distance_threshold, "topic_urls" : topic_urls}
+        super().__init__(name=name, description=description, gen_type="TopicBrowserSummaryFeeder", parameters=parameters)
         self.topic = topic
         self.n_chroma_res = n_chroma_res
         self.distance_threshold = distance_threshold

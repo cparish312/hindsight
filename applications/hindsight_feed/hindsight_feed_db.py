@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, FLOAT, DateTime
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, FLOAT, DateTime, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
 
@@ -39,6 +39,7 @@ class ContentGenerator(Base):
     name = Column(String(150), nullable=False)
     gen_type = Column(String(150), nullable=True)
     description = Column(String(300), nullable=True)
+    parameters = Column(JSON, nullable=True) 
 
 # Database connection
 engine = create_engine(f'sqlite:///{db_path}')
@@ -98,12 +99,17 @@ def fetch_contents(non_viewed=False, content_generator_id=None):
     contents =  query.all()
     return contents
     
-def add_content_generator(name, gen_type=None, description=None):
+def add_content_generator(name, gen_type=None, description=None, parameters=None):
     existing_generator = session.query(ContentGenerator).filter_by(name=name).first()
     if existing_generator:
         return existing_generator.id
 
-    new_content_generator = ContentGenerator(name=name, gen_type=gen_type, description=description)
+    new_content_generator = ContentGenerator(name=name, gen_type=gen_type, description=description, parameters=parameters)
     session.add(new_content_generator)
     session.commit()
     return new_content_generator.id 
+
+def fetch_content_generators():
+    query = session.query(ContentGenerator)
+    contents =  query.all()
+    return contents
