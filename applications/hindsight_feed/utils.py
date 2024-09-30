@@ -1,4 +1,5 @@
 import os
+from sys import platform
 import re
 import html
 import unicodedata
@@ -17,6 +18,16 @@ from config import HISTORY_PAGES_DIR
 
 local_timezone = tzlocal.get_localzone()
 video_timezone = ZoneInfo("UTC")
+
+def path_to_url(path: str):
+    if platform == "win32":
+        return path.replace('\\', '/')
+    return path
+
+def url_to_path(url: str):
+    if platform == "win32":
+        return url.replace('/', '\\')
+    return url
 
 def make_dir(d):
     if not os.path.exists(d):
