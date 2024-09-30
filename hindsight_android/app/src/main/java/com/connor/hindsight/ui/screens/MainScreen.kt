@@ -39,6 +39,7 @@ fun MainScreen(
     mainViewModel: MainViewModel = viewModel(),
     onNavigateToScreenRecordingSettings: () -> Unit,
     onNavigateToUploadSettings: () -> Unit,
+    onNavigateToFeed: () -> Unit,
     onNavigateToPostQuery: () -> Unit,
     onNavigateToAnnotations:() -> Unit,
 ) {
@@ -154,6 +155,13 @@ fun MainScreen(
             "Unsynced Screenshots: $fileCount",
             modifier = Modifier.padding(16.dp)
         )
+
+        Button(
+            onClick = onNavigateToFeed,
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text("Feed")
+        }
 
         Button(
             onClick = onNavigateToPostQuery,
