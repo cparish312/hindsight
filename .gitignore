@@ -15,3 +15,6 @@ hindsight_server/views/__pycache__/
 
 applications/hindsight_feed/__pycache__
 applications/hindsight_feed/data/
+
+**/__pycache__
+.vscode/

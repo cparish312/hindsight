@@ -1,11 +1,12 @@
 import os
 import time
 from flask import Flask, render_template, request, jsonify, send_from_directory, Response
-from hindsight_feed_db import update_content_score, content_clicked, content_viewed
+from hindsight_feed_db import update_content_score, content_clicked, content_viewed, Session
 from feed_generator import FeedGenerator
 from feeders.exa_topic.exa_topic import ExaTopicFeeder
 from feeders.browser_history_summary.browser_history_summary import YesterdayBrowserSummaryFeeder, TopicBrowserSummaryFeeder
 
+from feed_utils import url_to_path
 from feed_config import GENERATOR_DATA_DIR
 
 app = Flask(__name__)
@@ -24,6 +25,10 @@ app.config['LOCAL_DOCS_PATH'] = GENERATOR_DATA_DIR
 content_generators = None
 feed_generator = FeedGenerator(content_generators=content_generators)
 print("Number of Content Generators", len(feed_generator.content_generators))
+
+@app.teardown_request
+def on_teardown(err):
+    Session.remove()
 
 @app.route('/local/docs/<path:filename>')
 def serve_file(filename):
@@ -51,7 +56,8 @@ def file_stream(file_path):
 
 @app.route('/stream/docs/<path:filename>')
 def stream_file(filename):
-    file_path = os.path.join(GENERATOR_DATA_DIR, filename).replace(".html", "_content.html")
+    print('streaming file', filename)
+    file_path = os.path.join(GENERATOR_DATA_DIR, url_to_path(filename)).replace(".html", "_content.html")
     return Response(file_stream(file_path), mimetype='text/event-stream')
 
 @app.route('/')

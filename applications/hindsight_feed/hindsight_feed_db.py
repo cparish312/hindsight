@@ -46,7 +46,7 @@ class ContentGenerator(Base):
 # Database connection
 engine = create_engine(f'sqlite:///{db_path}')
 Session = scoped_session(sessionmaker(bind=engine))
-session = Session()
+session = Session
 
 Base.metadata.create_all(engine)
 
