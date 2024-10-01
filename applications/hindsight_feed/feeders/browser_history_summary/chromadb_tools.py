@@ -7,7 +7,7 @@ from chromadb.utils import embedding_functions
 
 from feeders.browser_history_summary.browser_history import get_browser_history
 
-from config import DATA_DIR
+from feed_config import DATA_DIR
 
 chromadb_path = os.path.join(DATA_DIR, "chromadb")
 

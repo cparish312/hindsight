@@ -6,8 +6,8 @@ from feed_generator import FeedGenerator
 from feeders.exa_topic.exa_topic import ExaTopicFeeder
 from feeders.browser_history_summary.browser_history_summary import YesterdayBrowserSummaryFeeder, TopicBrowserSummaryFeeder
 
-from config import GENERATOR_DATA_DIR
-from utils import url_to_path
+from feed_utils import url_to_path
+from feed_config import GENERATOR_DATA_DIR
 
 app = Flask(__name__)
 

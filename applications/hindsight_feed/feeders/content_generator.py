@@ -8,4 +8,3 @@ class ContentGenerator():
         self.name = name
         self.description = description
         self.id = add_content_generator(name=name, gen_type=gen_type, description=description, parameters=parameters)
-

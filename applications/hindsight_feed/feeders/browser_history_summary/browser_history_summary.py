@@ -1,19 +1,17 @@
 import os
-import sys
 import html
 import platform
-import requests
 from datetime import datetime, timedelta
 
 from bs4 import BeautifulSoup
 from bs4.element import Comment
 
-import utils
+import feed_utils
 import hindsight_feed_db 
 from feeders.browser_history_summary.browser_history import get_browser_history
 from feeders.browser_history_summary.chromadb_tools import ingest_all_browser_history, get_chroma_collection, chroma_search_results_to_df
 from feeders.content_generator import ContentGenerator
-from config import GENERATOR_DATA_DIR
+from feed_config import GENERATOR_DATA_DIR
 
 LLM_MODEL_NAME = "mlx-community/Meta-Llama-3.1-8B-Instruct-8bit"
 
@@ -51,11 +49,11 @@ class BrowserSummaryFeeder(ContentGenerator):
         self.gen_type = gen_type
         self.data_dir = os.path.join(GENERATOR_DATA_DIR, f"{self.gen_type}", f"{self.id}")
         print(os.path.abspath(self.data_dir))
-        utils.make_dir(self.data_dir)
+        feed_utils.make_dir(self.data_dir)
     
     def add_html_text(self, df):
-        df['html'] = df['url'].apply(lambda x: utils.get_html(x))
-        df['html_text'] = df['html'].apply(lambda x: utils.html_to_text(x))
+        df['html'] = df['url'].apply(lambda x: feed_utils.get_html(x))
+        df['html_text'] = df['html'].apply(lambda x: feed_utils.html_to_text(x))
         df = df.dropna(subset=['html_text'])
         df = df.drop_duplicates(subset=['html_text'])
         df = df.loc[df['html_text'].str.len() > 10]
@@ -188,8 +186,8 @@ class BrowserSummaryFeeder(ContentGenerator):
 
     def get_url_summary_html(self, row):
         # Check for thumbnail and adjust HTML accordingly
-        html_body = utils.get_html(row['url'])
-        html_text = utils.html_to_text(html_body)
+        html_body = feed_utils.get_html(row['url'])
+        html_text = feed_utils.html_to_text(html_body)
         if html_text is None:
             return None
         elif len(html_text) < 80:
@@ -204,7 +202,7 @@ class BrowserSummaryFeeder(ContentGenerator):
         # print("HTML text:", html_text)
         # print()
         # print("Summary text", summary_text)
-        thumbnail_url = utils.get_thumbnail_url(row['url'], html_body)
+        thumbnail_url = feed_utils.get_thumbnail_url(row['url'], html_body)
 
         thumbnail_html = ""
         if thumbnail_url:
