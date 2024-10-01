@@ -4,6 +4,7 @@ import html
 import unicodedata
 import hashlib
 import requests
+from sys import platform
 from bs4 import BeautifulSoup
 from bs4.element import Comment
 from urllib.parse import urljoin
@@ -136,3 +137,13 @@ def html_to_text(body, clean=True):
     if clean:
         text = clean_text(text)
     return text
+
+def path_to_url(path: str):
+    if platform == "win32":
+        return path.replace('\\', '/')
+    return path
+
+def url_to_path(url: str):
+    if platform == "win32":
+        return url.replace('/', '\\')
+    return url
