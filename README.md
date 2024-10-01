@@ -7,7 +7,9 @@ Look back on your digital experience with Hindsight! (very alpha)
 ## Overview
 Hindsight is an android app that takes a screenshot every 2 seconds. The server upload functionality allows a user to upload the screenshots to a server running on their personal computer.
 
-[Discord](https://discord.gg/CmWWW94E)
+## Communication
+* Setup an onboarding session or just chat about the project [here](https://calendly.com/connorparish9)
+* [Discord](https://discord.gg/CmWWW94E)
 
 ### Demos
 <a href="https://www.loom.com/share/669eecf3c04648d4aae1565ead56273f">
