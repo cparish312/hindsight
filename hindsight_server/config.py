@@ -24,7 +24,7 @@ RUNNING_PLATFORM = platform.system()
 
 """Should be able to run any LLMs in huggingface mlx-community if mac. Otherwise, any transformers LLAMA model"""
 if RUNNING_PLATFORM == 'Darwin':
-    LLM_MODEL_NAME = "mlx-community/Meta-Llama-3-8B-Instruct-8bit"
+    LLM_MODEL_NAME = "mlx-community/Llama-3.1-SuperNova-Lite-bf16"
 else:
     LLM_MODEL_NAME = "meta-llama/Meta-Llama-3.2-3B-Instruct" # For non-mac
 

@@ -5,9 +5,9 @@ from sqlalchemy.orm import sessionmaker, scoped_session
 
 from datetime import datetime
 
-import utils
+import feed_utils
 
-from config import DATA_DIR
+from feed_config import DATA_DIR
 
 Base = declarative_base()
 
@@ -54,7 +54,7 @@ def add_content(title, url, published_date, ranking_score, content_generator_id,
     if existing_content is None:
         new_content = Content(title=title, url=url, published_date=published_date, ranking_score=ranking_score,
                             content_generator_id=content_generator_id, thumbnail_url=thumbnail_url,
-                            url_is_local=utils.is_local_url(url), content_generator_specific_data=content_generator_specific_data)
+                            url_is_local=feed_utils.is_local_url(url), content_generator_specific_data=content_generator_specific_data)
         session.add(new_content)
         session.commit()
     else:
@@ -70,7 +70,7 @@ def df_add_contents(df):
         if existing_content is None:
             contents.append(Content(title=row['title'], url=row['url'], published_date=row['published_date'], 
                                     ranking_score=row['ranking_score'], thumbnail_url=row['thumbnail_url'],
-                                    content_generator_id=row['content_generator_id'], url_is_local=utils.is_local_url(row['url']),
+                                    content_generator_id=row['content_generator_id'], url_is_local=feed_utils.is_local_url(row['url']),
                                     content_generator_specific_data=row["content_generator_specific_data"]))
         else:
             print(f"Content with URL '{row['url']}' already exists in the database and will not be added.")

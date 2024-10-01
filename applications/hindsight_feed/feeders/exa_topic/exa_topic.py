@@ -3,30 +3,40 @@ import os
 import pandas as pd
 from exa_py import Exa
 
-import utils
+import feed_utils
 from hindsight_feed_db import fetch_contents, df_add_contents
 from feeders.content_generator import ContentGenerator
 
-from config import EXA_API_KEY
+from feed_config import EXA_API_KEY
 
 class ExaTopicFeeder(ContentGenerator):
-    def __init__(self, name, description, topic, min_num_contents=10, parent_generator_id=None):
+    def __init__(self, name, description, topic, min_num_contents=10, parent_generator_id=None, find_similar=False):
         super().__init__(name=name, description=description, gen_type="ExaTopicFeeder", 
-                         parameters={"topic" : topic, "min_num_contents" : min_num_contents, "parent_generator_id" : parent_generator_id})
+                         parameters={"topic" : topic, "min_num_contents" : min_num_contents, "parent_generator_id" : parent_generator_id, "find_similar" : find_similar})
         self.topic = topic
         self.min_num_contents = min_num_contents
+        self.find_similar = find_similar
     
     def search_exa(self):
         exa = Exa(EXA_API_KEY)
-        exa_result = exa.search_and_contents(
-            self.topic,
-            type="neural",
-            use_autoprompt=True,
-            num_results=25,
-            text=True,
-            highlights=True,
-            start_published_date=None
-            )
+        if self.find_similar:
+            exa_result = exa.find_similar_and_contents(
+                self.topic,
+                num_results=25,
+                text=True,
+                highlights=True,
+                summary=True,
+                )
+        else:
+            exa_result = exa.search_and_contents(
+                self.topic,
+                type="neural",
+                use_autoprompt=True,
+                num_results=25,
+                text=True,
+                highlights=True,
+                start_published_date=None,
+                )
         
         results_l = list()
         for res in exa_result.results:
@@ -38,7 +48,7 @@ class ExaTopicFeeder(ContentGenerator):
         
     def get_content(self):
         exa_results = self.search_exa()
-        exa_results['thumbnail_url'] = exa_results['url'].apply(lambda x: utils.get_thumbnail_url(x))
+        exa_results['thumbnail_url'] = exa_results['url'].apply(lambda x: feed_utils.get_thumbnail_url(x))
         exa_results['ranking_score'] = exa_results['score']
         exa_results['title'] = exa_results['title'].fillna(exa_results['text']) # For tweets
         return exa_results

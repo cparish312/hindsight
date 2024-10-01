@@ -15,8 +15,8 @@ from zoneinfo import ZoneInfo
 local_timezone = tzlocal.get_localzone()
 video_timezone = ZoneInfo("UTC")
 
-from utils import positive_hash
-from config import DATA_DIR
+from feed_utils import positive_hash
+from feed_config import DATA_DIR
 
 # Function to create directory if it doesn't exis
 
