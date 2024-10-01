@@ -13,35 +13,13 @@ from feeders.browser_history_summary.chromadb_tools import ingest_all_browser_hi
 from feeders.content_generator import ContentGenerator
 from feed_config import GENERATOR_DATA_DIR
 
-LLM_MODEL_NAME = "mlx-community/Meta-Llama-3.1-8B-Instruct-8bit"
+import sys
+sys.path.insert(0, "../../../../")
+sys.path.insert(0, "../../../")
+sys.path.insert(0, "./")
 
-RUNNING_PLATFORM = platform.system()
-
-if RUNNING_PLATFORM == 'Darwin':
-    from mlx_lm import load, generate
-
-    def llm_generate(pipeline, prompt, max_tokens):
-        model, tokenizer = pipeline
-        return generate(model, tokenizer, prompt=prompt, max_tokens=max_tokens)
-else:
-    from transformers import AutoTokenizer, AutoModelForCausalLM
-
-    LLM_MODEL_NAME = "meta-llama/Llama-3.2-1B-Instruct"
-
-    def load(model_name):
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        model = AutoModelForCausalLM.from_pretrained(model_name)
-        return model, tokenizer
-    
-    def llm_generate(pipeline, prompt, max_tokens):
-        model, tokenizer = pipeline
-
-        inputs = tokenizer(prompt, return_tensors="pt")
-
-        outputs = model.generate(**inputs, max_new_tokens=max_tokens)
-
-        generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
-        return generated_text
+from hindsight_server.config import LLM_MODEL_NAME
+from hindsight_server.query.query import load, llm_generate
 
 class BrowserSummaryFeeder(ContentGenerator):
     def __init__(self, name, description, gen_type="BrowserSummaryFeeder", parameters=None):
