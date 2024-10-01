@@ -13,6 +13,8 @@ from config import SERVER_LOG_FILE, SECRET_API_KEY, HINDSIGHT_SERVER_DIR, SCREEN
 import utils
 from db import HindsightDB
 
+from applications.hindsight_feed.hindsight_feed_db import from_app_update_content, fetch_contents, fetch_newly_viewed_content
+
 main_app = Blueprint('main', __name__)
 
 HOME = Path.home()
@@ -115,6 +117,7 @@ def sync_db():
     
     annotations = data.get('annotations', [])
     locations = data.get('locations', [])
+    content_updates = data.get('content')
     
     try:
         ingested_annotations_timestamps = set(db.get_annotations()['timestamp'])
@@ -126,10 +129,34 @@ def sync_db():
         locations = [l for l in locations if l['timestamp'] not in ingested_locations_timestamps]
         # Insert locations
         db.insert_locations(locations)
+
+        from_app_update_content(content_sync_list=content_updates)
     except:
         return jsonify({'status': 'error', 'message': 'Failed annotations or locations ingestion'}), 400
 
     return jsonify({'status': 'success', 'message': 'Database successfully synced'})
+
+@main_app.route('/get_new_content', methods=['GET'])
+def get_new_content():
+    if not verify_api_key():
+        abort(401)
+
+    last_content_id = int(request.args.get('last_content_id'))
+    last_sync_timestamp = int(request.args.get('last_sync_timestamp')) 
+
+    print(f"Last content id {last_content_id}")
+    new_content = fetch_contents(non_viewed=True, last_content_id=last_content_id)
+    new_content_list = list()
+    for c in new_content:
+        c_dict = c.__dict__
+        if "_sa_instance_state" in c_dict:
+            del c_dict['_sa_instance_state']
+        new_content_list.append(c_dict)
+
+    newly_viewed_content = fetch_newly_viewed_content(since_timestamp=last_sync_timestamp)
+    newly_viewied_content_ids = list(c.id for c in newly_viewed_content)
+    print(f"Successully sent new content {len(new_content_list)} and newly viewed content {len(newly_viewed_content)}")
+    return jsonify({"new_content" : new_content_list, "newly_viewed_content_ids" : newly_viewied_content_ids})
     
 @main_app.route('/ping', methods=['GET'])
 def ping_server():

@@ -10,11 +10,12 @@ from bs4.element import Comment
 from urllib.parse import urljoin
 import numpy as np
 import pandas as pd
+from datetime import datetime, timezone
 
 import tzlocal
 from zoneinfo import ZoneInfo
 
-from feed_config import HISTORY_PAGES_DIR
+from applications.hindsight_feed.feed_config import HISTORY_PAGES_DIR
 
 local_timezone = tzlocal.get_localzone()
 video_timezone = ZoneInfo("UTC")
@@ -147,3 +148,17 @@ def url_to_path(url: str):
     if platform == "win32":
         return url.replace('/', '\\')
     return url
+
+def datetime_to_utc_timestamp(date):
+    if isinstance(date, datetime):
+        # Ensure the datetime is in UTC before converting to timestamp
+        if date.tzinfo is None:
+            # If the datetime is naive (no timezone), assume it is UTC
+            date = date.replace(tzinfo=timezone.utc)
+        else:
+            # Convert it to UTC if it has a timezone
+            date = date.astimezone(timezone.utc)
+
+        # Convert to Unix timestamp in milliseconds
+        date = int(date.timestamp()) * 1000
+    return date

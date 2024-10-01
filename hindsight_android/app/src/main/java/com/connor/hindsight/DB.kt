@@ -8,13 +8,15 @@ import android.database.sqlite.SQLiteOpenHelper
 import android.util.Log
 import com.connor.hindsight.network.interfaces.Location
 import com.connor.hindsight.network.interfaces.Annotation
+import com.connor.hindsight.obj.Content
+import com.connor.hindsight.obj.SyncContent
 
 class DB(context: Context) :
     SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
 
     companion object {
         private const val DATABASE_NAME = "hindsight.db"
-        private const val DATABASE_VERSION = 3
+        private const val DATABASE_VERSION = 5
 
         private const val TABLE_ANNOTATIONS = "annotations"
         private const val COLUMN_ID = "id"
@@ -24,25 +26,59 @@ class DB(context: Context) :
         private const val TABLE_LOCATIONS = "locations"
         private const val COLUMN_LATITUDE = "latitude"
         private const val COLUMN_LONGITUDE = "longitude"
+
+        // Content Table
+        private const val TABLE_CONTENT = "content"
+        private const val COLUMN_CONTENT_ID = "id"
+        private const val COLUMN_CONTENT_GENERATOR_ID = "content_generator_id"
+        private const val COLUMN_TITLE = "title"
+        private const val COLUMN_URL = "url"
+        private const val COLUMN_THUMBNAIL_URL = "thumbnail_url"
+        private const val COLUMN_PUBLISHED_DATE = "published_date"
+        private const val COLUMN_RANKING_SCORE = "ranking_score"
+        private const val COLUMN_SCORE = "score"
+        private const val COLUMN_CLICKED = "clicked"
+        private const val COLUMN_VIEWED = "viewed"
+        private const val COLUMN_URL_IS_LOCAL = "url_is_local"
+        private const val COLUMN_CONTENT_GENERATOR_SPECIFIC_DATA = "content_generator_specific_data"
+        private const val COLUMN_LAST_MODIFIED_TIMESTAMP = "last_modified_timestamp"
     }
 
     override fun onCreate(db: SQLiteDatabase) {
-        val CREATE_ANNOTATIONS_TABLE = ("CREATE TABLE " + TABLE_ANNOTATIONS + "("
+        val CREATE_ANNOTATIONS_TABLE = ("CREATE TABLE IF NOT EXISTS " + TABLE_ANNOTATIONS + "("
                 + COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
                 + COLUMN_TEXT + " TEXT,"
                 + COLUMN_TIMESTAMP + " INTEGER" + ")")
         db.execSQL(CREATE_ANNOTATIONS_TABLE)
 
-        val CREATE_LOCATIONS_TABLE = ("CREATE TABLE " + TABLE_LOCATIONS + "("
+        val CREATE_LOCATIONS_TABLE = ("CREATE TABLE IF NOT EXISTS " + TABLE_LOCATIONS + "("
                 + COLUMN_LATITUDE + " DOUBLE,"
                 + COLUMN_LONGITUDE + " DOUBLE,"
                 + COLUMN_TIMESTAMP + " INTEGER" + ")")
         db.execSQL(CREATE_LOCATIONS_TABLE)
+
+        // Content table creation
+        val CREATE_CONTENT_TABLE = ("CREATE TABLE IF NOT EXISTS " + TABLE_CONTENT + "("
+                + COLUMN_CONTENT_ID + " INTEGER PRIMARY KEY,"
+                + COLUMN_CONTENT_GENERATOR_ID + " INTEGER NOT NULL,"
+                + COLUMN_TITLE + " TEXT NOT NULL,"
+                + COLUMN_URL + " TEXT NOT NULL,"
+                + COLUMN_THUMBNAIL_URL + " TEXT,"
+                + COLUMN_PUBLISHED_DATE + " INTEGER NOT NULL,"
+                + COLUMN_RANKING_SCORE + " REAL NOT NULL,"
+                + COLUMN_SCORE + " INTEGER,"
+                + COLUMN_CLICKED + " INTEGER DEFAULT 0,"
+                + COLUMN_VIEWED + " INTEGER DEFAULT 0,"
+                + COLUMN_URL_IS_LOCAL + " INTEGER DEFAULT 0,"
+                + COLUMN_CONTENT_GENERATOR_SPECIFIC_DATA + " TEXT,"
+                + COLUMN_LAST_MODIFIED_TIMESTAMP + " INTEGER" + ")")
+        db.execSQL(CREATE_CONTENT_TABLE)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
 //        db.execSQL("DROP TABLE IF EXISTS $TABLE_ANNOTATIONS")
 //        db.execSQL("DROP TABLE IF EXISTS $TABLE_LOCATIONS")
+        // db.execSQL("DROP TABLE IF EXISTS $TABLE_CONTENT")
         onCreate(db)
     }
 
@@ -70,7 +106,7 @@ class DB(context: Context) :
         return annotations
     }
 
-    fun getAnnotations(afterTimestamp: Int? = 0): Cursor {
+    fun getAnnotations(afterTimestamp: Long? = 0): Cursor {
         val db = this.readableDatabase
         val timestamp = afterTimestamp ?: 0
         return db.rawQuery("SELECT * FROM $TABLE_ANNOTATIONS  WHERE " +
@@ -111,10 +147,117 @@ class DB(context: Context) :
         return locations
     }
 
-    fun getLocations(afterTimestamp: Int? = 0): Cursor {
+    fun getLocations(afterTimestamp: Long? = 0): Cursor {
         val db = this.readableDatabase
         val timestamp = afterTimestamp ?: 0
         return db.rawQuery("SELECT * FROM $TABLE_LOCATIONS WHERE " +
                 "$COLUMN_TIMESTAMP > $timestamp ORDER BY $COLUMN_TIMESTAMP DESC", null)
+    }
+
+    fun addContentBatch(contentList: List<Content>) {
+        val db = this.writableDatabase
+        db.beginTransaction()  // Start a transaction
+        try {
+            val values = ContentValues()
+            for (content in contentList) {
+                values.apply {
+                    clear()  // Reset content values for each insert
+                    put(COLUMN_CONTENT_ID, content.id)
+                    put(COLUMN_CONTENT_GENERATOR_ID, content.contentGeneratorId)
+                    put(COLUMN_TITLE, content.title)
+                    put(COLUMN_URL, content.url)
+                    put(COLUMN_THUMBNAIL_URL, content.thumbnailUrl)
+                    put(COLUMN_PUBLISHED_DATE, content.publishedDate)
+                    put(COLUMN_RANKING_SCORE, content.rankingScore)
+                    put(COLUMN_SCORE, content.score)
+                    put(COLUMN_CLICKED, if (content.clicked) 1 else 0)
+                    put(COLUMN_VIEWED, if (content.viewed) 1 else 0)
+                    put(COLUMN_URL_IS_LOCAL, if (content.urlIsLocal) 1 else 0)
+                    put(COLUMN_CONTENT_GENERATOR_SPECIFIC_DATA, content.contentGeneratorSpecificData)
+                    put(COLUMN_LAST_MODIFIED_TIMESTAMP, System.currentTimeMillis())
+                }
+
+                db.insert(TABLE_CONTENT, null, values)
+            }
+            db.setTransactionSuccessful()  // Mark transaction as successful
+        } catch (e: Exception) {
+            Log.e("DB", "Error inserting batch content", e)
+        } finally {
+            db.endTransaction()  // End the transaction
+            db.close()
+        }
+    }
+
+    fun getContent(afterTimestamp: Long? = 0): Cursor {
+        val db = this.readableDatabase
+        val timestamp = afterTimestamp ?: 0
+        return db.rawQuery("SELECT * FROM $TABLE_CONTENT WHERE " +
+                "$COLUMN_LAST_MODIFIED_TIMESTAMP > $timestamp ORDER BY " +
+                "$COLUMN_LAST_MODIFIED_TIMESTAMP DESC", null)
+    }
+
+    fun convertCursorToContent(cursor: Cursor): List<SyncContent> {
+        val contentList = mutableListOf<SyncContent>()
+        if (cursor.moveToFirst()) {
+            do {
+                val id = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_CONTENT_ID))
+                val lastModifiedTimestamp = cursor.getLong(cursor.getColumnIndexOrThrow(COLUMN_LAST_MODIFIED_TIMESTAMP))
+                val viewed = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_VIEWED)) == 1
+                val score = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_SCORE))
+                val clicked = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_CLICKED)) == 1
+
+                contentList.add(
+                    SyncContent(id=id, lastModifiedTimestamp=lastModifiedTimestamp,
+                    viewed=viewed, score=score, clicked=clicked)
+                )
+            } while (cursor.moveToNext())
+        }
+        cursor.close()
+        return contentList
+    }
+
+    fun getMaxContentId(): Int {
+        val db = this.readableDatabase
+        val cursor = db.rawQuery("SELECT MAX($COLUMN_CONTENT_ID) AS max_id FROM $TABLE_CONTENT", null)
+
+        var maxId = -1  // Default value if there are no rows in the table
+        if (cursor.moveToFirst()) {
+            maxId = cursor.getInt(cursor.getColumnIndexOrThrow("max_id"))
+        }
+        cursor.close()
+        return maxId
+    }
+
+    fun markContentAsViewed(contentIds: List<Int>) {
+        val db = this.writableDatabase
+        db.beginTransaction()  // Start a transaction for batch updates
+        try {
+            for (contentId in contentIds) {
+                // Query to check if the content is already viewed
+                val cursor = db.rawQuery(
+                    "SELECT $COLUMN_VIEWED FROM $TABLE_CONTENT WHERE $COLUMN_CONTENT_ID = ?",
+                    arrayOf(contentId.toString())
+                )
+
+                if (cursor.moveToFirst()) {
+                    val isViewed = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_VIEWED)) == 1
+                    if (!isViewed) {
+                        // If the content is not viewed, update it to viewed
+                        val values = ContentValues().apply {
+                            put(COLUMN_VIEWED, 1)  // Mark as viewed
+                            put(COLUMN_LAST_MODIFIED_TIMESTAMP, System.currentTimeMillis())  // Update the last modified timestamp
+                        }
+                        db.update(TABLE_CONTENT, values, "$COLUMN_CONTENT_ID = ?", arrayOf(contentId.toString()))
+                    }
+                }
+                cursor.close()  // Close the cursor after each query
+            }
+            db.setTransactionSuccessful()  // Mark the transaction as successful
+        } catch (e: Exception) {
+            Log.e("DB", "Error updating content viewed status", e)
+        } finally {
+            db.endTransaction()  // End the transaction
+            db.close()  // Close the database connection
+        }
     }
 }

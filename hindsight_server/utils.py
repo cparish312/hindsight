@@ -188,3 +188,6 @@ def hash_file(f_path):
             md5.update(data)
     
     return md5.hexdigest()
+
+
+    
