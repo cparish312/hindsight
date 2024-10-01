@@ -9,7 +9,7 @@ Hindsight is an android app that takes a screenshot every 2 seconds. The server 
 
 ## Communication
 <a href="https://discord.gg/CmWWW94E">
-    <img src="https://img.shields.io/discord/823813159592001537?color=5865F2&logo=discord&logoColor=white&style=flat-square" alt="Join us on Discord">
+    <img src="https://img.shields.io/discord/1285689349442109451?color=5865F2&logo=discord&logoColor=white&style=flat-square" alt="Join us on Discord">
 </a>
 
 Setup an onboarding session or just chat about the project [here](https://calendly.com/connorparish9)
