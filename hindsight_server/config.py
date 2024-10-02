@@ -26,7 +26,7 @@ RUNNING_PLATFORM = platform.system()
 if RUNNING_PLATFORM == 'Darwin':
     LLM_MODEL_NAME = "mlx-community/Llama-3.1-SuperNova-Lite-bf16"
 else:
-    LLM_MODEL_NAME = "meta-llama/Meta-Llama-3.2-3B-Instruct" # For non-mac
+    LLM_MODEL_NAME = "meta-llama/Llama-3.2-1B-Instruct" # For non-mac
 
 """Should be able to run any embedding models here:
 https://github.com/taylorai/mlx_embedding_models/blob/main/src/mlx_embedding_models/registry.py
