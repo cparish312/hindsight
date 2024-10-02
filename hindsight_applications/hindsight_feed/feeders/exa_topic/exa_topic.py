@@ -47,6 +47,7 @@ class ExaTopicFeeder(ContentGenerator):
                 num_results=25,
                 text=True,
                 highlights=True,
+                summary=True,
                 start_published_date=None,
                 exclude_domains=exclude_urls,
                 livecrawl="always"

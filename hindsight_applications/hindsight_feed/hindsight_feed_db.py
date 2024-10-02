@@ -20,6 +20,7 @@ class Content(Base):
     id = Column(Integer, primary_key=True)
     content_generator_id = Column(Integer, nullable=False)
     title = Column(String(150), nullable=False)
+    summary = Column(String(300), nullable=True)
     url = Column(String(300), nullable=False)
     thumbnail_url = Column(String(300), nullable=True)
     published_date = Column(Integer, nullable=False) 
@@ -50,7 +51,8 @@ session = Session
 
 Base.metadata.create_all(engine)
 
-def add_content(title, url, published_date, ranking_score, content_generator_id, thumbnail_url=None, content_generator_specific_data=None):
+def add_content(title, url, published_date, ranking_score, content_generator_id, thumbnail_url=None, 
+                content_generator_specific_data=None, summary=None):
     if isinstance(published_date, datetime):
         published_date = feed_utils.datetime_to_utc_timestamp(published_date)
 
@@ -58,7 +60,8 @@ def add_content(title, url, published_date, ranking_score, content_generator_id,
     if existing_content is None:
         new_content = Content(title=title, url=url, published_date=published_date, ranking_score=ranking_score,
                             content_generator_id=content_generator_id, thumbnail_url=thumbnail_url,
-                            url_is_local=feed_utils.is_local_url(url), content_generator_specific_data=content_generator_specific_data)
+                            url_is_local=feed_utils.is_local_url(url), content_generator_specific_data=content_generator_specific_data,
+                            summary=summary)
         session.add(new_content)
         session.commit()
     else:
@@ -66,8 +69,11 @@ def add_content(title, url, published_date, ranking_score, content_generator_id,
 
 def df_add_contents(df):
     contents = []
-    if "content_generator_specific_data" not in df.columns:
-        df["content_generator_specific_data"] = None
+
+    fill_in_columns = ["summary", "content_generator_specific_data"]
+    for col in fill_in_columns:
+        if col not in df.columns:
+            df[col] = None
 
     for _, row in df.iterrows():
         existing_content = session.query(Content).filter_by(url=row['url']).first()
@@ -79,7 +85,8 @@ def df_add_contents(df):
             contents.append(Content(title=row['title'], url=row['url'], published_date=published_date, 
                                     ranking_score=row['ranking_score'], thumbnail_url=row['thumbnail_url'],
                                     content_generator_id=row['content_generator_id'], url_is_local=feed_utils.is_local_url(row['url']),
-                                    content_generator_specific_data=row["content_generator_specific_data"]))
+                                    content_generator_specific_data=row["content_generator_specific_data"],
+                                    summary=row['summary']))
         else:
             print(f"Content with URL '{row['url']}' already exists in the database and will not be added.")
     try:
