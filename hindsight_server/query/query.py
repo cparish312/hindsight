@@ -29,7 +29,7 @@ else:
 
         inputs = tokenizer(prompt, return_tensors="pt")
 
-        outputs = model.generate(**inputs, max_length=max_tokens)
+        outputs = model.generate(**inputs, max_new_tokens=max_tokens)
 
         generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
         return generated_text

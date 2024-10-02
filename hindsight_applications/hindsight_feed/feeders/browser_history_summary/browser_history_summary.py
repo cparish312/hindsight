@@ -139,7 +139,7 @@ class BrowserSummaryFeeder(ContentGenerator):
             document.addEventListener('DOMContentLoaded', function() {{
                 console.log('Streaming from this file');
                 var filePath = window.location.pathname.split('/').slice(2).join('/');
-                var eventSource = new EventSource(`{utils.path_to_url(stream_html_path)}`);
+                var eventSource = new EventSource(`{feed_utils.path_to_url(stream_html_path)}`);
                 eventSource.onmessage = function(event) {{
                     var contentWrapper = document.getElementById('content-display');
                     console.log('Streaming data', event.data);
@@ -266,7 +266,7 @@ class YesterdayBrowserSummaryFeeder(BrowserSummaryFeeder):
         summary_html_page_path = os.path.join(self.data_dir, f"""{title.replace(" ", "_")}-{now_utc.timestamp()}.html""")
 
         thumbnail_url = ""
-        html_page_url = f"""/local/docs/{utils.path_to_url(summary_html_page_path.replace(GENERATOR_DATA_DIR, ""))}"""
+        html_page_url = f"""/local/docs/{feed_utils.path_to_url(summary_html_page_path.replace(GENERATOR_DATA_DIR, ""))}"""
 
         hindsight_feed_db.add_content(title, url=html_page_url, published_date=now_utc, 
                     ranking_score=100, content_generator_id=self.id, thumbnail_url=thumbnail_url)
@@ -339,7 +339,7 @@ class TopicBrowserSummaryFeeder(BrowserSummaryFeeder):
         summary_html_page_path = os.path.join(self.data_dir, f"""{title.replace(" ", "_")}-{now_utc.timestamp()}.html""")
 
         thumbnail_url = ""
-        html_page_url = f"""/local/docs/{utils.path_to_url(summary_html_page_path.replace(GENERATOR_DATA_DIR, ""))}"""
+        html_page_url = f"""/local/docs/{feed_utils.path_to_url(summary_html_page_path.replace(GENERATOR_DATA_DIR, ""))}"""
         stream_html_path = html_page_url.replace('/local/docs/', '/stream/docs/')
         print('stream html path', stream_html_path)
         self.generate_html_base(topic=self.topic, html_path=summary_html_page_path, stream_html_path=stream_html_path)
