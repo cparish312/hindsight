@@ -9,9 +9,11 @@ import pandas as pd
 from db import HindsightDB
 from chromadb_tools import get_chroma_collection, run_chroma_ingest_batched
 from config import RAW_SCREENSHOTS_DIR, SCREENSHOTS_TMP_DIR, RUNNING_PLATFORM
-import query.query as query
+import hindsight_server.query.query as query
 import utils
 import run_ocr
+
+from hindsight_applications.hindsight_feed.feed_generator import FeedGenerator
 
 db = HindsightDB()
 
@@ -103,6 +105,11 @@ def update_android_identifiers_file():
     utils.save_identifiers_to_alias(id_to_alias)
     print(f"{len(new_applications)} new application identifiers added to alias file.")
 
+def run_applications():
+    """Heartbeat for applications."""
+    feed_generator = FeedGenerator()
+    feed_generator.generate_content()
+
 if __name__ == "__main__":
     check_all_frames_ingested()
     update_android_identifiers_file()
@@ -124,5 +131,7 @@ if __name__ == "__main__":
         non_chromadb_processed_frames_df = db.get_non_chromadb_processed_frames_with_ocr().sort_values(by='timestamp', ascending=True)
         if len(non_chromadb_processed_frames_df) > 0:
             chromadb_process_images(non_chromadb_processed_frames_df)
+
+        run_applications()
             
         time.sleep(10)

@@ -13,7 +13,7 @@ from config import SERVER_LOG_FILE, SECRET_API_KEY, HINDSIGHT_SERVER_DIR, SCREEN
 import utils
 from db import HindsightDB
 
-from applications.hindsight_feed.hindsight_feed_db import from_app_update_content, fetch_contents, fetch_newly_viewed_content
+from hindsight_applications.hindsight_feed.hindsight_feed_db import from_app_update_content, fetch_contents, fetch_newly_viewed_content
 
 main_app = Blueprint('main', __name__)
 
