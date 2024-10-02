@@ -137,4 +137,27 @@ def create_new_topics(num_topics=5):
         topic_i += 1
 
     return new_topics
+
+def create_new_topics_viewed_random(num_topics=1):
+    content_generators = fetch_content_generators()
+
+    exa_content_generators = [cg for cg in content_generators if cg.gen_type == "ExaTopicFeeder"]
+    exa_content_generators_ids = {cg.id for cg in exa_content_generators}
+
+    content = fetch_contents(non_viewed=False)
+
+    exa_content = [c for c in content if c.content_generator_id in exa_content_generators_ids]
+    exa_content_df = content_to_df(exa_content)
+    
+    # Only get viewed content
+    exa_content_df = exa_content_df.loc[exa_content_df['viewed']]
+
+    llm_pipeline = load(LLM_MODEL_NAME)
+    new_topics = list()
+    for i in range(num_topics):
+        rand_viewed_df = exa_content_df.sample(10)
+        new_topic = create_topic_from_previous_topic(topic_df=rand_viewed_df, llm_pipeline=llm_pipeline)
+        new_topics.append(new_topic)
+
+    return new_topics
     

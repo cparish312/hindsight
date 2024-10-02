@@ -27,7 +27,7 @@ class ExaTopicFeeder(ContentGenerator):
             content = fetch_contents(non_viewed=False)
             seen_urls = {c.url.split("/")[2] for c in content}
             allow_urls = feed_utils.get_allow_urls()
-            exclude_urls = list(seen_urls - allow_urls)
+            exclude_urls = list(seen_urls - allow_urls)[:100] # Need to optimize excluding urls based on likelihood to find
 
         if self.find_similar:
             exa_result = exa.find_similar_and_contents(
@@ -36,7 +36,8 @@ class ExaTopicFeeder(ContentGenerator):
                 text=True,
                 highlights=True,
                 summary=True,
-                exclude_urls=exclude_urls
+                exclude_domains=exclude_urls,
+                livecrawl="always"
                 )
         else:
             exa_result = exa.search_and_contents(
@@ -47,7 +48,8 @@ class ExaTopicFeeder(ContentGenerator):
                 text=True,
                 highlights=True,
                 start_published_date=None,
-                exclude_urls=exclude_urls
+                exclude_domains=exclude_urls,
+                livecrawl="always"
                 )
         
         results_l = list()
