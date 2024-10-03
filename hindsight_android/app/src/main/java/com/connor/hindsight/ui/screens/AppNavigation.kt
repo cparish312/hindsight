@@ -24,6 +24,7 @@ fun AppNavigation() {
             }, onNavigateToUploadSettings = {
                     navController.navigate("uploadSettings")
                 }, onNavigateToPostQuery = {navController.navigate("postQuery")},
+                onNavigateToFeed = {navController.navigate("feed")},
                 onNavigateToAnnotations = {navController.navigate("annotationsScreen")})
         }
         composable("screenRecordingSettings") {
@@ -31,6 +32,9 @@ fun AppNavigation() {
         }
         composable("uploadSettings") {
             UploadSettingsScreen(navController)
+        }
+        composable("feed"){
+            FeedScreen(navController = navController)
         }
         composable("postQuery"){
             PostQueryScreen(navController = navController)

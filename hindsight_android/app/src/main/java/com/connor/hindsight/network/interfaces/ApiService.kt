@@ -1,5 +1,6 @@
 package com.connor.hindsight.network.interfaces
 
+import com.connor.hindsight.obj.SyncContent
 import okhttp3.MultipartBody
 import okhttp3.ResponseBody
 import retrofit2.Call
@@ -28,6 +29,10 @@ interface ApiService {
     @POST("sync_db")
     suspend fun syncDB(@Body syncDBDate: SyncDBData): Response<ResponseBody>
 
+    @GET("get_new_content")
+    suspend fun getNewContent(@Query("last_content_id") lastContentId: Int,
+                              @Query("last_sync_timestamp") lastSyncTimestamp: Long): ResponseBody
+
     @GET("ping")
     fun pingServer(): Call<ResponseBody>
 }
@@ -40,7 +45,8 @@ data class PostData(
 
 data class SyncDBData(
     val annotations: List<Annotation>,
-    val locations: List<Location>
+    val locations: List<Location>,
+    val content: List<SyncContent>
 )
 
 data class Annotation(

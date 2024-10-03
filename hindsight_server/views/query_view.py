@@ -8,12 +8,8 @@ from tkinter import ttk
 from datetime import timedelta
 from tkcalendar import DateEntry
 
-import sys
-sys.path.insert(0, "../")
-sys.path.insert(0, "./")
-
-from db import HindsightDB
-from timeline_view import TimelineViewer
+from hindsight_server.db import HindsightDB
+from hindsight_server.views.timeline_view import TimelineViewer
 
 local_timezone = tzlocal.get_localzone()
 video_timezone = ZoneInfo("UTC")

@@ -1,5 +1,5 @@
 """Prompt templates"""
-from utils import text_split_str
+from hindsight_server.utils import text_split_str
 
 def get_prompt(text, query):
     return f"""Below is the text that's been on my phone screen. ------------- 

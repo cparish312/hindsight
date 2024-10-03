@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 local_timezone = tzlocal.get_localzone()
 video_timezone = ZoneInfo("UTC")
 
-from config import ANDROID_IDENTIFIERS_ALIAS_FILE
+from hindsight_server.config import ANDROID_IDENTIFIERS_ALIAS_FILE
 
 def make_dir(d):
     if not os.path.exists(d):
@@ -188,3 +188,6 @@ def hash_file(f_path):
             md5.update(data)
     
     return md5.hexdigest()
+
+
+    
