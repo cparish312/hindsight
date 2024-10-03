@@ -55,18 +55,6 @@ fun FeedScreen(queryViewModel: FeedViewModel = viewModel(), navController: NavCo
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        HorizontalScrollablePills(
-            pills = listOf(
-                PillData("Kotlin", Color.Red),
-                PillData("Compose", Color.Blue),
-                PillData("Jetpack", Color.Green),
-                PillData("Android", Color.Magenta),
-                PillData("Coroutines", Color.Cyan),
-                PillData("State", Color.Yellow),
-                PillData("UI", Color.Gray),
-                PillData("Architecture", Color.Black)
-            )
-        )
         ClickableContainerList(items = List(20) { "Item #$it" }) { clickedItem ->
             // Handle the click event for the clicked item
             println("Clicked on: $clickedItem")
@@ -84,6 +72,18 @@ fun ClickableContainerList(items: List<String>, onItemClick: (String) -> Unit) {
             .verticalScroll(scrollState)
             .padding(16.dp)
     ) {
+        HorizontalScrollablePills(
+            pills = listOf(
+                PillData("Kotlin", Color.Red),
+                PillData("Compose", Color.Blue),
+                PillData("Jetpack", Color.Green),
+                PillData("Android", Color.Magenta),
+                PillData("Coroutines", Color.Cyan),
+                PillData("State", Color.Yellow),
+                PillData("UI", Color.Gray),
+                PillData("Architecture", Color.Black)
+            )
+        )
         items.forEach { item ->
             ClickableContainer(item = item, onClick = { onItemClick(item) })
             Spacer(modifier = Modifier.height(8.dp)) // Spacing between containers
@@ -174,7 +174,6 @@ data class PillData(val text: String, val color: Color)
 fun HorizontalScrollablePills(pills: List<PillData>) {
     Row(
         modifier = Modifier
-            .height(48.dp) // Fixed height for the pill container
             .horizontalScroll(rememberScrollState())  // Enables horizontal scrolling
             .padding(8.dp)
             .background(Color.Magenta)

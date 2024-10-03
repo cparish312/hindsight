@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.*
 import kotlin.random.Random
 
-
 class FeedViewModel : ViewModel() {
     // List to store topics
     private var topics: MutableList<String> = mutableListOf()
