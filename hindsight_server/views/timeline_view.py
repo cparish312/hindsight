@@ -186,13 +186,14 @@ class TimelineViewer:
 
         if self.annotations is not None:
             frame_annotations = self.annotations.loc[self.annotations['frame_id'] == im_row['id']]
-            font = ImageFont.load_default()
+            if len(frame_annotations) > 0:
+                font = ImageFont.load_default()
 
-            draw = ImageDraw.Draw(image)
-            for i, row in frame_annotations.iterrows():
-                draw.rectangle((row['x'], row['y'], row['x'] + row['w'], row['y'] + row['h']), outline="red", width=5)
-                text_position = (row['x'], row['y'] - 10)
-                draw.text(text_position, row['label'], fill="white", font=font)
+                draw = ImageDraw.Draw(image)
+                for i, row in frame_annotations.iterrows():
+                    draw.rectangle((row['x'], row['y'], row['x'] + row['w'], row['y'] + row['h']), outline="red", width=5)
+                    text_position = (row['x'], row['y'] - 10)
+                    draw.text(text_position, row['label'], fill="white", font=font)
         return Screenshot(image=image, text_df=text_df, timestamp=im_row['datetime_local'])
 
     def get_apps_near(self, current_frame_num: int):
