@@ -3,7 +3,7 @@ import time
 import pandas as pd
 import datetime
 from flask import Flask, render_template, request, jsonify, send_from_directory, Response
-from hindsight_feed_db import update_content_score, content_clicked, content_viewed, Session
+from hindsight_feed_db import update_content_score, content_clicked, content_viewed
 from feed_generator import FeedGenerator
 from feeders.exa_topic.exa_topic import ExaTopicFeeder
 from feeders.browser_history_summary.browser_history_summary import YesterdayBrowserSummaryFeeder, TopicBrowserSummaryFeeder
@@ -27,10 +27,6 @@ app.config['LOCAL_DOCS_PATH'] = GENERATOR_DATA_DIR
 content_generators = None
 feed_generator = FeedGenerator(content_generators=content_generators)
 print("Number of Content Generators", len(feed_generator.content_generators))
-
-@app.teardown_request
-def on_teardown(err):
-    Session.remove()
 
 @app.route('/local/docs/<path:filename>')
 def serve_file(filename):

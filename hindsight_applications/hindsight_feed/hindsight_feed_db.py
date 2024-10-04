@@ -1,4 +1,5 @@
 import os
+import portalocker
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, FLOAT, DateTime, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, scoped_session
@@ -12,8 +13,8 @@ from hindsight_applications.hindsight_feed.feed_config import DATA_DIR
 
 Base = declarative_base()
 
-base_dir = os.path.dirname(os.path.abspath(__file__))
 db_path = os.path.join(DATA_DIR, 'hindsight_feed.db')
+lock_path = db_path + ".lock"
 
 class Content(Base):
     __tablename__ = 'content'
@@ -46,16 +47,30 @@ class ContentGenerator(Base):
 
 # Database connection
 engine = create_engine(f'sqlite:///{db_path}')
-Session = scoped_session(sessionmaker(bind=engine))
-session = Session
-
 Base.metadata.create_all(engine)
+def get_session():
+    Session = scoped_session(sessionmaker(bind=engine))
+    return Session()
 
+def with_lock(func):
+    """Decorator to handle database locking."""
+    def wrapper(*args, **kwargs):
+        with open(lock_path, 'a') as lock_file:
+            portalocker.lock(lock_file, portalocker.LOCK_EX)
+            try:
+                result = func(*args, **kwargs)
+            finally:
+                portalocker.unlock(lock_file)
+            return result
+    return wrapper
+
+@with_lock
 def add_content(title, url, published_date, ranking_score, content_generator_id, thumbnail_url=None, 
                 content_generator_specific_data=None, summary=None):
     if isinstance(published_date, datetime):
         published_date = feed_utils.datetime_to_utc_timestamp(published_date)
 
+    session = get_session()
     existing_content = session.query(Content).filter_by(url=url).first()
     if existing_content is None:
         new_content = Content(title=title, url=url, published_date=published_date, ranking_score=ranking_score,
@@ -67,6 +82,7 @@ def add_content(title, url, published_date, ranking_score, content_generator_id,
     else:
         print(f"Content with URL '{url}' already exists in the database.")
 
+@with_lock
 def df_add_contents(df):
     contents = []
 
@@ -75,6 +91,7 @@ def df_add_contents(df):
         if col not in df.columns:
             df[col] = None
 
+    session = get_session()
     for _, row in df.iterrows():
         existing_content = session.query(Content).filter_by(url=row['url']).first()
         if existing_content is None:
@@ -99,7 +116,9 @@ def df_add_contents(df):
         print(f"Failed to add contents: {e}")
         session.rollback()
 
+@with_lock
 def content_clicked(id):
+    session = get_session()
     content = session.query(Content).get(id)
     if content:
         content.clicked = True
@@ -107,21 +126,27 @@ def content_clicked(id):
         content.last_modified_timestamp = int(time.time() * 1000)
         session.commit()
 
+@with_lock
 def update_content_score(id, score):
+    session = get_session()
     content = session.query(Content).get(id)
     if content:
         content.score = score
         content.last_modified_timestamp = int(time.time() * 1000)
         session.commit()
 
+@with_lock
 def content_viewed(id):
+    session = get_session()
     content = session.query(Content).get(id)
     if content:
         content.viewed = True
         content.last_modified_timestamp = int(time.time() * 1000)
         session.commit()
 
+@with_lock
 def fetch_contents(non_viewed=False, content_generator_id=None, last_content_id=None):
+    session = get_session()
     query = session.query(Content).filter(Content.title != "")
     if non_viewed:
         query = query.filter(Content.viewed == False)
@@ -130,10 +155,12 @@ def fetch_contents(non_viewed=False, content_generator_id=None, last_content_id=
     if last_content_id:
         query = query.filter(Content.id > last_content_id)
     contents =  query.all()
-    
+
     return contents
     
+@with_lock
 def add_content_generator(name, gen_type=None, description=None, parameters=None):
+    session = get_session()
     existing_generator = session.query(ContentGenerator).filter_by(name=name).first()
     if existing_generator:
         return existing_generator.id
@@ -143,12 +170,16 @@ def add_content_generator(name, gen_type=None, description=None, parameters=None
     session.commit()
     return new_content_generator.id 
 
+@with_lock
 def fetch_content_generators():
+    session = get_session()
     query = session.query(ContentGenerator)
     contents =  query.all()
     return contents
 
+@with_lock
 def from_app_update_content(content_sync_list):
+    session = get_session()
     try:
         for content_sync in content_sync_list:
             # Get the content record by its ID
@@ -182,8 +213,10 @@ def from_app_update_content(content_sync_list):
         print(f"Failed to update content from app: {e}")
         session.rollback()
 
+@with_lock
 def fetch_newly_viewed_content(since_timestamp):
     """Get all content viewed since the provided timestamp"""
+    session = get_session()
     query = session.query(Content).filter(Content.title != "")
     query = query.filter(Content.last_modified_timestamp > since_timestamp)
     query = query.filter(Content.viewed)
