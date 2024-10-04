@@ -193,7 +193,10 @@ class TimelineViewer:
                 for i, row in frame_annotations.iterrows():
                     draw.rectangle((row['x'], row['y'], row['x'] + row['w'], row['y'] + row['h']), outline="red", width=5)
                     text_position = (row['x'], row['y'] - 10)
-                    draw.text(text_position, row['label'], fill="white", font=font)
+                    try:
+                        draw.text(text_position, row['label'], fill="white", font=font)
+                    except:
+                        print("Couldn't draw", row['label'])
         return Screenshot(image=image, text_df=text_df, timestamp=im_row['datetime_local'])
 
     def get_apps_near(self, current_frame_num: int):
