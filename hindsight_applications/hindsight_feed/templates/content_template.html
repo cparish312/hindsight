@@ -3,6 +3,14 @@
        target="{{ '_self' if content.is_local else '_blank' }}" 
        onclick="trackClick({{ content.id }});" 
        class="content-title">{{ content.title }}</a>
+
+    {% if content.summary %}
+    <a href="{{ url_for('static', filename=content.url) if content.is_local else content.url }}" 
+       target="{{ '_self' if content.is_local else '_blank' }}" 
+       onclick="trackClick({{ content.id }});" 
+       class="content-summary">{{ content.summary }}</a>
+
+    {% endif %}
     
     {% if content.thumbnail_url %}
         <a href="{{ url_for('static', filename=content.url) if content.is_local else content.url }}" 
@@ -12,6 +20,14 @@
                  alt="Thumbnail for {{ content.title }}" 
                  class="content-thumbnail">
         </a>
+    {% endif %}
+
+    {% if content.published_date %}
+    <a href="{{ url_for('static', filename=content.url) if content.is_local else content.url }}" 
+       target="{{ '_self' if content.is_local else '_blank' }}" 
+       onclick="trackClick({{ content.id }});" 
+       class="published-date">{{ content.published_date }}</a>
+
     {% endif %}
     
     <div class="scores-container">

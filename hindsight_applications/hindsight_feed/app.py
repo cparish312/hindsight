@@ -1,5 +1,7 @@
 import os
 import time
+import pandas as pd
+import datetime
 from flask import Flask, render_template, request, jsonify, send_from_directory, Response
 from hindsight_feed_db import update_content_score, content_clicked, content_viewed, Session
 from feed_generator import FeedGenerator
@@ -60,16 +62,23 @@ def stream_file(filename):
     file_path = os.path.join(GENERATOR_DATA_DIR, url_to_path(filename)).replace(".html", "_content.html")
     return Response(file_stream(file_path), mimetype='text/event-stream')
 
+def get_feed_content():
+    content = feed_generator.get_contents()
+    for c in content:
+        if c.published_date:
+            c.published_date = pd.to_datetime(c.published_date / 1000, unit='s', utc=True).strftime('%Y-%m-%d')
+    return content
+
 @app.route('/')
 def home():
-    contents = feed_generator.get_contents()
+    contents = get_feed_content()
     return render_template('index.html', contents=contents)
 
 def event_stream():
-    displayed_content_ids = {c.id for c in feed_generator.get_contents()}
+    displayed_content_ids = {c.id for c in get_feed_content()}
     with app.app_context():
         while True:
-            current_contents = feed_generator.get_contents()
+            current_contents = get_feed_content()
             for c in current_contents[::-1]: # Iterate reverse to ensure multiple new contents are added in the correct order
                 if c.id in displayed_content_ids:
                     continue
@@ -111,6 +120,6 @@ def submit_query():
     return jsonify(success=True)
     
 if __name__ == '__main__':
-    app.run(debug=False)
+    app.run(debug=True)
 
                          

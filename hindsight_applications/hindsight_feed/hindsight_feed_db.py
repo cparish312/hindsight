@@ -130,6 +130,7 @@ def fetch_contents(non_viewed=False, content_generator_id=None, last_content_id=
     if last_content_id:
         query = query.filter(Content.id > last_content_id)
     contents =  query.all()
+    
     return contents
     
 def add_content_generator(name, gen_type=None, description=None, parameters=None):
