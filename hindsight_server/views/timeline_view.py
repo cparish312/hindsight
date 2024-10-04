@@ -103,7 +103,7 @@ class TimelineViewer:
         self.max_height = max_height
         self.full_screen = False
 
-        self.screenshots_on_timeline = 40 
+        self.screenshots_on_timeline = 80 
 
         if frame_id is None:
             self.scroll_frame_num = 0 # lower index is most recent, index is 0 - based
@@ -117,6 +117,7 @@ class TimelineViewer:
         self.drag_start = None
         self.drag_end = None
         self.exit_flag = False
+        self.timeline_skip_delta = 0 # 0 implies no scrolling
 
         # draw containers
         self.setup_gui()
@@ -140,6 +141,9 @@ class TimelineViewer:
 
         self.timeline_canvas = Canvas(self.master, height=timeline_scrollbar_height, background='gray75')
         self.timeline_canvas.grid(column=0, row=2, sticky='ew')
+        self.timeline_canvas.bind("<Button-1>", self.on_timeline_press)
+        self.timeline_canvas.bind("<B1-Motion>", self.on_timeline_drag)
+        self.timeline_canvas.bind("<ButtonRelease-1>", self.on_timeline_release)
 
         self.time_label = ttk.Label(self.master, textvariable=self.frame_timestamp, font=("Arial", 24), anchor="e")
         self.time_label.grid(column=0, row=3)
@@ -205,27 +209,34 @@ class TimelineViewer:
         apps_after = self.images_df.iloc[max(current_frame_num-timeline_border, 0):current_frame_num]['application']
         return apps_before, apps_after
 
+    def get_timeline_screenshot_width(self):
+        width = self.timeline_canvas.winfo_width()
+        return width / self.screenshots_on_timeline
+    
+    def get_current_app_timeline_offset(self):
+        width = self.timeline_canvas.winfo_width()
+        timeline_screenshot_width = self.get_timeline_screenshot_width()
+        return (width - timeline_screenshot_width) / 2
+    
     def update_timeline(self):
         self.timeline_canvas.delete("all")  # Clear existing drawings
-        width = self.timeline_canvas.winfo_width()
         apps_before, apps_after = self.get_apps_near(self.scroll_frame_num)  # Implement this function
+        timeline_screenshot_width = self.get_timeline_screenshot_width()
 
-        timeline_screenshot_width = width / self.screenshots_on_timeline
-
-        start_pos = width / 2 # start in the middle of the timeline
+        start_pos = self.get_current_app_timeline_offset()
         for app in apps_before: # Reverse order of list to start at current screenshot
             color = self.app_color_map[app]
             self.timeline_canvas.create_rectangle(start_pos, 0, start_pos-timeline_screenshot_width, timeline_scrollbar_height, fill=color, outline='')
             start_pos -= timeline_screenshot_width
 
-        start_pos = (width / 2)  + timeline_screenshot_width # start in the middle of the timeline
+        start_pos = self.get_current_app_timeline_offset() + timeline_screenshot_width
         for app in apps_after[::-1]: # Reverse order of list to start at current screenshot
             color = self.app_color_map[app]
             self.timeline_canvas.create_rectangle(start_pos, 0, start_pos+timeline_screenshot_width, timeline_scrollbar_height, fill=color, outline='')
             start_pos += timeline_screenshot_width
 
         # Draw current app
-        start_pos = width / 2 # start in the middle of the timeline
+        start_pos = self.get_current_app_timeline_offset()
         current_app = self.images_df.iloc[self.scroll_frame_num]['application']
         color = self.app_color_map[current_app]
         self.timeline_canvas.create_rectangle(start_pos, 0, start_pos+timeline_screenshot_width, timeline_scrollbar_height, fill=color, outline="black")
@@ -251,6 +262,26 @@ class TimelineViewer:
         self.video_label.imgtk = imgtk
         self.video_label.configure(image=imgtk)
         self.displayed_screenshot = screenshot
+
+    def should_update_frame(self):
+        return not self.exit_flag and self.timeline_skip_delta != 0
+    
+    def update_scroll_periodically(self):
+        if not self.should_update_frame():
+            return
+        self.scroll_frames(self.timeline_skip_delta)
+        self.master.after(20, self.update_scroll_periodically)
+
+    def on_timeline_press(self, event):
+        self.on_timeline_drag(event)
+        self.update_scroll_periodically()
+    
+    def on_timeline_drag(self, event):
+        delta_from_first_app = (event.x - self.get_current_app_timeline_offset()) / self.get_timeline_screenshot_width()
+        self.timeline_skip_delta = - int(delta_from_first_app)
+
+    def on_timeline_release(self, event):
+        self.timeline_skip_delta = 0
 
     def bind_scroll_event(self):
         # Detect platform and bind the appropriate event
