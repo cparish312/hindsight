@@ -14,7 +14,6 @@ from feed_config import GENERATOR_DATA_DIR
 app = Flask(__name__)
 
 app.config['SERVER_NAME'] = 'localhost:5000'
-app.config['LOCAL_DOCS_PATH'] = GENERATOR_DATA_DIR
 
 # content_generators = [ExaTopicFeeder(name="exa_topic_local_ai", description="ExaTopicFeeder for getting information on local ai", 
 #                                      topic="local Artificial Intelligence", min_num_contents=10),
@@ -27,36 +26,6 @@ app.config['LOCAL_DOCS_PATH'] = GENERATOR_DATA_DIR
 content_generators = None
 feed_generator = FeedGenerator(content_generators=content_generators)
 print("Number of Content Generators", len(feed_generator.content_generators))
-
-@app.route('/local/docs/<path:filename>')
-def serve_file(filename):
-    return send_from_directory(app.config['LOCAL_DOCS_PATH'], filename)
-
-def file_stream(file_path):
-    """Stream the file from the given path if it has been updated."""
-    print(f"Streaming from {file_path}")
-    last_modified_time = None
-    try:
-        while True:
-            if os.path.exists(file_path) and os.path.isfile(file_path):
-                stat = os.stat(file_path)
-                if last_modified_time is None or stat.st_mtime > last_modified_time: # Check file has changed
-                    last_modified_time = stat.st_mtime
-                    with open(file_path, 'r') as file:
-                        html_content = file.read().replace('\n', '')
-                        yield f"data: {html_content}\n\n"
-            else:
-                yield "data: \n\n" 
-            time.sleep(4)  # Check for updates every 5 seconds
-    except Exception as e:
-        print(f"Error: {e}")
-        yield "data: Error loading file.\n\n"
-
-@app.route('/stream/docs/<path:filename>')
-def stream_file(filename):
-    print('streaming file', filename)
-    file_path = os.path.join(GENERATOR_DATA_DIR, url_to_path(filename)).replace(".html", "_content.html")
-    return Response(file_stream(file_path), mimetype='text/event-stream')
 
 def get_feed_content():
     content = feed_generator.get_contents()
