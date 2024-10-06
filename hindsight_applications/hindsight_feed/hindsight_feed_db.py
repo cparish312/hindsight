@@ -46,8 +46,10 @@ class ContentGenerator(Base):
     parameters = Column(JSON, nullable=True) 
 
 # Database connection
-engine = create_engine(f'sqlite:///{db_path}', connect_args={'timeout': 15}, 
-                       pool_size=10, max_overflow=20)
+engine = create_engine(f'sqlite:///{db_path}', connect_args={'timeout': 30}, 
+                       pool_size=10, max_overflow=20,
+                       pool_timeout=30,
+                       pool_recycle=1800)
 Base.metadata.create_all(engine)
 def get_session():
     Session = scoped_session(sessionmaker(bind=engine))

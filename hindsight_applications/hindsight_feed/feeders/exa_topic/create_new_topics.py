@@ -161,3 +161,13 @@ def create_new_topics_viewed_random(num_topics=1):
 
     return new_topics
     
+# def run_similar_to_browser_history_with_many_visits():
+
+# def create_new_topics_tfid_hindsight_words_yesterday():
+
+# def create_new_topics_looked_at_tweets():
+    
+# def create_new_topics_articles_read()
+    
+# def create_new_topics_tfid_texts()
+    
