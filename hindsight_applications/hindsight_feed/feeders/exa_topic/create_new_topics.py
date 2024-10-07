@@ -19,7 +19,7 @@ from hindsight_server.query.query import load, llm_generate
 def content_to_df(content):
     content_list = list()
     for c in content:
-        d = c.__dict__
+        d = c.__dict__.copy()
         d.update(c.content_generator_specific_data)
         content_list.append(d)
     return pd.DataFrame(content_list)

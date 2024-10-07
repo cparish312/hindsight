@@ -52,6 +52,7 @@ engine = create_engine(f'sqlite:///{db_path}', connect_args={'timeout': 30},
                        pool_timeout=30,
                        pool_recycle=1800)
 Base.metadata.create_all(engine)
+
 def get_session():
     Session = scoped_session(sessionmaker(bind=engine))
     return Session()
@@ -198,10 +199,10 @@ def from_app_update_content(content_sync_list):
 
                 if content:
                     # Handle last_modified_timestamp: take the most recent one
-                    if 'last_modified_timestamp' in content_sync:
+                    if 'lastModifiedTimestamp' in content_sync:
                         # Update if the incoming timestamp is more recent
-                        if content_sync['last_modified_timestamp'] > content.last_modified_timestamp:
-                            content.last_modified_timestamp = content_sync['last_modified_timestamp']
+                        if content_sync['lastModifiedTimestamp'] > content.last_modified_timestamp:
+                            content.last_modified_timestamp = content_sync['lastModifiedTimestamp']
 
                             # Update to newer score if exists
                             if 'score' in content_sync and content_sync['score'] is not None:

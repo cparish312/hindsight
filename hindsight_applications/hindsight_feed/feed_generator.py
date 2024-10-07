@@ -35,8 +35,8 @@ class FeedGenerator():
                 content_generator.add_content()
 
     def add_content_generator(self, content_generator):
-        self.content_generators.append(content_generator)
         content_generator.add_content()
+        self.content_generators.append(content_generator)
 
     def get_contents(self):
         contents = fetch_contents(non_viewed=True)
@@ -52,10 +52,6 @@ class FeedGenerator():
             return
         print(f"Attempting to generate {num_topics_to_gen} new topics by topic modeling")
         new_topics = create_new_topics(num_topics=num_topics_to_gen)
-
-        if len(new_topics) == 0:
-            print("Couldn't generate any new topics")
-            return
         
         for new_topic in new_topics:
             new_topic_ = new_topic.replace(" ", "_")

@@ -13,7 +13,7 @@ class ExaTopicFeeder(ContentGenerator):
     def __init__(self, name, description, topic, min_num_contents=10, parent_generator_id=None, find_similar=False, exclude_seen_urls=True):
         super().__init__(name=name, description=description, gen_type="ExaTopicFeeder", 
                          parameters={"topic" : topic, "min_num_contents" : min_num_contents, "parent_generator_id" : parent_generator_id, 
-                                     "find_similar" : find_similar, "exlude_seen_urls" : exclude_seen_urls})
+                                     "find_similar" : find_similar, "exclude_seen_urls" : exclude_seen_urls})
         self.topic = topic
         self.min_num_contents = min_num_contents
         self.find_similar = find_similar
@@ -65,6 +65,7 @@ class ExaTopicFeeder(ContentGenerator):
         exa_results = self.search_exa()
         exa_results['thumbnail_url'] = exa_results['url'].apply(lambda x: feed_utils.get_thumbnail_url(x))
         exa_results['ranking_score'] = exa_results['score']
+        exa_results = exa_results.drop(columns=["score"])
         exa_results['title'] = exa_results['title'].fillna(exa_results['text']) # For tweets
         return exa_results
     
