@@ -1,6 +1,3 @@
-import sys
-sys.path.insert(0, "../")
-
 from hindsight_applications.hindsight_feed.hindsight_feed_db import add_content_generator
 
 class ContentGenerator():

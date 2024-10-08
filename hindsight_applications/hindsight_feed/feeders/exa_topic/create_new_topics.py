@@ -130,7 +130,7 @@ def create_new_topics(num_topics=5):
         topic_df = topic_df.iloc[:10]
         print(f"Creating new topic from {topic_df['Name'].iloc[0]} with {len(topic_df)} articles.")
         new_topic = create_topic_from_previous_topic(topic_df=topic_df, llm_pipeline=llm_pipeline)
-        if new_topic not in exa_content_generators_topics:
+        if new_topic not in exa_content_generators_topics and len(new_topic) > 2:
             new_topics.add(new_topic)
         else:
             print("Created replicate topic:", new_topic)
@@ -157,7 +157,8 @@ def create_new_topics_viewed_random(num_topics=1):
     for i in range(num_topics):
         rand_viewed_df = exa_content_df.sample(10)
         new_topic = create_topic_from_previous_topic(topic_df=rand_viewed_df, llm_pipeline=llm_pipeline)
-        new_topics.append(new_topic)
+        if len(new_topic) > 2:
+            new_topics.append(new_topic)
 
     return new_topics
     

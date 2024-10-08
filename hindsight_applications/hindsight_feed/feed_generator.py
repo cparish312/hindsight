@@ -41,8 +41,8 @@ class FeedGenerator():
     def get_contents(self):
         contents = fetch_contents(non_viewed=True)
         # contents = fetch_contents(non_viewed=False)
-        # contents = sorted(contents, key=lambda a: (a.ranking_score, a.timestamp), reverse=True)
-        contents = sorted(contents, key=lambda a: (a.timestamp, a.ranking_score), reverse=True)
+        contents = sorted(contents, key=lambda a: (a.ranking_score, a.timestamp), reverse=True)
+        # contents = sorted(contents, key=lambda a: (a.timestamp, a.ranking_score), reverse=True)
         return contents
     
     def generate_content(self):

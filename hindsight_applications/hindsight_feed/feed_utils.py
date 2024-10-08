@@ -170,3 +170,15 @@ def get_allow_urls():
         allow_urls = data['allow_urls']
     return set(allow_urls)
     
+
+def content_to_df(content):
+    content_list = list()
+    for c in content:
+        d = c.__dict__.copy()
+        if "content_generator_id" in d: # is content
+            gen_spec_data = c.content_generator_specific_data.copy()
+            del gen_spec_data['score']
+            del gen_spec_data['id']
+            d.update(gen_spec_data)
+        content_list.append(d)
+    return pd.DataFrame(content_list)

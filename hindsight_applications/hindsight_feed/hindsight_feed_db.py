@@ -83,7 +83,7 @@ def with_lock(func):
     return wrapper
 
 @with_lock
-def add_content(title, url, published_date, ranking_score, content_generator_id, thumbnail_url=None, 
+def add_content(title, url, published_date, content_generator_id, ranking_score=0,thumbnail_url=None, 
                 content_generator_specific_data=None, summary=None):
     if isinstance(published_date, datetime):
         published_date = feed_utils.datetime_to_utc_timestamp(published_date)
@@ -107,6 +107,9 @@ def df_add_contents(df):
     for col in fill_in_columns:
         if col not in df.columns:
             df[col] = None
+
+    if "ranking_score" not in df.columns:
+        df["ranking_score"] = 0
 
     with session_scope() as session:
         for _, row in df.iterrows():
@@ -149,6 +152,13 @@ def update_content_score(id, score):
             content.last_modified_timestamp = int(time.time() * 1000)
 
 @with_lock
+def update_content_ranked_score(id, ranked_score):
+    with session_scope() as session:
+        content = session.query(Content).get(id)
+        if content:
+            content.ranked_score = ranked_score
+
+@with_lock
 def content_viewed(id):
     with session_scope() as session:
         content = session.query(Content).get(id)
@@ -179,6 +189,7 @@ def add_content_generator(name, gen_type=None, description=None, parameters=None
 
         new_content_generator = ContentGenerator(name=name, gen_type=gen_type, description=description, parameters=parameters)
         session.add(new_content_generator)
+        session.commit()
         return new_content_generator.id 
 
 @with_lock
@@ -232,3 +243,4 @@ def fetch_newly_viewed_content(since_timestamp):
         contents =  query.all()
         session.expunge_all()
         return contents
+    

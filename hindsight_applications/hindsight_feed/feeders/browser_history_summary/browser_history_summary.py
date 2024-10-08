@@ -269,7 +269,7 @@ class YesterdayBrowserSummaryFeeder(BrowserSummaryFeeder):
         html_page_url = f"""/local/docs/{feed_utils.path_to_url(summary_html_page_path.replace(GENERATOR_DATA_DIR, ""))}"""
 
         hindsight_feed_db.add_content(title, url=html_page_url, published_date=now_utc, 
-                    ranking_score=100, content_generator_id=self.id, thumbnail_url=thumbnail_url)
+                    ranking_score=0, content_generator_id=self.id, thumbnail_url=thumbnail_url)
 
         
         self.pipeline = load(LLM_MODEL_NAME) 
@@ -345,7 +345,7 @@ class TopicBrowserSummaryFeeder(BrowserSummaryFeeder):
         self.generate_html_base(topic=self.topic, html_path=summary_html_page_path, stream_html_path=stream_html_path)
 
         hindsight_feed_db.add_content(title, url=html_page_url, published_date=now_utc, 
-                    ranking_score=101, content_generator_id=self.id, thumbnail_url=thumbnail_url)
+                    ranking_score=0, content_generator_id=self.id, thumbnail_url=thumbnail_url)
         
         self.pipeline = load(LLM_MODEL_NAME) 
         summary_html_content_path = summary_html_page_path.replace(".html", "_content.html")

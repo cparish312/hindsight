@@ -64,7 +64,6 @@ class ExaTopicFeeder(ContentGenerator):
     def get_content(self):
         exa_results = self.search_exa()
         exa_results['thumbnail_url'] = exa_results['url'].apply(lambda x: feed_utils.get_thumbnail_url(x))
-        exa_results['ranking_score'] = exa_results['score']
         exa_results = exa_results.drop(columns=["score"])
         exa_results['title'] = exa_results['title'].fillna(exa_results['text']) # For tweets
         return exa_results

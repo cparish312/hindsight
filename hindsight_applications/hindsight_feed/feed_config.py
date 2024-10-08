@@ -8,6 +8,7 @@ if not os.path.exists(DATA_DIR):
 
 DB_TMP_FILE = os.path.join(DATA_DIR, "places.sqlite")
 GENERATOR_DATA_DIR = os.path.join(DATA_DIR, "generator_data")
+RANKER_DATA_DIR = os.path.join(DATA_DIR, "rankers_data")
 
 HISTORY_PAGES_DIR = os.path.join(DATA_DIR, "history_pages")
 os.makedirs(HISTORY_PAGES_DIR, exist_ok=True)
