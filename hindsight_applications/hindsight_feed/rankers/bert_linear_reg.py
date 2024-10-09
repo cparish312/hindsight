@@ -1,5 +1,6 @@
 import os
 import pickle
+import numpy as np
 
 from transformers import BertTokenizer, BertModel
 import torch
@@ -56,7 +57,7 @@ class BertLinearRegRanker():
         with open(self.model_save_path, 'wb') as outfile:
             pickle.dump(model, outfile)
 
-    def predict(self, content):
+    def predict(self, content, add_random=True):
         if not os.path.exists(self.model_save_path):
             raise ValueError(f"Please Train model first as {self.model_save_path} does not exists.")
         
@@ -75,9 +76,14 @@ class BertLinearRegRanker():
             model = pickle.load(infile)
 
         preds = model.predict_proba(content_embeddings)[:, 1]
+
+        if add_random:
+            random_values = np.random.uniform(0, 1 - preds)
+            preds += random_values
+
         return preds
         
-    def generate_rankings(self):
+    def generate_rankings(self, add_random=True):
         content = fetch_contents(non_viewed=False)
         content = content_to_df(content)
 
@@ -87,7 +93,7 @@ class BertLinearRegRanker():
 
         # Only want to predict on content that hasn't been viewed
         non_viewed_content = content.loc[~content['viewed']]
-        non_viewed_content['clicked_prediction_prob'] = self.predict(non_viewed_content)
+        non_viewed_content['clicked_prediction_prob'] = self.predict(non_viewed_content, add_random=add_random)
         print(f"Created {len(non_viewed_content)} predictions")
 
         for i, row in non_viewed_content.iterrows():
