@@ -20,6 +20,8 @@
                  alt="Thumbnail for {{ content.title }}" 
                  class="content-thumbnail">
         </a>
+    {% else %}
+        <br>
     {% endif %}
 
     {% if content.published_date %}

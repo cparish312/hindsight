@@ -119,7 +119,6 @@ def run_applications():
     if (datetime.now() - ranker_last_modified_date) > timedelta(hours=24):
         ranker.generate_rankings()
 
-
 if __name__ == "__main__":
     check_all_frames_ingested()
     update_android_identifiers_file()

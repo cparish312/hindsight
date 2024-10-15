@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BrowseBack</title>
+    <title>Hindsight Feed</title>
     <style>
         /* General Styles */
         body {
@@ -86,6 +86,17 @@
             background-color: #4CAF50;
             color: white;
         }
+        .content-summary {
+            font-size: 14px;  /* Example font size */
+            color: gray;      /* Example text color */
+            margin: 10px 0;   /* Example margin settings */
+        }
+
+        .content-published-date {
+            font-size: 12px;  /* Example font size */
+            color: darkblue;  /* Example text color */
+            margin-bottom: 20px; /* Example margin from the bottom */
+        }
         /* Form Styling */
         #query-form {
             margin-bottom: 20px;
@@ -161,13 +172,11 @@
     </style>
 </head>
 <body>
-    <h1>BrowseBack</h1>
+    <h1>Hindsight Feed</h1>
     <form id="query-form">
         <input type="text" name="query" id="query" placeholder="Enter Topic Here" required>
         <button type="submit">Submit</button>
     </form>
-
-    <a href="http://localhost:8050" target="_blank" id="timeline-button">Go to Timeline Viewer</a>
     
     <div id="content-wrapper">
         {% for content in contents %}
@@ -235,18 +244,6 @@
             var contentWrapper = document.getElementById('content-wrapper');
             contentWrapper.insertBefore(newContent.firstElementChild, contentWrapper.firstChild);
         };
-
-        document.addEventListener('DOMContentLoaded', function() {
-            var pathParts = window.location.pathname.split('/');
-            console.log('Path Parts:', pathParts);
-            var filePath = window.location.pathname.split('/').slice(2).join('/');
-            console.log('Streaming from', filePath);
-            var eventSource = new EventSource(`/stream/docs/${filePath}`);
-            eventSource.onmessage = function(event) {
-                var contentWrapper = document.getElementById('content-display');
-                contentWrapper.innerHTML = event.data;
-            };
-        });
     </script>
 </body>
 </html>
