@@ -4,10 +4,11 @@ data class Content(
     val id: Int,
     val contentGeneratorId: Int,
     val title: String,
+    val summary: String?,
     val url: String,
     val thumbnailUrl: String?,
     val publishedDate: Long,
-    val rankingScore: Float,
+    val rankingScore: Double,
     val score: Int?,
     val clicked: Boolean,
     val viewed: Boolean,
@@ -23,4 +24,19 @@ data class SyncContent(
     val viewed: Boolean,
     val score: Int,
     val clicked: Boolean
+)
+
+data class ViewContent(
+    val id: Int,
+    val title: String,
+    val summary: String?,
+    val url: String,
+    val thumbnailUrl: String?,
+    var score: Int,
+    var rankingScore: Double
+)
+
+data class ContentRanking(
+    val id: Int,
+    var rankingScore: Double
 )

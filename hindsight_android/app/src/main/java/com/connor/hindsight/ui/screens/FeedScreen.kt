@@ -39,6 +39,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -46,6 +49,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Text
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.Image
+import coil.compose.rememberImagePainter
+import com.connor.hindsight.DB
+import com.connor.hindsight.obj.Content
+import com.connor.hindsight.obj.ViewContent
+import com.connor.hindsight.utils.openUrl
 
 
 
@@ -55,44 +65,60 @@ fun FeedScreen(queryViewModel: FeedViewModel = viewModel(), navController: NavCo
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colorScheme.background
     ) {
-        ClickableContainerList(items = List(20) { "Item #$it" }) { clickedItem ->
-            // Handle the click event for the clicked item
-            println("Clicked on: $clickedItem")
-        }
-    }
-}
+        val context = LocalContext.current
+        val dbHelper = DB(context)
+        val contentListCursor = dbHelper.getContent(nonViewed = true)
+        val contentList = dbHelper.convertCursorToViewContent(contentListCursor).sortedByDescending { it.rankingScore }
 
-@Composable
-fun ClickableContainerList(items: List<String>, onItemClick: (String) -> Unit) {
-    val scrollState = rememberScrollState()
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(16.dp)
-    ) {
-        HorizontalScrollablePills(
-            pills = listOf(
-                PillData("Kotlin", Color.Red),
-                PillData("Compose", Color.Blue),
-                PillData("Jetpack", Color.Green),
-                PillData("Android", Color.Magenta),
-                PillData("Coroutines", Color.Cyan),
-                PillData("State", Color.Yellow),
-                PillData("UI", Color.Gray),
-                PillData("Architecture", Color.Black)
-            )
+        ClickableContainerList(contentList = contentList,
+            onContentClick = { contentId: Int, contentUrl: String ->
+                val clickedList: List<Int> = listOf(contentId)
+                dbHelper.markContentAsClicked(clickedList)
+                openUrl(context, contentUrl)
+                println("Clicked on: $contentId")
+            },
+            onContentViewed = { contentId: Int ->
+                val viewedList: List<Int> = listOf(contentId)
+                dbHelper.markContentAsViewed(viewedList)
+                println("Viewed: $contentId")
+            },
+            onScoreUpdate = { contentId: Int, newScore: Int ->
+                dbHelper.updateContentScore(contentId, newScore)
+            }
         )
-        items.forEach { item ->
-            ClickableContainer(item = item, onClick = { onItemClick(item) })
-            Spacer(modifier = Modifier.height(8.dp)) // Spacing between containers
+    }
+}
+
+@Composable
+fun ClickableContainerList(contentList: List<ViewContent>,
+                           onContentClick: (Int, String) -> Unit,
+                           onContentViewed: (Int) -> Unit,
+                           onScoreUpdate: (Int, Int) -> Unit
+) {
+    val scrollState = rememberLazyListState()
+    val viewedItems = remember { mutableStateListOf<Int>() }
+
+    LazyColumn(state = scrollState) {
+        itemsIndexed(contentList) { index, content ->
+            ClickableContainer(content = content,
+                onClick = {onContentClick(content.id, content.url)},
+                onScoreUpdate = onScoreUpdate
+            )
+
+            LaunchedEffect(key1 = scrollState.firstVisibleItemIndex, key2 = scrollState.firstVisibleItemScrollOffset) {
+                if (index == scrollState.firstVisibleItemIndex) {
+                    if (!viewedItems.contains(content.id)) {
+                        onContentViewed(content.id)
+                        viewedItems.add(content.id)
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-fun ClickableContainer(item: String, onClick: () -> Unit) {
+fun ClickableContainer(content: ViewContent, onClick: () -> Unit, onScoreUpdate: (Int, Int) -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -100,24 +126,17 @@ fun ClickableContainer(item: String, onClick: () -> Unit) {
             .background(Color.LightGray, shape = RoundedCornerShape(8.dp))
             .padding(16.dp)
     ) {
-//        Text(
-//            text = item,
-//            fontSize = 18.sp,
-//            fontWeight = FontWeight.Bold,
-//            color = Color.Black
-//        )
         ComposableContainer(
-            R.drawable.ic_notification,
-            "Title",
-            "Body text."
+            content = content,
+            onScoreUpdate = onScoreUpdate
         )
     }
 }
 
 
 @Composable
-fun ComposableContainer(iconRes: Int, headline: String, bodyText: String) {
-    var score by remember { mutableStateOf(0) }
+fun ComposableContainer(content: ViewContent, onScoreUpdate: (Int, Int) -> Unit) {
+    var score by remember { mutableStateOf(content.score) }
 
     Box(
         modifier = Modifier
@@ -126,48 +145,78 @@ fun ComposableContainer(iconRes: Int, headline: String, bodyText: String) {
             .padding(16.dp)
     ) {
         Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Image Icon
+            Text(
+                text = content.title,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.DarkGray,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            if (!content.thumbnailUrl.isNullOrEmpty()) {
                 Image(
-                    painter = painterResource(id = iconRes),
-                    contentDescription = "Icon",
+                    painter = rememberImagePainter(
+                        data = content.thumbnailUrl,
+                        builder = {
+                            crossfade(true)
+                        }
+                    ),
+                    contentDescription = "Thumbnail",
                     modifier = Modifier
-                        .size(64.dp)
-                        .padding(end = 16.dp),
+                        .fillMaxWidth()
+                        .height(200.dp), // Adjust size as needed
                     contentScale = ContentScale.Crop
                 )
-                // Headline
-                Text(
-                    text = headline,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Spacer(modifier = Modifier.height(8.dp))
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Text Body
-            Text(
-                text = bodyText,
-                fontSize = 16.sp,
-                color = Color.Gray
-            )
+            content.summary?.let {
+                println("Summary: $it")
+                Text(
+                    text = it,
+                    fontSize = 16.sp,
+                    color = Color.Gray
+                )
+                Spacer(modifier = Modifier.height(16.dp))  // Conditionally add space after the summary
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Score Button
-            Button(
-                onClick = { score++ },
-                modifier = Modifier.align(Alignment.End)
+            // Score Buttons
+            Row(
+                modifier = Modifier.align(Alignment.End),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(text = "Score: $score")
+                Button(
+                    onClick = {
+                        score = 10
+                        content.score = score
+                        onScoreUpdate(content.id, score)
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (score == 10) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+                    )
+                ) {
+                    Text(text = "↑")
+                }
+                Button(
+                    onClick = {
+                        score = -10
+                        content.score = score
+                        onScoreUpdate(content.id, score)
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (score == -10) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+                    )
+                ) {
+                    Text(text = "↓")
+                }
+                Text(text = "Score: $score", modifier = Modifier.align(Alignment.CenterVertically))
             }
         }
     }
 }
 
-//------------- scrollable pill stuff---------------------//
 data class PillData(val text: String, val color: Color)
 
 @Composable

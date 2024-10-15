@@ -148,7 +148,7 @@ class ServerUploadService : LifecycleService() {
         Log.d("ServerUploadService", "Sync annotations: ${syncAnnotations.size}")
 
         val syncContentCursor = dbHelper.getContent(lastSyncTimestamp)
-        val syncContent = dbHelper.convertCursorToContent(syncContentCursor)
+        val syncContent = dbHelper.convertCursorToSyncContent(syncContentCursor)
         Log.d("ServerUploadService", "Sync content: ${syncContent.size}")
 
         val serverUrl: String = Preferences.prefs.getString(
@@ -198,6 +198,7 @@ class ServerUploadService : LifecycleService() {
                 // Add the new content to the database in a batch
                 dbHelper.addContentBatch(parsedResponse.contentList)
                 dbHelper.markContentAsViewed(parsedResponse.newlyViewedContentIds)
+                dbHelper.updateContentRankingScores(parsedResponse.contentRankingScoresList)
                 Log.d("ServerUploadService", "Fetched new content: ${parsedResponse.contentList.size}")
             }
         } catch (e: Exception) {

@@ -9,14 +9,16 @@ import android.util.Log
 import com.connor.hindsight.network.interfaces.Location
 import com.connor.hindsight.network.interfaces.Annotation
 import com.connor.hindsight.obj.Content
+import com.connor.hindsight.obj.ContentRanking
 import com.connor.hindsight.obj.SyncContent
+import com.connor.hindsight.obj.ViewContent
 
 class DB(context: Context) :
     SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
 
     companion object {
         private const val DATABASE_NAME = "hindsight.db"
-        private const val DATABASE_VERSION = 5
+        private const val DATABASE_VERSION = 7
 
         private const val TABLE_ANNOTATIONS = "annotations"
         private const val COLUMN_ID = "id"
@@ -32,6 +34,7 @@ class DB(context: Context) :
         private const val COLUMN_CONTENT_ID = "id"
         private const val COLUMN_CONTENT_GENERATOR_ID = "content_generator_id"
         private const val COLUMN_TITLE = "title"
+        private const val COLUMN_SUMMARY = "summary"
         private const val COLUMN_URL = "url"
         private const val COLUMN_THUMBNAIL_URL = "thumbnail_url"
         private const val COLUMN_PUBLISHED_DATE = "published_date"
@@ -62,6 +65,7 @@ class DB(context: Context) :
                 + COLUMN_CONTENT_ID + " INTEGER PRIMARY KEY,"
                 + COLUMN_CONTENT_GENERATOR_ID + " INTEGER NOT NULL,"
                 + COLUMN_TITLE + " TEXT NOT NULL,"
+                + COLUMN_SUMMARY + " TEXT,"
                 + COLUMN_URL + " TEXT NOT NULL,"
                 + COLUMN_THUMBNAIL_URL + " TEXT,"
                 + COLUMN_PUBLISHED_DATE + " INTEGER NOT NULL,"
@@ -78,7 +82,7 @@ class DB(context: Context) :
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
 //        db.execSQL("DROP TABLE IF EXISTS $TABLE_ANNOTATIONS")
 //        db.execSQL("DROP TABLE IF EXISTS $TABLE_LOCATIONS")
-        // db.execSQL("DROP TABLE IF EXISTS $TABLE_CONTENT")
+        db.execSQL("DROP TABLE IF EXISTS $TABLE_CONTENT")
         onCreate(db)
     }
 
@@ -165,6 +169,7 @@ class DB(context: Context) :
                     put(COLUMN_CONTENT_ID, content.id)
                     put(COLUMN_CONTENT_GENERATOR_ID, content.contentGeneratorId)
                     put(COLUMN_TITLE, content.title)
+                    put(COLUMN_SUMMARY, content.summary)
                     put(COLUMN_URL, content.url)
                     put(COLUMN_THUMBNAIL_URL, content.thumbnailUrl)
                     put(COLUMN_PUBLISHED_DATE, content.publishedDate)
@@ -188,15 +193,16 @@ class DB(context: Context) :
         }
     }
 
-    fun getContent(afterTimestamp: Long? = 0): Cursor {
+    fun getContent(afterTimestamp: Long? = 0, nonViewed: Boolean = false): Cursor {
         val db = this.readableDatabase
         val timestamp = afterTimestamp ?: 0
+        val nonViewedClause = if (nonViewed) " AND $COLUMN_VIEWED = 0" else ""
         return db.rawQuery("SELECT * FROM $TABLE_CONTENT WHERE " +
-                "$COLUMN_LAST_MODIFIED_TIMESTAMP > $timestamp ORDER BY " +
+                "$COLUMN_LAST_MODIFIED_TIMESTAMP > $timestamp$nonViewedClause ORDER BY " +
                 "$COLUMN_LAST_MODIFIED_TIMESTAMP DESC", null)
     }
 
-    fun convertCursorToContent(cursor: Cursor): List<SyncContent> {
+    fun convertCursorToSyncContent(cursor: Cursor): List<SyncContent> {
         val contentList = mutableListOf<SyncContent>()
         if (cursor.moveToFirst()) {
             do {
@@ -209,6 +215,30 @@ class DB(context: Context) :
                 contentList.add(
                     SyncContent(id=id, lastModifiedTimestamp=lastModifiedTimestamp,
                     viewed=viewed, score=score, clicked=clicked)
+                )
+            } while (cursor.moveToNext())
+        }
+        cursor.close()
+        return contentList
+    }
+
+    fun convertCursorToViewContent(cursor: Cursor): List<ViewContent> {
+        val contentList = mutableListOf<ViewContent>()
+        if (cursor.moveToFirst()) {
+            do {
+                val id = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_CONTENT_ID))
+                val title = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_TITLE))
+                val rawSummary = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_SUMMARY))
+                val summary = if (rawSummary == "null") null else rawSummary
+                val url = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_URL))
+                val rawThumbnailUrl = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_THUMBNAIL_URL))
+                val thumbnailUrl = if (rawThumbnailUrl == "null") null else rawThumbnailUrl
+                val score = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_SCORE))
+                val rankingScore = cursor.getDouble(cursor.getColumnIndexOrThrow(COLUMN_RANKING_SCORE))
+
+                contentList.add(
+                    ViewContent(id=id, title=title, summary=summary, thumbnailUrl=thumbnailUrl,
+                        url=url, score=score, rankingScore=rankingScore)
                 )
             } while (cursor.moveToNext())
         }
@@ -258,6 +288,66 @@ class DB(context: Context) :
         } finally {
             db.endTransaction()  // End the transaction
             db.close()  // Close the database connection
+        }
+    }
+
+    fun markContentAsClicked(contentIds: List<Int>) {
+        val db = this.writableDatabase
+        db.beginTransaction()  // Start a transaction for batch updates
+        try {
+            for (contentId in contentIds) {
+                // Query to check if the content is already viewed
+                val cursor = db.rawQuery(
+                    "SELECT $COLUMN_CLICKED FROM $TABLE_CONTENT WHERE $COLUMN_CONTENT_ID = ?",
+                    arrayOf(contentId.toString())
+                )
+
+                if (cursor.moveToFirst()) {
+                    val isClicked = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_CLICKED)) == 1
+                    if (!isClicked) {
+                        // If the content is not clicked, update it to clicked
+                        val values = ContentValues().apply {
+                            put(COLUMN_CLICKED, 1)  // Mark as viewed
+                            put(COLUMN_LAST_MODIFIED_TIMESTAMP, System.currentTimeMillis())  // Update the last modified timestamp
+                        }
+                        db.update(TABLE_CONTENT, values, "$COLUMN_CONTENT_ID = ?", arrayOf(contentId.toString()))
+                    }
+                }
+                cursor.close()  // Close the cursor after each query
+            }
+            db.setTransactionSuccessful()  // Mark the transaction as successful
+        } catch (e: Exception) {
+            Log.e("DB", "Error updating content clicked status", e)
+        } finally {
+            db.endTransaction()  // End the transaction
+            db.close()  // Close the database connection
+        }
+    }
+
+    fun updateContentScore(contentId: Int, newScore: Int) {
+        val db = this.writableDatabase
+        val contentValues = ContentValues().apply {
+            put(COLUMN_SCORE, newScore)
+            put(COLUMN_LAST_MODIFIED_TIMESTAMP, System.currentTimeMillis())
+        }
+        db.update(TABLE_CONTENT, contentValues, "$COLUMN_CONTENT_ID = ?", arrayOf(contentId.toString()))
+        db.close()
+    }
+
+    fun updateContentRankingScores(contentRankingList: List<ContentRanking>) {
+        val db = this.writableDatabase
+        try {
+            db.beginTransaction()
+            for (contentRanking in contentRankingList) {
+                val contentValues = ContentValues().apply {
+                    put(COLUMN_RANKING_SCORE, contentRanking.rankingScore)
+                }
+                db.update(TABLE_CONTENT, contentValues, "$COLUMN_CONTENT_ID = ?", arrayOf(contentRanking.id.toString()))
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+            db.close()
         }
     }
 }

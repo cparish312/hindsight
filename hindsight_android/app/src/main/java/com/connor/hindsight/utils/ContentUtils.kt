@@ -1,12 +1,14 @@
 package com.connor.hindsight.utils
 
 import com.connor.hindsight.obj.Content
+import com.connor.hindsight.obj.ContentRanking
 import org.json.JSONArray
 import org.json.JSONObject
 
 data class ParsedContentResponse(
     val contentList: List<Content>,
-    val newlyViewedContentIds: List<Int>
+    val newlyViewedContentIds: List<Int>,
+    val contentRankingScoresList: List<ContentRanking>
 )
 
 fun parseJsonToContentResponse(json: String): ParsedContentResponse {
@@ -22,10 +24,11 @@ fun parseJsonToContentResponse(json: String): ParsedContentResponse {
         val id = contentObject.getInt("id")
         val contentGeneratorId = contentObject.getInt("content_generator_id")
         val title = contentObject.getString("title")
+        val summary = contentObject.getString("summary")
         val url = contentObject.getString("url")
         val thumbnailUrl = contentObject.optString("thumbnail_url", null) // Nullable, default to null
         val publishedDate = contentObject.getLong("published_date")
-        val rankingScore = contentObject.getDouble("ranking_score").toFloat()
+        val rankingScore = contentObject.getDouble("ranking_score")
         val score = if (contentObject.has("score")) contentObject.optInt("score", 0) else null // Nullable score
         val clicked = contentObject.getBoolean("clicked")
         val viewed = contentObject.getBoolean("viewed")
@@ -37,6 +40,7 @@ fun parseJsonToContentResponse(json: String): ParsedContentResponse {
             id = id,
             contentGeneratorId = contentGeneratorId,
             title = title,
+            summary = summary,
             url = url,
             thumbnailUrl = thumbnailUrl,
             publishedDate = publishedDate,
@@ -59,9 +63,21 @@ fun parseJsonToContentResponse(json: String): ParsedContentResponse {
         newlyViewedContentIds.add(newlyViewedContentIdsArray.getInt(i))
     }
 
+    val nonViewedContentRankingScoresArray = jsonObject.getJSONArray("non_viewed_content_ranking_scores")
+    val contentRankingScoresList = mutableListOf<ContentRanking>()
+    for (i in 0 until nonViewedContentRankingScoresArray.length()) {
+        val contentRankingObject = nonViewedContentRankingScoresArray.getJSONObject(i)
+        val contentId = contentRankingObject.getInt("content_id")
+        val rankingScore = contentRankingObject.getDouble("ranking_score")
+
+        val contentRanking = ContentRanking(id = contentId, rankingScore = rankingScore)
+        contentRankingScoresList.add(contentRanking)
+    }
+
     // Return the parsed content and newly viewed content ids
     return ParsedContentResponse(
         contentList = contentList,
-        newlyViewedContentIds = newlyViewedContentIds
+        newlyViewedContentIds = newlyViewedContentIds,
+        contentRankingScoresList = contentRankingScoresList
     )
 }

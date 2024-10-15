@@ -1,6 +1,8 @@
 package com.connor.hindsight.models
 
 import androidx.lifecycle.ViewModel
+import com.connor.hindsight.DB
+import com.connor.hindsight.obj.Content
 import kotlinx.coroutines.*
 import kotlin.random.Random
 
