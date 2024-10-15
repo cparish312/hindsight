@@ -89,7 +89,11 @@ def create_topic_from_previous_topic(topic_df, llm_pipeline):
     response = llm_generate(pipeline=llm_pipeline, prompt=prompt, max_tokens=80)
     refine_prompt = refine_search_query_prompt(response)
     refine_response = llm_generate(pipeline=llm_pipeline, prompt=refine_prompt, max_tokens=80)
-    return refine_response.split("\n")[1] # Not sure how generalizable this will be
+    # return refine_response.split("\n")[1] # Not sure how generalizable this will be
+    final_out = refine_response.split('Refined Query:')[-1].strip().split('\n')[0].strip() # the first line after the refined query prompt
+    if 0 == len(final_out):
+        return None
+    return final_out
 
 def create_new_topics(num_topics=5):
     content_generators = fetch_content_generators()
@@ -106,6 +110,8 @@ def create_new_topics(num_topics=5):
     # Only get viewed content
     exa_content_df = exa_content_df.loc[exa_content_df['viewed']]
 
+    exa_content_df = exa_content_df.dropna(subset=['text'])
+
     topic_model = get_topic_model()
 
     topics, probs = topic_model.fit_transform(exa_content_df['text'])
@@ -116,6 +122,7 @@ def create_new_topics(num_topics=5):
     
     # Calculate the percentage of clicks for each topic
     topic_click_counts = content_with_topics.groupby(['Topic', 'clicked']).Document.count().unstack(fill_value=0)
+    topic_click_counts = topic_click_counts.reindex(columns=[True, False], fill_value=0) # make sure both columns are present
     topic_click_counts['pct_clicked'] = topic_click_counts[True] / (topic_click_counts[True] + topic_click_counts[False])
     sorted_topics = topic_click_counts.sort_values(by='pct_clicked', ascending=False).reset_index()
     topics = list(sorted_topics["Topic"])
@@ -130,7 +137,9 @@ def create_new_topics(num_topics=5):
         topic_df = topic_df.iloc[:10]
         print(f"Creating new topic from {topic_df['Name'].iloc[0]} with {len(topic_df)} articles.")
         new_topic = create_topic_from_previous_topic(topic_df=topic_df, llm_pipeline=llm_pipeline)
-        if new_topic not in exa_content_generators_topics and len(new_topic) > 2:
+        if new_topic == None:
+            print('Failed to create a new topic')  
+        elif new_topic not in exa_content_generators_topics and len(new_topic) > 2:
             new_topics.add(new_topic)
         else:
             print("Created replicate topic:", new_topic)
@@ -151,6 +160,10 @@ def create_new_topics_viewed_random(num_topics=1):
     
     # Only get viewed content
     exa_content_df = exa_content_df.loc[exa_content_df['viewed']]
+
+    if exa_content_df.empty or exa_content_df.size[0]:
+        print('No viewed content, skipping related topic creation.')
+        return []
 
     llm_pipeline = load(LLM_MODEL_NAME)
     new_topics = list()

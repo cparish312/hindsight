@@ -31,7 +31,9 @@ def get_feed_content():
     content = feed_generator.get_contents()
     for c in content:
         if c.published_date:
-            c.published_date = pd.to_datetime(c.published_date / 1000, unit='s', utc=True).strftime('%Y-%m-%d')
+            # print(c)
+            # print(c.published_date)
+            c.published_date = pd.to_datetime(int(c.published_date) / 1000, unit='s', utc=True).strftime('%Y-%m-%d')
     return content
 
 @app.route('/')
