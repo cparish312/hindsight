@@ -171,7 +171,6 @@ fun ComposableContainer(content: ViewContent, onScoreUpdate: (Int, Int) -> Unit)
             }
 
             content.summary?.let {
-                println("Summary: $it")
                 Text(
                     text = it,
                     fontSize = 16.sp,
