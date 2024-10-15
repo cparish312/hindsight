@@ -6,6 +6,8 @@ DATA_DIR = os.path.join(base_dir, "data")
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
 
+RESOURCES_DIR = os.path.join(base_dir, "res")
+
 DB_TMP_FILE = os.path.join(DATA_DIR, "places.sqlite")
 GENERATOR_DATA_DIR = os.path.join(DATA_DIR, "generator_data")
 RANKER_DATA_DIR = os.path.join(DATA_DIR, "rankers_data")

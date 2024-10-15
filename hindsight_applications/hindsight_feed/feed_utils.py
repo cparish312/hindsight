@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 import tzlocal
 from zoneinfo import ZoneInfo
 
-from hindsight_applications.hindsight_feed.feed_config import HISTORY_PAGES_DIR, DATA_DIR
+from hindsight_applications.hindsight_feed.feed_config import HISTORY_PAGES_DIR, DATA_DIR, RESOURCES_DIR
 
 local_timezone = tzlocal.get_localzone()
 video_timezone = ZoneInfo("UTC")
@@ -165,7 +165,10 @@ def datetime_to_utc_timestamp(date):
     return date
 
 def get_allow_urls():
-    with open(os.path.join(DATA_DIR, 'allow_multiple_urls.json'), 'r') as file:
+    allow_urls_file = os.path.join(RESOURCES_DIR, 'allow_multiple_urls.json')
+    if not os.path.exists(allow_urls_file):
+        return set()
+    with open(allow_urls_file, 'r') as file:
         data = json.load(file)
         allow_urls = data['allow_urls']
     return set(allow_urls)

@@ -3,6 +3,7 @@ from hindsight_applications.hindsight_feed.hindsight_feed_db import fetch_conten
 from hindsight_applications.hindsight_feed.feeders.exa_topic.create_new_topics import create_new_topics, create_new_topics_viewed_random
 from hindsight_applications.hindsight_feed.feeders.exa_topic.exa_topic import ExaTopicFeeder
 from hindsight_applications.hindsight_feed.feeders.browser_history_summary.browser_history_summary import TopicBrowserSummaryFeeder
+from hindsight_applications.hindsight_feed.chromadb_tools import ingest_all_contents
 
 name_to_content_generator = {"ExaTopicFeeder" : ExaTopicFeeder, 
                              "TopicBrowserSummaryFeeder" : TopicBrowserSummaryFeeder}
@@ -33,10 +34,12 @@ class FeedGenerator():
         for content_generator in self.content_generators:
             if not isinstance(content_generator, TopicBrowserSummaryFeeder):
                 content_generator.add_content()
+        ingest_all_contents()
 
     def add_content_generator(self, content_generator):
         content_generator.add_content()
         self.content_generators.append(content_generator)
+        ingest_all_contents()
 
     def get_contents(self):
         contents = fetch_contents(non_viewed=True)

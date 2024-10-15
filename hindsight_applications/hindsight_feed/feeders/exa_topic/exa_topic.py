@@ -6,6 +6,7 @@ from exa_py import Exa
 import hindsight_applications.hindsight_feed.feed_utils as feed_utils
 from hindsight_applications.hindsight_feed.hindsight_feed_db import fetch_contents, df_add_contents
 from hindsight_applications.hindsight_feed.feeders.content_generator import ContentGenerator
+from hindsight_applications.hindsight_feed.chromadb_tools import get_chroma_collection
 
 from hindsight_applications.hindsight_feed.feed_config import EXA_API_KEY
 
@@ -24,8 +25,12 @@ class ExaTopicFeeder(ContentGenerator):
 
         exclude_urls = list()
         if self.exclude_seen_urls:
-            content = fetch_contents(non_viewed=False)
-            seen_urls = {c.url.split("/")[2] for c in content}
+            content_collection = get_chroma_collection()
+            chroma_search_results = content_collection.query(
+                                    query_texts=[self.topic],
+                                    n_results=110
+                            )
+            seen_urls = {m['url'].split("/")[2] for m in chroma_search_results['metadatas'][0]}
             allow_urls = feed_utils.get_allow_urls()
             exclude_urls = list(seen_urls - allow_urls)[:100] # Need to optimize excluding urls based on likelihood to find
 
