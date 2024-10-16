@@ -15,6 +15,10 @@ if RUNNING_PLATFORM == 'Darwin':
 
     def llm_generate(pipeline, prompt, max_tokens):
         model, tokenizer = pipeline
+        messages = [{"role": "user", "content": prompt}]
+        prompt = tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
+        )
         return generate(model, tokenizer, prompt=prompt, max_tokens=max_tokens)
 else:
     from transformers import AutoTokenizer, AutoModelForCausalLM
