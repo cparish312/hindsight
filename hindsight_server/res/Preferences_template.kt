@@ -15,6 +15,7 @@ object Preferences {
     const val apikey = "ApiKey"
     const val localurl = "LocalUrl"
     const val interneturl = "InternetUrl"
+    const val lastsynctimestamp = "LastSyncTimestamp"
 
     fun init(context: Context) {
         prefs = context.getSharedPreferences(PREF_FILE_NAME, Context.MODE_PRIVATE)

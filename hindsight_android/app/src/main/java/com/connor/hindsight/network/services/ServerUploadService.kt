@@ -22,11 +22,14 @@ import com.connor.hindsight.R
 import com.connor.hindsight.network.RetrofitClient
 import com.connor.hindsight.network.interfaces.ApiService
 import com.connor.hindsight.network.interfaces.SyncDBData
+import com.connor.hindsight.obj.Content
 import com.connor.hindsight.utils.NotificationHelper
+import com.connor.hindsight.utils.ParsedContentResponse
 import com.connor.hindsight.utils.Preferences
 import com.connor.hindsight.utils.getImageDirectory
 import com.connor.hindsight.utils.getImageFiles
 import com.connor.hindsight.utils.getSyncedImageDirectory
+import com.connor.hindsight.utils.parseJsonToContentResponse
 import java.io.File
 import java.io.IOException
 import kotlinx.coroutines.CoroutineScope
@@ -48,6 +51,7 @@ class ServerUploadService : LifecycleService() {
     private lateinit var screenshotDirectory: File
     private lateinit var syncedScreenshotDirectory: File
     private var stopUpload: Boolean = false
+    val lastSyncTimestamp = Preferences.prefs.getLong(Preferences.lastsynctimestamp, 0L)
 
     private val uploaderReceiver = object : BroadcastReceiver() {
         @SuppressLint("NewApi")
@@ -95,6 +99,10 @@ class ServerUploadService : LifecycleService() {
             syncDatabase()
         }
 
+        CoroutineScope(Dispatchers.IO).launch {
+            fetchNewContent()
+        }
+
         screenshotDirectory = getImageDirectory(this)
         syncedScreenshotDirectory = getSyncedImageDirectory(this)
 
@@ -129,15 +137,19 @@ class ServerUploadService : LifecycleService() {
     private suspend fun syncDatabase() {
         val dbHelper = DB(this@ServerUploadService)
 
-        val lastLocationsTimestamp = getLastTimestamp("locations")
-        val syncLocationsCursor = dbHelper.getLocations(lastLocationsTimestamp)
+        // val lastLocationsTimestamp = getLastTimestamp("locations")
+        val syncLocationsCursor = dbHelper.getLocations(lastSyncTimestamp)
         val syncLocations = dbHelper.convertCursorToLocations(syncLocationsCursor)
         Log.d("ServerUploadService", "Sync locations: ${syncLocations.size}")
 
-        val lastAnnotationsTimestamp = getLastTimestamp("annotations")
-        val syncAnnotationsCursor = dbHelper.getAnnotations(lastAnnotationsTimestamp)
+        // val lastAnnotationsTimestamp = getLastTimestamp("annotations")
+        val syncAnnotationsCursor = dbHelper.getAnnotations(lastSyncTimestamp)
         val syncAnnotations = dbHelper.convertCursorToAnnotations(syncAnnotationsCursor)
         Log.d("ServerUploadService", "Sync annotations: ${syncAnnotations.size}")
+
+        val syncContentCursor = dbHelper.getContent(lastSyncTimestamp)
+        val syncContent = dbHelper.convertCursorToSyncContent(syncContentCursor)
+        Log.d("ServerUploadService", "Sync content: ${syncContent.size}")
 
         val serverUrl: String = Preferences.prefs.getString(
             Preferences.localurl,
@@ -145,17 +157,53 @@ class ServerUploadService : LifecycleService() {
         ).toString()
         val retrofit = RetrofitClient.getInstance(serverUrl, numTries = 3)
         val client = retrofit.create(ApiService::class.java)
-        val syncData = SyncDBData(syncAnnotations, syncLocations)
+        val syncData = SyncDBData(syncAnnotations, syncLocations, syncContent)
 
         try {
             val response = client.syncDB(syncData)
             if (response.isSuccessful) {
                 Log.d("ServerUploadService", "DB Sync successful")
+                val currentTimestamp = System.currentTimeMillis()
+                Preferences.prefs.edit().putLong(Preferences.lastsynctimestamp, currentTimestamp).apply()
             } else {
                 Log.e("ServerUploadService", "DB Sync failed: ${response.errorBody()?.string()}")
             }
         } catch (e: Exception) {
             Log.e("ServerUploadService", "Network call failed with exception: ${e.message}")
+        }
+    }
+
+    private suspend fun fetchNewContent() {
+        val dbHelper = DB(this@ServerUploadService)
+
+        val serverUrl: String = Preferences.prefs.getString(
+            Preferences.localurl,
+            ""
+        ).toString()
+        val retrofit = RetrofitClient.getInstance(serverUrl, numTries = 3)
+        val client = retrofit.create(ApiService::class.java)
+
+        val maxContentId = dbHelper.getMaxContentId()
+
+        try {
+            // Fetch new content using the suspend function
+            val responseBody = client.getNewContent(maxContentId, lastSyncTimestamp)
+
+            // Process the response body if successful
+            responseBody.use { response ->
+                // Process the response body if successful
+                val resultString = response.string()  // Convert ResponseBody to string
+                val parsedResponse: ParsedContentResponse = parseJsonToContentResponse(resultString)
+
+                // Add the new content to the database in a batch
+                dbHelper.addContentBatch(parsedResponse.contentList)
+                dbHelper.markContentAsViewed(parsedResponse.newlyViewedContentIds)
+                dbHelper.updateContentRankingScores(parsedResponse.contentRankingScoresList)
+                Log.d("ServerUploadService", "Fetched new content: ${parsedResponse.contentList.size}")
+            }
+        } catch (e: Exception) {
+            // Handle errors (network failure, etc.)
+            Log.e("ServerUploadService", "Failed to fetch new content: ${e.message}")
         }
     }
 

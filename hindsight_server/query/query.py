@@ -4,10 +4,10 @@ import gc
 from datetime import timedelta
 
 from .prompts import get_prompt, get_summary_prompt, get_recomposition_prompt, get_decomposition_prompt, get_summary_compete_prompt
-from chromadb_tools import query_chroma, chroma_search_results_to_df, get_chroma_collection
-from db import HindsightDB
-import utils
-from config import LLM_MODEL_NAME, RUNNING_PLATFORM
+from hindsight_server.chromadb_tools import query_chroma, chroma_search_results_to_df, get_chroma_collection
+from hindsight_server.db import HindsightDB
+import hindsight_server.utils as utils
+from hindsight_server.config import LLM_MODEL_NAME, RUNNING_PLATFORM
 # from query_vlm import vlm_basic_retrieved_query
 
 if RUNNING_PLATFORM == 'Darwin':
@@ -15,19 +15,28 @@ if RUNNING_PLATFORM == 'Darwin':
 
     def llm_generate(pipeline, prompt, max_tokens):
         model, tokenizer = pipeline
+        messages = [{"role": "user", "content": prompt}]
+        prompt = tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True
+        )
         return generate(model, tokenizer, prompt=prompt, max_tokens=max_tokens)
 else:
-    import transformers
-    import torch    
+    from transformers import AutoTokenizer, AutoModelForCausalLM
 
     def load(model_name):
-        pipeline = transformers.pipeline(
-            "text-generation", model=model_name, model_kwargs={"torch_dtype": torch.bfloat16}, device_map="auto"
-        )
-        return pipeline
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        model = AutoModelForCausalLM.from_pretrained(model_name)
+        return model, tokenizer
     
     def llm_generate(pipeline, prompt, max_tokens):
-        return pipeline(prompt, max_new_tokens=max_tokens)[0]['generated_text']
+        model, tokenizer = pipeline
+
+        inputs = tokenizer(prompt, return_tensors="pt")
+
+        outputs = model.generate(**inputs, max_new_tokens=max_tokens)
+
+        generated_text = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        return generated_text
 
 db = HindsightDB()
 

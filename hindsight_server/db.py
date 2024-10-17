@@ -12,8 +12,8 @@ import portalocker
 import tzlocal
 from zoneinfo import ZoneInfo
 
-from config import DATA_DIR, RAW_SCREENSHOTS_DIR
-import utils
+from hindsight_server.config import DATA_DIR, RAW_SCREENSHOTS_DIR
+import hindsight_server.utils as utils
 
 local_timezone = tzlocal.get_localzone()
 video_timezone = ZoneInfo("UTC")

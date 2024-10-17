@@ -10,6 +10,7 @@
         * Set `INTERNET_URL` equal to the ngrok forwarding address (should end in `.ngrok-free.app`) at the top of `hindsight_server/initialize_server.py`
     * Copy `hindsight_server/res/template_san.cnf` to `hindsight_server/res/san.cnf`
     * Fill in sections under dn besides CN in `hindsight_server/res/san.cnf`
+    * Run: `export PYTHONPATH=$(pwd):$PYTHONPATH` to add hindsight to your python path. Currently, this will need to be run everytime you go to run hindsight in a new terminal.
     * Run: `hindsight_server/initialize_server.py`
 
 3) **Running**

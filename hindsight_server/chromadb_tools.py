@@ -6,9 +6,9 @@ from chromadb.utils import embedding_functions
 import sys
 
 sys.path.insert(0, "../")
-from db import HindsightDB
-from config import DATA_DIR, MLX_EMBDEDDING_MODEL, RUNNING_PLATFORM
-import utils
+from hindsight_server.db import HindsightDB
+from hindsight_server.config import DATA_DIR, MLX_EMBDEDDING_MODEL, RUNNING_PLATFORM
+import hindsight_server.utils as utils
 
 if RUNNING_PLATFORM == 'Darwin':
     from mlx_embedding_models.embedding import EmbeddingModel
@@ -27,7 +27,6 @@ class MLXEmbeddingFunction(EmbeddingFunction):
     def embed_query(self, input: Documents) -> Embeddings:
         print("MLX EMBEDDING", type(input))
         return self.embedding_model.encode([input]).tolist()[0]
-
 
 def get_chroma_collection(collection_name=DEFAULT_COLLECTION, model_id=MLX_EMBDEDDING_MODEL):
     """Returns chromadb collections."""

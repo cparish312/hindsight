@@ -9,16 +9,13 @@ import colorcet as cc
 from tkinter import Tk, ttk
 from tkinter import StringVar, Canvas, messagebox, Toplevel
 from PIL import Image, ImageTk
+from PIL import Image, ImageDraw, ImageFont
 
 import tzlocal
 from zoneinfo import ZoneInfo
 from dataclasses import dataclass
 
-import sys
-sys.path.insert(0, "../")
-sys.path.insert(0, "./")
-
-from db import HindsightDB
+from hindsight_server.db import HindsightDB
 
 @dataclass
 class Screenshot:
@@ -58,7 +55,7 @@ def get_app_color_map(images_df: pd.DataFrame):
     return {app: hex_colors[i] for i, app in enumerate(unique_apps)}
 
 def resize_screenshot(screenshot: Screenshot, max_width: int, max_height: int):
-    height, width, _ = screenshot.image.shape
+    width, height = screenshot.image.size
     size_ratios = float(max_width) / float(width), float(max_height) / float(height)
     scaling_factor = min(size_ratios)
     # max 1 is a hack to prevent / 0 exceptions on startup
@@ -68,7 +65,7 @@ def resize_screenshot(screenshot: Screenshot, max_width: int, max_height: int):
         yoffset = (max_height - display_size[1]) / 2.0
     else:
         xoffset = (max_width - display_size[0]) / 2.0
-    screenshot.image = cv2.resize(screenshot.image, display_size, interpolation=cv2.INTER_AREA)
+    screenshot.image = screenshot.image.resize(display_size, Image.Resampling.LANCZOS)
     if screenshot.text_df is not None:
         screenshot.text_df.loc[:, 'x'] = screenshot.text_df['x'] * scaling_factor + xoffset
         screenshot.text_df.loc[:, 'y'] = screenshot.text_df['y'] * scaling_factor + yoffset
@@ -84,7 +81,7 @@ def rectangles_overlap(rect1, rect2):
     return not (rx1 > x2 or rx2 < x1 or ry1 > y2 or ry2 < y1)
 
 class TimelineViewer:
-    def __init__(self, root: Tk, database: HindsightDB, front_camera=None):
+    def __init__(self, root: Tk, database: HindsightDB, front_camera=None, images_df=None, frame_id=None, annotations=None):
         screen_width = root.winfo_screenwidth()
         screen_height = root.winfo_screenheight()
         max_width = int(screen_width * 0.75)
@@ -98,17 +95,20 @@ class TimelineViewer:
         self.master.columnconfigure(0, weight=1)
 
         self.db = database
-        self.images_df = get_images_df(self.db, front_camera)
+        self.annotations = annotations
+        self.images_df = get_images_df(self.db, front_camera) if images_df is None else images_df
         self.max_frames_index = int(max(self.images_df.index)) # cast to int to ensure we have the right datatype
         self.app_color_map = get_app_color_map(self.images_df)
         self.max_width = max_width
         self.max_height = max_height
         self.full_screen = False
 
-        self.screenshots_on_timeline = 40 
+        self.screenshots_on_timeline = 80 
 
-        self.scroll_frame_num = 0 # lower index is most recent, index is 0 - based
-        # self.scroll_frame_num = self.images_df.index.get_loc(self.images_df[self.images_df['id'] == frame_id].index[0]) # does this even work??
+        if frame_id is None:
+            self.scroll_frame_num = 0 # lower index is most recent, index is 0 - based
+        else:
+            self.scroll_frame_num = self.images_df.index.get_loc(self.images_df[self.images_df['id'] == frame_id].index[0]) # does this even work??
         
         self.frame_timestamp = StringVar(master=self.master, value='--------------')
 
@@ -117,6 +117,7 @@ class TimelineViewer:
         self.drag_start = None
         self.drag_end = None
         self.exit_flag = False
+        self.timeline_skip_delta = 0 # 0 implies no scrolling
 
         # draw containers
         self.setup_gui()
@@ -140,6 +141,9 @@ class TimelineViewer:
 
         self.timeline_canvas = Canvas(self.master, height=timeline_scrollbar_height, background='gray75')
         self.timeline_canvas.grid(column=0, row=2, sticky='ew')
+        self.timeline_canvas.bind("<Button-1>", self.on_timeline_press)
+        self.timeline_canvas.bind("<B1-Motion>", self.on_timeline_drag)
+        self.timeline_canvas.bind("<ButtonRelease-1>", self.on_timeline_release)
 
         self.time_label = ttk.Label(self.master, textvariable=self.frame_timestamp, font=("Arial", 24), anchor="e")
         self.time_label.grid(column=0, row=3)
@@ -178,10 +182,25 @@ class TimelineViewer:
     def get_screenshot(self, i):
         """Loads and resizes the screenshot."""
         im_row = self.images_df.iloc[i]
-        image = cv2.imread(im_row['path'])
+        # image = cv2.imread(im_row['path'])
+        image = Image.open(im_row['path'])
         text_df = self.db.get_ocr_results(frame_id=im_row['id'])
         if set(text_df['text']) == {None}:
             text_df = None
+
+        if self.annotations is not None:
+            frame_annotations = self.annotations.loc[self.annotations['frame_id'] == im_row['id']]
+            if len(frame_annotations) > 0:
+                font = ImageFont.load_default()
+
+                draw = ImageDraw.Draw(image)
+                for i, row in frame_annotations.iterrows():
+                    draw.rectangle((row['x'], row['y'], row['x'] + row['w'], row['y'] + row['h']), outline="red", width=5)
+                    text_position = (row['x'], row['y'] - 10)
+                    try:
+                        draw.text(text_position, row['label'], fill="white", font=font)
+                    except:
+                        print("Couldn't draw", row['label'])
         return Screenshot(image=image, text_df=text_df, timestamp=im_row['datetime_local'])
 
     def get_apps_near(self, current_frame_num: int):
@@ -190,27 +209,34 @@ class TimelineViewer:
         apps_after = self.images_df.iloc[max(current_frame_num-timeline_border, 0):current_frame_num]['application']
         return apps_before, apps_after
 
+    def get_timeline_screenshot_width(self):
+        width = self.timeline_canvas.winfo_width()
+        return width / self.screenshots_on_timeline
+    
+    def get_current_app_timeline_offset(self):
+        width = self.timeline_canvas.winfo_width()
+        timeline_screenshot_width = self.get_timeline_screenshot_width()
+        return (width - timeline_screenshot_width) / 2
+    
     def update_timeline(self):
         self.timeline_canvas.delete("all")  # Clear existing drawings
-        width = self.timeline_canvas.winfo_width()
         apps_before, apps_after = self.get_apps_near(self.scroll_frame_num)  # Implement this function
+        timeline_screenshot_width = self.get_timeline_screenshot_width()
 
-        timeline_screenshot_width = width / self.screenshots_on_timeline
-
-        start_pos = width / 2 # start in the middle of the timeline
+        start_pos = self.get_current_app_timeline_offset()
         for app in apps_before: # Reverse order of list to start at current screenshot
             color = self.app_color_map[app]
             self.timeline_canvas.create_rectangle(start_pos, 0, start_pos-timeline_screenshot_width, timeline_scrollbar_height, fill=color, outline='')
             start_pos -= timeline_screenshot_width
 
-        start_pos = (width / 2)  + timeline_screenshot_width # start in the middle of the timeline
+        start_pos = self.get_current_app_timeline_offset() + timeline_screenshot_width
         for app in apps_after[::-1]: # Reverse order of list to start at current screenshot
             color = self.app_color_map[app]
             self.timeline_canvas.create_rectangle(start_pos, 0, start_pos+timeline_screenshot_width, timeline_scrollbar_height, fill=color, outline='')
             start_pos += timeline_screenshot_width
 
         # Draw current app
-        start_pos = width / 2 # start in the middle of the timeline
+        start_pos = self.get_current_app_timeline_offset()
         current_app = self.images_df.iloc[self.scroll_frame_num]['application']
         color = self.app_color_map[current_app]
         self.timeline_canvas.create_rectangle(start_pos, 0, start_pos+timeline_screenshot_width, timeline_scrollbar_height, fill=color, outline="black")
@@ -218,7 +244,7 @@ class TimelineViewer:
     def update_frame(self):
         self.update_screenshot()
         self.update_timeline()
-        self.frame_timestamp.set(f"{self.displayed_screenshot.timestamp.strftime('%A, %Y-%m-%d %H:%M')}")
+        self.frame_timestamp.set(f"{self.displayed_screenshot.timestamp.strftime('%A, %Y-%m-%d %H:%M:%S')}")
 
     def update_screenshot(self):
         width, height = ( self.video_label.winfo_width(), self.video_label.winfo_height() )
@@ -229,12 +255,33 @@ class TimelineViewer:
         )
         im_row = self.images_df.iloc[self.scroll_frame_num]
         print(f"frame_num: {self.scroll_frame_num} frame_id: {im_row['id']}")
-        cv2image = cv2.cvtColor(screenshot.image, cv2.COLOR_BGR2RGB)
-        img = Image.fromarray(cv2image)
+        # cv2image = cv2.cvtColor(screenshot.image, cv2.COLOR_BGR2RGB)
+        # img = Image.fromarray(cv2image)
+        img = screenshot.image
         imgtk = ImageTk.PhotoImage(image=img)
         self.video_label.imgtk = imgtk
         self.video_label.configure(image=imgtk)
         self.displayed_screenshot = screenshot
+
+    def should_update_frame(self):
+        return not self.exit_flag and self.timeline_skip_delta != 0
+    
+    def update_scroll_periodically(self):
+        if not self.should_update_frame():
+            return
+        self.scroll_frames(self.timeline_skip_delta)
+        self.master.after(20, self.update_scroll_periodically)
+
+    def on_timeline_press(self, event):
+        self.on_timeline_drag(event)
+        self.update_scroll_periodically()
+    
+    def on_timeline_drag(self, event):
+        delta_from_first_app = (event.x - self.get_current_app_timeline_offset()) / self.get_timeline_screenshot_width()
+        self.timeline_skip_delta = - int(delta_from_first_app)
+
+    def on_timeline_release(self, event):
+        self.timeline_skip_delta = 0
 
     def bind_scroll_event(self):
         # Detect platform and bind the appropriate event
