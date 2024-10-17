@@ -213,7 +213,7 @@ class QueryViewer:
         
         sources_df = self.images_df.loc[self.images_df['id'].isin(query_source_ids)].reset_index(drop=True)
         timeline_window = tk.Toplevel(self.master)
-        self.timeline_viewer = TimelineViewer(timeline_window, frame_id=frame_id, images_df=sources_df)
+        self.timeline_viewer = TimelineViewer(timeline_window, database=self.db, frame_id=frame_id, images_df=sources_df)
 
     def on_window_close(self):
         for thread in self.threads:
