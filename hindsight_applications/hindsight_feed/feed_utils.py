@@ -172,7 +172,6 @@ def get_allow_urls():
         data = json.load(file)
         allow_urls = data['allow_urls']
     return set(allow_urls)
-    
 
 def content_to_df(content):
     content_list = list()
