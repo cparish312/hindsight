@@ -161,7 +161,7 @@ def create_new_topics_viewed_random(num_topics=1):
     # Only get viewed content
     exa_content_df = exa_content_df.loc[exa_content_df['viewed']]
 
-    if exa_content_df.empty or exa_content_df.size[0]:
+    if exa_content_df.empty:
         print('No viewed content, skipping related topic creation.')
         return []
 
