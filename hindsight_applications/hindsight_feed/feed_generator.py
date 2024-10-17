@@ -53,6 +53,7 @@ class FeedGenerator():
         num_topics_to_gen = max((self.min_num_content - len(contents)) // 20, 0)
         if num_topics_to_gen == 0:
             return
+        
         print(f"Attempting to generate {num_topics_to_gen} new topics by topic modeling")
         new_topics = create_new_topics(num_topics=num_topics_to_gen)
         
