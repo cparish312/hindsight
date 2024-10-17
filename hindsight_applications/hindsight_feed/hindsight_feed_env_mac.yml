@@ -13,6 +13,7 @@ dependencies:
   - sqlalchemy
   - bs4
   - pytorch
+  - bertopic
   - pip:
       - chromadb
       - mlx-lm==0.16.1

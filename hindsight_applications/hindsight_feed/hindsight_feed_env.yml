@@ -17,6 +17,7 @@ dependencies:
   - transformers
   - torchvision
   - accelerate
+  - bertopic
   - pip:
       - chromadb
       - exa_py
