@@ -30,6 +30,7 @@ class Content(Base):
     score = Column(Integer, nullable=True)
     clicked = Column(Boolean, default=False)
     viewed = Column(Boolean, default=False)
+    topic_label = Column(String(150), nullable=True)
     url_is_local = Column(Boolean, default=False)
     timestamp = Column(Integer, default=lambda: int(time.time() * 1000))  
     last_modified_timestamp = Column(Integer, default=lambda: int(time.time() * 1000))
@@ -157,6 +158,13 @@ def update_content_ranked_score(id, ranking_score):
         content = session.query(Content).get(id)
         if content:
             content.ranking_score = ranking_score
+
+@with_lock
+def update_content_topic_label(id, topic_label):
+    with session_scope() as session:
+        content = session.query(Content).get(id)
+        if content:
+            content.topic_label = topic_label
 
 @with_lock
 def content_viewed(id):
