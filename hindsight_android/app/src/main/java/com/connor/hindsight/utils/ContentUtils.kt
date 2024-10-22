@@ -26,6 +26,7 @@ fun parseJsonToContentResponse(json: String): ParsedContentResponse {
         val title = contentObject.getString("title")
         val summary = contentObject.getString("summary")
         val url = contentObject.getString("url")
+        val topicLabel = contentObject.getString("topic_label")
         val thumbnailUrl = contentObject.optString("thumbnail_url", null) // Nullable, default to null
         val publishedDate = contentObject.getLong("published_date")
         val rankingScore = contentObject.getDouble("ranking_score")
@@ -42,6 +43,7 @@ fun parseJsonToContentResponse(json: String): ParsedContentResponse {
             title = title,
             summary = summary,
             url = url,
+            topicLabel = topicLabel,
             thumbnailUrl = thumbnailUrl,
             publishedDate = publishedDate,
             rankingScore = rankingScore,

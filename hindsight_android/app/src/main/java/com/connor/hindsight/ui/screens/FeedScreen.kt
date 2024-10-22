@@ -32,6 +32,7 @@ import com.connor.hindsight.models.FeedViewModel
 import com.connor.hindsight.models.QueryViewModel
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.BorderStroke
@@ -51,12 +52,19 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material3.Text
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import coil.compose.rememberImagePainter
 import com.connor.hindsight.DB
 import com.connor.hindsight.obj.Content
 import com.connor.hindsight.obj.ViewContent
 import com.connor.hindsight.utils.openUrl
-
+import kotlin.math.abs
 
 
 @Composable
@@ -70,21 +78,180 @@ fun FeedScreen(queryViewModel: FeedViewModel = viewModel(), navController: NavCo
         val contentListCursor = dbHelper.getContent(nonViewed = true)
         val contentList = dbHelper.convertCursorToViewContent(contentListCursor).sortedByDescending { it.rankingScore }
 
-        ClickableContainerList(contentList = contentList,
-            onContentClick = { contentId: Int, contentUrl: String ->
-                val clickedList: List<Int> = listOf(contentId)
-                dbHelper.markContentAsClicked(clickedList)
-                openUrl(context, contentUrl)
-                println("Clicked on: $contentId")
-            },
-            onContentViewed = { contentId: Int ->
-                val viewedList: List<Int> = listOf(contentId)
-                dbHelper.markContentAsViewed(viewedList)
-                println("Viewed: $contentId")
-            },
-            onScoreUpdate = { contentId: Int, newScore: Int ->
-                dbHelper.updateContentScore(contentId, newScore)
+        val topicsFromContent = contentList.mapNotNull { it.topicLabel }.distinct()
+        val middleIndex = topicsFromContent.size / 2
+        val topics = mutableListOf<String>().apply {
+            addAll(topicsFromContent.subList(0, middleIndex))
+            add("All")
+            addAll(topicsFromContent.subList(middleIndex, topicsFromContent.size))
+        }
+
+        val allTopicIndex = topics.indexOf("All")
+
+        var selectedTopicIndex by remember { mutableStateOf(allTopicIndex) }
+        val selectedTopic = topics[selectedTopicIndex]
+        val filteredContentList = if (selectedTopic == "All") {
+            contentList
+        } else {
+            contentList.filter { it.topicLabel == selectedTopic }
+        }
+
+        Column {
+            TopicsMenu(topics = topics,
+                selectedTopicIndex = selectedTopicIndex,
+                onTopicSelected = { index ->
+                    selectedTopicIndex = index
+                })
+
+            SwipeableContent(
+                contentList = filteredContentList,
+                topics = topics,
+                selectedTopicIndex = selectedTopicIndex,
+                onTopicChanged = { newIndex ->
+                    selectedTopicIndex = newIndex
+                },
+                onContentClick = { contentId: Int, contentUrl: String ->
+                    val clickedList: List<Int> = listOf(contentId)
+                    dbHelper.markContentAsClicked(clickedList)
+                    openUrl(context, contentUrl)
+                    println("Clicked on: $contentId")
+                },
+                onContentViewed = { contentId: Int ->
+                    val viewedList: List<Int> = listOf(contentId)
+                    dbHelper.markContentAsViewed(viewedList)
+                    println("Viewed: $contentId")
+                },
+                onScoreUpdate = { contentId: Int, newScore: Int ->
+                    dbHelper.updateContentScore(contentId, newScore)
+                }
+            )
+        }
+    }
+}
+
+
+@Composable
+fun TopicsMenu(
+    topics: List<String>,
+    selectedTopicIndex: Int,
+    onTopicSelected: (Int) -> Unit
+) {
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(selectedTopicIndex) {
+        listState.animateScrollToItem(selectedTopicIndex)
+    }
+
+    LazyRow(
+        state = listState,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        itemsIndexed(topics) { index, topic ->
+            TopicItem(
+                topic = topic,
+                isSelected = index == selectedTopicIndex,
+                onClick = { onTopicSelected(index) }
+            )
+        }
+    }
+}
+
+@Composable
+fun TopicItem(
+    topic: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val backgroundColor = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface
+    val textColor = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+
+    Box(
+        modifier = Modifier
+            .padding(horizontal = 8.dp)
+            .clickable(onClick = onClick)
+            .background(color = backgroundColor, shape = RoundedCornerShape(16.dp))
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        Text(
+            text = topic,
+            color = textColor,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+fun SwipeableContent(
+    contentList: List<ViewContent>,
+    topics: List<String>,
+    selectedTopicIndex: Int,
+    onTopicChanged: (Int) -> Unit,
+    onContentClick: (Int, String) -> Unit,
+    onContentViewed: (Int) -> Unit,
+    onScoreUpdate: (Int, Int) -> Unit
+) {
+    // Threshold for swipe detection in pixels
+    val SWIPE_THRESHOLD = 100f
+
+    // State to track the total horizontal drag distance
+    var totalDragDistance by remember { mutableStateOf(0f) }
+
+    val currentSelectedTopicIndex by rememberUpdatedState(selectedTopicIndex)
+    val currentTopics by rememberUpdatedState(topics)
+
+    // Nested scroll connection to handle gesture conflicts
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                // Only intercept horizontal scrolls
+                return if (abs(available.x) > abs(available.y)) {
+                    Offset(x = available.x, y = 0f)
+                } else {
+                    Offset.Zero
+                }
             }
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(nestedScrollConnection)
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDragEnd = {
+                        if (totalDragDistance > SWIPE_THRESHOLD) {
+                            // Swiped right
+                            Log.d("FeedScreen", "Swiped right $selectedTopicIndex")
+                            val newIndex = (currentSelectedTopicIndex - 1 + currentTopics.size) % currentTopics.size
+                            Log.d("FeedScreen", "Swiped right $newIndex")
+                            onTopicChanged(newIndex)
+                        } else if (totalDragDistance < -SWIPE_THRESHOLD) {
+                            // Swiped left
+                            val newIndex = (currentSelectedTopicIndex + 1) % currentTopics.size
+                            Log.d("FeedScreen", "Swiped left $newIndex")
+                            onTopicChanged(newIndex)
+                        }
+                        totalDragDistance = 0f
+                    },
+                    onDragCancel = {
+                        totalDragDistance = 0f
+                    },
+                    onDrag = { change, dragAmount ->
+                        totalDragDistance += dragAmount.x
+                    }
+                )
+            }
+    ) {
+        // Your existing content list
+        ClickableContainerList(
+            contentList = contentList,
+            onContentClick = onContentClick,
+            onContentViewed = onContentViewed,
+            onScoreUpdate = onScoreUpdate
         )
     }
 }
@@ -181,6 +348,17 @@ fun ComposableContainer(content: ViewContent, onScoreUpdate: (Int, Int) -> Unit)
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            content.topicLabel?.let {
+                Text(
+                    text = it,
+                    fontSize = 16.sp,
+                    color = Color.Gray
+                )
+                Spacer(modifier = Modifier.height(16.dp))  // Conditionally add space after the summary
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             // Score Buttons
             Row(
                 modifier = Modifier.align(Alignment.End),
@@ -215,38 +393,3 @@ fun ComposableContainer(content: ViewContent, onScoreUpdate: (Int, Int) -> Unit)
         }
     }
 }
-
-data class PillData(val text: String, val color: Color)
-
-@Composable
-fun HorizontalScrollablePills(pills: List<PillData>) {
-    Row(
-        modifier = Modifier
-            .horizontalScroll(rememberScrollState())  // Enables horizontal scrolling
-            .padding(8.dp)
-            .background(Color.Magenta)
-    ) {
-        pills.forEach { pill ->
-            Pill(text = pill.text, color = pill.color)
-            Spacer(modifier = Modifier.width(8.dp)) // Space between pills
-        }
-    }
-}
-
-@Composable
-fun Pill(text: String, color: Color) {
-    Box(
-        modifier = Modifier
-            .background(color = color, shape = RoundedCornerShape(16.dp))
-            .padding(horizontal = 16.dp, vertical = 8.dp) // Padding inside the pill
-            .border(BorderStroke(1.dp, Color.Yellow))
-    ) {
-        Text(
-            text = text,
-            color = Color.Black,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-

@@ -6,6 +6,7 @@ data class Content(
     val title: String,
     val summary: String?,
     val url: String,
+    val topicLabel: String?,
     val thumbnailUrl: String?,
     val publishedDate: Long,
     val rankingScore: Double,
@@ -31,6 +32,7 @@ data class ViewContent(
     val title: String,
     val summary: String?,
     val url: String,
+    val topicLabel: String?,
     val thumbnailUrl: String?,
     var score: Int,
     var rankingScore: Double

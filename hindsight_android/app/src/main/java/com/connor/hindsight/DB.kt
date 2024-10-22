@@ -18,7 +18,7 @@ class DB(context: Context) :
 
     companion object {
         private const val DATABASE_NAME = "hindsight.db"
-        private const val DATABASE_VERSION = 7
+        private const val DATABASE_VERSION = 8
 
         private const val TABLE_ANNOTATIONS = "annotations"
         private const val COLUMN_ID = "id"
@@ -45,6 +45,7 @@ class DB(context: Context) :
         private const val COLUMN_URL_IS_LOCAL = "url_is_local"
         private const val COLUMN_CONTENT_GENERATOR_SPECIFIC_DATA = "content_generator_specific_data"
         private const val COLUMN_LAST_MODIFIED_TIMESTAMP = "last_modified_timestamp"
+        private const val COLUMN_TOPIC_LABEL = "topic_label"
     }
 
     override fun onCreate(db: SQLiteDatabase) {
@@ -67,6 +68,7 @@ class DB(context: Context) :
                 + COLUMN_TITLE + " TEXT NOT NULL,"
                 + COLUMN_SUMMARY + " TEXT,"
                 + COLUMN_URL + " TEXT NOT NULL,"
+                + COLUMN_TOPIC_LABEL + " TEXT,"
                 + COLUMN_THUMBNAIL_URL + " TEXT,"
                 + COLUMN_PUBLISHED_DATE + " INTEGER NOT NULL,"
                 + COLUMN_RANKING_SCORE + " REAL NOT NULL,"
@@ -171,6 +173,7 @@ class DB(context: Context) :
                     put(COLUMN_TITLE, content.title)
                     put(COLUMN_SUMMARY, content.summary)
                     put(COLUMN_URL, content.url)
+                    put(COLUMN_TOPIC_LABEL, content.topicLabel)
                     put(COLUMN_THUMBNAIL_URL, content.thumbnailUrl)
                     put(COLUMN_PUBLISHED_DATE, content.publishedDate)
                     put(COLUMN_RANKING_SCORE, content.rankingScore)
@@ -199,7 +202,7 @@ class DB(context: Context) :
         val nonViewedClause = if (nonViewed) " AND $COLUMN_VIEWED = 0" else ""
         return db.rawQuery("SELECT * FROM $TABLE_CONTENT WHERE " +
                 "$COLUMN_LAST_MODIFIED_TIMESTAMP > $timestamp$nonViewedClause ORDER BY " +
-                "$COLUMN_LAST_MODIFIED_TIMESTAMP DESC", null)
+                "$COLUMN_RANKING_SCORE DESC", null)
     }
 
     fun convertCursorToSyncContent(cursor: Cursor): List<SyncContent> {
@@ -231,14 +234,16 @@ class DB(context: Context) :
                 val rawSummary = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_SUMMARY))
                 val summary = if (rawSummary == "null") null else rawSummary
                 val url = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_URL))
+                val topicLabel = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_TOPIC_LABEL))
                 val rawThumbnailUrl = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_THUMBNAIL_URL))
                 val thumbnailUrl = if (rawThumbnailUrl == "null") null else rawThumbnailUrl
                 val score = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_SCORE))
                 val rankingScore = cursor.getDouble(cursor.getColumnIndexOrThrow(COLUMN_RANKING_SCORE))
 
+
                 contentList.add(
                     ViewContent(id=id, title=title, summary=summary, thumbnailUrl=thumbnailUrl,
-                        url=url, score=score, rankingScore=rankingScore)
+                        url=url, score=score, topicLabel = topicLabel, rankingScore=rankingScore)
                 )
             } while (cursor.moveToNext())
         }
