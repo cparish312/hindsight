@@ -152,11 +152,11 @@ def update_content_score(id, score):
             content.last_modified_timestamp = int(time.time() * 1000)
 
 @with_lock
-def update_content_ranked_score(id, ranked_score):
+def update_content_ranked_score(id, ranking_score):
     with session_scope() as session:
         content = session.query(Content).get(id)
         if content:
-            content.ranked_score = ranked_score
+            content.ranking_score = ranking_score
 
 @with_lock
 def content_viewed(id):

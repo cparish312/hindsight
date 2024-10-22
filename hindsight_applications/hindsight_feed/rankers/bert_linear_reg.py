@@ -97,6 +97,6 @@ class BertLinearRegRanker():
         print(f"Created {len(non_viewed_content)} predictions")
 
         for i, row in non_viewed_content.iterrows():
-            update_content_ranked_score(id=row["id"], ranked_score=row["clicked_prediction_prob"])
+            update_content_ranked_score(id=row["id"], ranking_score=row["clicked_prediction_prob"])
 
         print("Successfully updated ranking score for non-viewed content")
