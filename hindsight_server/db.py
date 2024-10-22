@@ -360,6 +360,8 @@ class HindsightDB:
 
     def get_frames_with_ocr(self, frame_ids=None, impute_applications=True):
         """Select frames with associated OCR results."""
+        if frame_ids is not None and len(frame_ids) == 0:
+            return pd.DataFrame()
         with self.get_connection() as conn:
             # Query to get the frames with OCR results
             query = '''

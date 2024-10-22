@@ -25,15 +25,16 @@ class MLXEmbeddingFunction(EmbeddingFunction):
         return self.embedding_model.encode(input).tolist()
     
     def embed_query(self, input: Documents) -> Embeddings:
-        print("MLX EMBEDDING", type(input))
         return self.embedding_model.encode([input]).tolist()[0]
-
-def get_chroma_collection(collection_name=DEFAULT_COLLECTION, model_id=MLX_EMBDEDDING_MODEL):
-    """Returns chromadb collections."""
+    
+def get_embedding_function():
     if RUNNING_PLATFORM == 'Darwin':
-        embedding_function = MLXEmbeddingFunction(model_id=model_id)
-    else:
-        embedding_function = embedding_functions.DefaultEmbeddingFunction()
+        return MLXEmbeddingFunction(model_id=MLX_EMBDEDDING_MODEL)
+    return embedding_functions.DefaultEmbeddingFunction()
+
+def get_chroma_collection(collection_name=DEFAULT_COLLECTION):
+    """Returns chromadb collections."""
+    embedding_function = get_embedding_function()
     chroma_client = chromadb.PersistentClient(path=chroma_db_path)
     chroma_collection = chroma_client.get_or_create_collection(collection_name, embedding_function=embedding_function)
     return chroma_collection
