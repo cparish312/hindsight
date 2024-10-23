@@ -73,12 +73,12 @@ def handle_click():
 @app.route('/submit_query', methods=['POST'])
 def submit_query():
     query = request.form['query'] 
-    print(f"Received query: {query}") 
-    feed_generator.add_content_generator(TopicBrowserSummaryFeeder(name=f"""TopicBrowserSummaryFeeder_{query.replace(" ", "_")}""", 
-                                                description=f"Generates an html page with a summary for all browser history related to {query}",
-                                                topic=query))
+    print(f"Received query: {query}")
+    feed_generator.add_content_generator(ExaTopicFeeder(name=f"exa_autogen_topic_{query}", 
+                                                        description="ExaTopicFeeder generated from a topic provided by the user",
+                                                        topic=query))
     return jsonify(success=True)
-    
+
 if __name__ == '__main__':
     app.run(debug=True)
 

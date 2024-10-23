@@ -44,7 +44,7 @@ def get_content_chromadb_metadata(c):
     return metadata_d_cleaned
 
 def content_to_text(c):
-    if "text" in c.content_generator_specific_data:
+    if c.content_generator_specific_data is not None and "text" in c.content_generator_specific_data:
         return c.title + " " + c.content_generator_specific_data['text']
     else:
         return f"{c.title} {c.summary}"
