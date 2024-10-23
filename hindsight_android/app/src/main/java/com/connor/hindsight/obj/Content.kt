@@ -38,7 +38,8 @@ data class ViewContent(
     var rankingScore: Double
 )
 
-data class ContentRanking(
+data class ContentUpdate(
     val id: Int,
-    var rankingScore: Double
+    var rankingScore: Double,
+    var topicLabel: String?
 )

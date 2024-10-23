@@ -9,7 +9,7 @@ import android.util.Log
 import com.connor.hindsight.network.interfaces.Location
 import com.connor.hindsight.network.interfaces.Annotation
 import com.connor.hindsight.obj.Content
-import com.connor.hindsight.obj.ContentRanking
+import com.connor.hindsight.obj.ContentUpdate
 import com.connor.hindsight.obj.SyncContent
 import com.connor.hindsight.obj.ViewContent
 
@@ -339,13 +339,14 @@ class DB(context: Context) :
         db.close()
     }
 
-    fun updateContentRankingScores(contentRankingList: List<ContentRanking>) {
+    fun updateContent(contentUpdatesList: List<ContentUpdate>) {
         val db = this.writableDatabase
         try {
             db.beginTransaction()
-            for (contentRanking in contentRankingList) {
+            for (contentRanking in contentUpdatesList) {
                 val contentValues = ContentValues().apply {
                     put(COLUMN_RANKING_SCORE, contentRanking.rankingScore)
+                    put(COLUMN_TOPIC_LABEL, contentRanking.topicLabel)
                 }
                 db.update(TABLE_CONTENT, contentValues, "$COLUMN_CONTENT_ID = ?", arrayOf(contentRanking.id.toString()))
             }

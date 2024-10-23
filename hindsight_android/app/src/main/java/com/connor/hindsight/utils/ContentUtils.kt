@@ -1,14 +1,14 @@
 package com.connor.hindsight.utils
 
 import com.connor.hindsight.obj.Content
-import com.connor.hindsight.obj.ContentRanking
+import com.connor.hindsight.obj.ContentUpdate
 import org.json.JSONArray
 import org.json.JSONObject
 
 data class ParsedContentResponse(
     val contentList: List<Content>,
     val newlyViewedContentIds: List<Int>,
-    val contentRankingScoresList: List<ContentRanking>
+    val contentUpdatesList: List<ContentUpdate>
 )
 
 fun parseJsonToContentResponse(json: String): ParsedContentResponse {
@@ -66,20 +66,21 @@ fun parseJsonToContentResponse(json: String): ParsedContentResponse {
     }
 
     val nonViewedContentRankingScoresArray = jsonObject.getJSONArray("non_viewed_content_ranking_scores")
-    val contentRankingScoresList = mutableListOf<ContentRanking>()
+    val contentUpdatesList = mutableListOf<ContentUpdate>()
     for (i in 0 until nonViewedContentRankingScoresArray.length()) {
         val contentRankingObject = nonViewedContentRankingScoresArray.getJSONObject(i)
         val contentId = contentRankingObject.getInt("content_id")
         val rankingScore = contentRankingObject.getDouble("ranking_score")
+        val topicLabel = contentRankingObject.getString("topic_label")
 
-        val contentRanking = ContentRanking(id = contentId, rankingScore = rankingScore)
-        contentRankingScoresList.add(contentRanking)
+        val contentRanking = ContentUpdate(id = contentId, rankingScore = rankingScore, topicLabel = topicLabel)
+        contentUpdatesList.add(contentRanking)
     }
 
     // Return the parsed content and newly viewed content ids
     return ParsedContentResponse(
         contentList = contentList,
         newlyViewedContentIds = newlyViewedContentIds,
-        contentRankingScoresList = contentRankingScoresList
+        contentUpdatesList = contentUpdatesList
     )
 }
