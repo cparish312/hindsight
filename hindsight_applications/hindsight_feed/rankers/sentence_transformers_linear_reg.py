@@ -2,7 +2,7 @@ import os
 import pickle
 import numpy as np
 
-from transformers import BertTokenizer, BertModel
+from sentence_transformers import SentenceTransformer
 import torch
 
 from sklearn.model_selection import train_test_split
@@ -16,11 +16,10 @@ from hindsight_applications.hindsight_feed.feed_utils import content_to_df
 
 os.makedirs(RANKER_DATA_DIR, exist_ok=True)
 
-class BertLinearRegRanker():
+class SentenceTransformersLinearRegRanker():
     def __init__(self):
-        self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-        self.embedding_model = BertModel.from_pretrained('bert-base-uncased')
-        self.model_save_path = os.path.join(RANKER_DATA_DIR, "bert_linear_reg_ranker.pkl")
+        self.embedding_model = SentenceTransformer('all-mpnet-base-v2')
+        self.model_save_path = os.path.join(RANKER_DATA_DIR, "sentence_transformers_reg_ranker.pkl")
 
     def get_pred_text(self, row):
         pred_text = ""
@@ -28,19 +27,13 @@ class BertLinearRegRanker():
             pred_text += "Author: " + row['author'] + "\n"
         pred_text += "Title: " + row['title'] + "\n"
         # pred_text += "Summary: " + row['summary']
-        # pred_text += "Text: " + row['text']
+        pred_text += "Text: " + row['text']
         return pred_text
 
     def train(self, content):
         content["prediction_text"] = content.apply(lambda row: self.get_pred_text(row), axis=1)
 
-        encoded_input = self.tokenizer(content["prediction_text"].tolist(), padding=True, truncation=True, return_tensors='pt')
-
-        with torch.no_grad():
-            embeddings = self.embedding_model(**encoded_input)
-
-        content_embeddings =  embeddings.pooler_output
-        content_embeddings = content_embeddings.numpy()
+        content_embeddings = self.embedding_model.encode(content["prediction_text"].to_list())
 
         X = content_embeddings
         y = content['clicked'].values
@@ -52,7 +45,7 @@ class BertLinearRegRanker():
         y_pred_prob = model.predict_proba(X)[:, 1]
 
         auc_score = roc_auc_score(y, y_pred_prob)
-        print(f'BertLinearRegRanker AUC: {auc_score:.4f}')
+        print(f'SentenceTransformersLinearRegRanker AUC: {auc_score:.4f}')
 
         with open(self.model_save_path, 'wb') as outfile:
             pickle.dump(model, outfile)
@@ -62,15 +55,8 @@ class BertLinearRegRanker():
             raise ValueError(f"Please Train model first as {self.model_save_path} does not exists.")
         
         content["prediction_text"] = content.apply(lambda row: self.get_pred_text(row), axis=1)
-
-        encoded_input = self.tokenizer(content["prediction_text"].tolist(), padding=True, truncation=True, return_tensors='pt')
-
-        with torch.no_grad():
-            embeddings = self.embedding_model(**encoded_input)
-
-        content_embeddings =  embeddings.pooler_output
-        content_embeddings = content_embeddings.numpy()
-
+        
+        content_embeddings = self.embedding_model.encode(content["prediction_text"].to_list())
 
         with open(self.model_save_path, 'rb') as infile:
             model = pickle.load(infile)
@@ -84,6 +70,8 @@ class BertLinearRegRanker():
         return preds
     
     def generate_new_rankings(self, add_random=True):
+        if not os.path.exists(self.model_save_path):
+            self.generate_rankings(add_random=add_random)
         content = fetch_contents(non_viewed=True)
         content = content_to_df(content)
 

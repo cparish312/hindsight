@@ -15,7 +15,7 @@ import utils
 import run_ocr
 
 from hindsight_applications.hindsight_feed.feed_generator import FeedGenerator
-from hindsight_applications.hindsight_feed.rankers.bert_linear_reg import BertLinearRegRanker
+from hindsight_applications.hindsight_feed.rankers.sentence_transformers_linear_reg import SentenceTransformersLinearRegRanker
 
 db = HindsightDB()
 
@@ -112,11 +112,14 @@ def run_applications():
     feed_generator = FeedGenerator()
     feed_generator.generate_content()
 
-    ranker = BertLinearRegRanker()
-    ranker_last_modified_time = os.path.getmtime(ranker.model_save_path)
-    ranker_last_modified_date = datetime.fromtimestamp(ranker_last_modified_time)
-    # If it has been over 24 hours since rankings have been updated generate
-    if (datetime.now() - ranker_last_modified_date) > timedelta(hours=24):
+    ranker = SentenceTransformersLinearRegRanker()
+    if os.path.exists(ranker.model_save_path):
+        ranker_last_modified_time = os.path.getmtime(ranker.model_save_path)
+        ranker_last_modified_date = datetime.fromtimestamp(ranker_last_modified_time)
+        # If it has been over 24 hours since rankings have been updated generate
+        if (datetime.now() - ranker_last_modified_date) > timedelta(hours=24):
+            ranker.generate_rankings()
+    else:
         ranker.generate_rankings()
 
 if __name__ == "__main__":

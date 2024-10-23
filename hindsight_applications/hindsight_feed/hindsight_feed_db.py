@@ -84,7 +84,7 @@ def with_lock(func):
     return wrapper
 
 @with_lock
-def add_content(title, url, published_date, content_generator_id, ranking_score=0,thumbnail_url=None, 
+def add_content(title, url, published_date, content_generator_id, ranking_score=-1,thumbnail_url=None, 
                 content_generator_specific_data=None, summary=None):
     if isinstance(published_date, datetime):
         published_date = feed_utils.datetime_to_utc_timestamp(published_date)
@@ -110,7 +110,7 @@ def df_add_contents(df):
             df[col] = None
 
     if "ranking_score" not in df.columns:
-        df["ranking_score"] = 0
+        df["ranking_score"] = -1
 
     with session_scope() as session:
         for _, row in df.iterrows():

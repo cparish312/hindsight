@@ -4,6 +4,8 @@ from hindsight_applications.hindsight_feed.feeders.exa_topic.create_new_topics i
 from hindsight_applications.hindsight_feed.feeders.exa_topic.exa_topic import ExaTopicFeeder
 from hindsight_applications.hindsight_feed.feeders.browser_history_summary.browser_history_summary import TopicBrowserSummaryFeeder
 from hindsight_applications.hindsight_feed.chromadb_tools import ingest_all_contents
+from hindsight_applications.hindsight_feed.rankers.sentence_transformers_linear_reg import SentenceTransformersLinearRegRanker
+from hindsight_applications.hindsight_feed.topic_labelers.manual_labels import label_unlabeled_content
 
 name_to_content_generator = {"ExaTopicFeeder" : ExaTopicFeeder, 
                              "TopicBrowserSummaryFeeder" : TopicBrowserSummaryFeeder}
@@ -29,17 +31,23 @@ class FeedGenerator():
         # for content_generator_row in content_generator_rows:
         #     content_generators.append(create_content_generator(content_generator_row))
         return content_generators
+    
+    def database_handle_new_content(self):
+        ingest_all_contents() # Chromadb ingest
+        ranker = SentenceTransformersLinearRegRanker()
+        ranker.generate_new_rankings() # Add rankings for all new content
+        label_unlabeled_content()
 
     def gen_contents_from_generators(self):
         for content_generator in self.content_generators:
             if not isinstance(content_generator, TopicBrowserSummaryFeeder):
                 content_generator.add_content()
-        ingest_all_contents()
+        self.database_handle_new_content()
 
     def add_content_generator(self, content_generator):
         content_generator.add_content()
         self.content_generators.append(content_generator)
-        ingest_all_contents()
+        self.database_handle_new_content()
 
     def get_contents(self):
         contents = fetch_contents(non_viewed=True)

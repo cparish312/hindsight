@@ -154,15 +154,16 @@ def get_new_content():
         new_content_list.append(c_dict)
 
     newly_viewed_content = fetch_newly_viewed_content(since_timestamp=last_sync_timestamp)
-    newly_viewied_content_ids = list(c.id for c in newly_viewed_content)
+    newly_viewed_content_ids = list(c.id for c in newly_viewed_content)
 
     non_viewed_content = fetch_contents(non_viewed=True)
-    non_viewed_content_ranking_scores = list()
+    non_viewed_content_updates = list()
     for c in non_viewed_content:
-        non_viewed_content_ranking_scores.append({"content_id" : c.id, "ranking_score" : c.ranking_score})
+        non_viewed_content_updates.append({"content_id" : c.id, "ranking_score" : c.ranking_score
+                                           "topic_label" : c.topic_label})
     print(f"Successully sent new content {len(new_content_list)} and newly viewed content {len(newly_viewed_content)}")
-    return jsonify({"new_content" : new_content_list, "newly_viewed_content_ids" : newly_viewied_content_ids,
-                    "non_viewed_content_ranking_scores" : non_viewed_content_ranking_scores})
+    return jsonify({"new_content" : new_content_list, "newly_viewed_content_ids" : newly_viewed_content_ids,
+                    "non_viewed_content_updates" : non_viewed_content_updates})
     
 @main_app.route('/ping', methods=['GET'])
 def ping_server():
