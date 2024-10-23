@@ -319,7 +319,7 @@ class TopicBrowserSummaryFeeder(BrowserSummaryFeeder):
         return results_history
 
     def get_topic_summary_prompt(self, df):
-        prompt = f"Below are summaries extracted from different webpages that a user looked at yesterday. \n"
+        prompt = f"Below are summaries extracted from different webpages that a user looked at in the past. \n"
         for i, row in df.iterrows():
             prompt += self.get_url_text(row)
         prompt += "Create a list of topics the user was looking at. Answer: \n"
