@@ -159,7 +159,7 @@ def get_new_content():
     non_viewed_content = fetch_contents(non_viewed=True)
     non_viewed_content_updates = list()
     for c in non_viewed_content:
-        non_viewed_content_updates.append({"content_id" : c.id, "ranking_score" : c.ranking_score
+        non_viewed_content_updates.append({"content_id" : c.id, "ranking_score" : c.ranking_score,
                                            "topic_label" : c.topic_label})
     print(f"Successully sent new content {len(new_content_list)} and newly viewed content {len(newly_viewed_content)}")
     return jsonify({"new_content" : new_content_list, "newly_viewed_content_ids" : newly_viewed_content_ids,
