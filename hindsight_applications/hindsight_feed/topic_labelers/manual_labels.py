@@ -43,6 +43,6 @@ def label_unlabeled_content(manual_labels=manual_labels, similarity_threshold=0.
 
     embedding_model = SentenceTransformer('all-mpnet-base-v2')
     embeddings = embedding_model.encode(unlabeled_content["prediction_text"].to_list())
-    content["embedding"] = list(embeddings)
+    unlabeled_content["embedding"] = list(embeddings)
     labeled_content = add_manual_labels(content=content, embedding_model=embedding_model,
                                         manual_labels=manual_labels, similarity_threshold=similarity_threshold)
