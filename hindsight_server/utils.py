@@ -1,4 +1,5 @@
 import os
+import cv2
 import json
 import hashlib
 import numpy as np
@@ -22,6 +23,7 @@ def make_dir(d):
 remove_applications = {"com-google-android-inputmethod-latin"}
 def impute_applications(df):
     df_copy = df.copy()
+    df_copy = df_copy.sort_values(by="timestamp", ascending=True)
     
     last_non_keyboard = None
     for index, row in df_copy.iterrows():
@@ -189,5 +191,47 @@ def hash_file(f_path):
     
     return md5.hexdigest()
 
+def get_ids_to_images(frames_df):
+    id_to_image = {}
+    for video_file_path in frames_df.video_chunk_path.unique():
+        video_chunk_df = frames_df.loc[frames_df['video_chunk_path'] == video_file_path]
+        video_chunk_df = video_chunk_df.sort_values(by="video_chunk_offset", ascending=True)
+        cap = cv2.VideoCapture(video_file_path)
+        if not cap.isOpened():
+            print(f"Error: Unable to open video file {video_file_path}")
+            continue
+
+        for _, row in video_chunk_df.iterrows():
+            frame_id = row['id'] 
+            frame_offset = row['video_chunk_offset'] 
+            
+            # Set the video capture to the specific frame
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_offset)
+
+            # Read the frame
+            ret, frame = cap.read()
+            if ret:
+                # Add the frame to the dictionary
+                id_to_image[frame_id] = frame
+            else:
+                print(f"Error: Unable to read frame at offset {frame_offset} in {video_file_path}")
+
+        cap.release()
+
+    return id_to_image
+
+# def get_next_frame(frame_id):
+
+
+# def get_previous_frame(frame_id):
+
+
+def save_images_to_dir(df, save_dir):
+    os.makedirs(save_dir, exist_ok=True)
+    ids_to_images = get_ids_to_images(df)
+    df = df.sort_values(by="timestamp", ascending=True)
+    for i, row in df.iterrows():
+        save_f = os.path.join(save_dir, f"""{row["application_org"]}_{row['timestamp']}.png""")
+        cv2.imwrite(save_f, ids_to_images[row['id']])
 
     
