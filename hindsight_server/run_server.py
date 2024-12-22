@@ -107,6 +107,8 @@ def get_last_timestamp():
     print(f"Successfully sent last timestamp for {table}.")
     return jsonify({"last_timestamp": last_timestamp})
 
+de
+
 @main_app.route('/sync_db', methods=['POST'])
 def sync_db():
     if not verify_api_key():
@@ -136,6 +138,26 @@ def sync_db():
 
     return jsonify({'status': 'success', 'message': 'Database successfully synced'})
 
+@main_app.route('/add_frames', methos=['POST'])
+def add_frames():
+    if not verify_api_key():
+        abort(401)
+    data = request.get_json()
+    if not data:
+        return jsonify({'status': 'error', 'message': 'No data provided'}), 400
+    
+    source = data.get("source", "not_provided")
+    frames = data.get("frames", [])
+    for frame in frames:
+        frame_id = db.insert_frame(timestamp=frame['timestamp'], path="None", application=frame['application'],
+                                   source=source, source_id=frame['id'])
+
+        converted_ocr_results = list()
+        for ocr_result in frame['ocr_results']:
+            converted_ocr_results.append((ocr_result['x'], ocr_result['y'], ocr_result['width'],
+                                          ocr_result['height'], ocr_result['text'], ocr_result['confidence'], ocr_result['blockNum'], -1))
+        db.insert_ocr_results(frame_id=frame_id, ocr_results=converted_ocr_results)
+    
 @main_app.route('/get_new_content', methods=['GET'])
 def get_new_content():
     if not verify_api_key():

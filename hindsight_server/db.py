@@ -60,6 +60,8 @@ class HindsightDB:
                     path TEXT NOT NULL,
                     application TEXT NOT NULL,
                     chromadb_processed BOOLEAN NOT NULL DEFAULT false,
+                    source TEXT,
+                    source_id INTEGER,
                     video_chunk_id INTEGER,
                     video_chunk_offset INTEGER,
                     UNIQUE (timestamp, path)
@@ -79,6 +81,16 @@ class HindsightDB:
                 cursor.execute('''
                     ALTER TABLE frames
                     ADD COLUMN video_chunk_offset INTEGER
+                ''')
+
+            if "source" not in columns:
+                cursor.execute('''
+                    ALTER TABLE frames
+                    ADD COLUMN source TEXT
+                ''')
+                cursor.execute('''
+                    ALTER TABLE frames
+                    ADD COLUMN source_id INTEGER
                 ''')
             
             # Create the "ocr_results" table if it doesn't exist
@@ -239,15 +251,15 @@ class HindsightDB:
             conn.commit()
 
     @with_lock
-    def insert_frame(self, timestamp, path, application):
+    def insert_frame(self, timestamp, path, application, source=None, source_id=None):
         """Insert frame into frames table and return frame_id."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             try:
                 cursor.execute('''
-                    INSERT INTO frames (timestamp, path, application)
-                    VALUES (?, ?, ?)
-                ''', (timestamp, path, application))
+                    INSERT INTO frames (timestamp, path, application, source, source_id)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (timestamp, path, application, source, source_id))
                 
                 # Get the last inserted frame_id
                 frame_id = cursor.lastrowid

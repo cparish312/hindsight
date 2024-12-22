@@ -145,6 +145,6 @@ if __name__ == "__main__":
         if len(non_chromadb_processed_frames_df) > 0:
             chromadb_process_images(non_chromadb_processed_frames_df)
 
-        run_applications()
+        # run_applications()
             
         time.sleep(10)
