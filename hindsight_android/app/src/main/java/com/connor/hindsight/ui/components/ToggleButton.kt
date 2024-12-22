@@ -1,4 +1,4 @@
-package com.connor.hindsightmobile.ui.elements
+package com.connor.hindsight.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row

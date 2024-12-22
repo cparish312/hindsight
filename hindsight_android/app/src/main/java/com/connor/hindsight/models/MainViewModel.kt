@@ -91,7 +91,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 Context.RECEIVER_EXPORTED
             )
         } else {
-            getApplication<Application>().registerReceiver(broadcastReceiver, intentFilter)
+            getApplication<Application>().registerReceiver(broadcastReceiver, intentFilter,
+                Context.RECEIVER_NOT_EXPORTED)
         }
     }
 

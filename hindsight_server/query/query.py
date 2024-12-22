@@ -13,7 +13,7 @@ from hindsight_server.config import LLM_MODEL_NAME, RUNNING_PLATFORM
 if RUNNING_PLATFORM == 'Darwin':
     from mlx_lm import load, generate
 
-    def llm_generate(pipeline, prompt, max_tokens):
+    def llm_generate(pipeline, prompt, max_tokens=200):
         model, tokenizer = pipeline
         messages = [{"role": "user", "content": prompt}]
         prompt = tokenizer.apply_chat_template(
@@ -28,7 +28,7 @@ else:
         model = AutoModelForCausalLM.from_pretrained(model_name)
         return model, tokenizer
     
-    def llm_generate(pipeline, prompt, max_tokens):
+    def llm_generate(pipeline, prompt, max_tokens=200):
         model, tokenizer = pipeline
 
         inputs = tokenizer(prompt, return_tensors="pt")
