@@ -60,6 +60,8 @@ class HindsightDB:
                     path TEXT NOT NULL,
                     application TEXT NOT NULL,
                     chromadb_processed BOOLEAN NOT NULL DEFAULT false,
+                    video_chunk_id INTEGER,
+                    video_chunk_offset INTEGER,
                     UNIQUE (timestamp, path)
                 )
             ''')
@@ -69,10 +71,14 @@ class HindsightDB:
                 PRAGMA table_info(frames)
             ''')
             columns = [row[1] for row in cursor.fetchall()]
-            if 'chromadb_processed' not in columns:
+            if 'video_chunk_id' not in columns:
                 cursor.execute('''
                     ALTER TABLE frames
-                    ADD COLUMN chromadb_processed BOOLEAN NOT NULL DEFAULT false
+                    ADD COLUMN video_chunk_id INTEGER
+                ''')
+                cursor.execute('''
+                    ALTER TABLE frames
+                    ADD COLUMN video_chunk_offset INTEGER
                 ''')
             
             # Create the "ocr_results" table if it doesn't exist
@@ -164,6 +170,15 @@ class HindsightDB:
                 )
             ''')
 
+            # Create video_chunks table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS video_chunks (
+                    id INTEGER PRIMARY KEY,
+                    path TEXT NOT NULL,
+                    UNIQUE (path)
+                )
+            ''')
+
             # Commit the changes and close the connection
             conn.commit()
 
@@ -248,6 +263,32 @@ class HindsightDB:
                 print(f"Frame already exists with frame_id: {frame_id}")
             
             return frame_id
+        
+    @with_lock
+    def insert_video_chunk(self, path):
+        """Insert frame into frames table and return frame_id."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            try:
+                cursor.execute('''
+                    INSERT INTO video_chunks (path)
+                    VALUES (?)
+                ''', (path,))
+                
+                # Get the last inserted frame_id
+                video_chunk_id = cursor.lastrowid
+                conn.commit()
+                print(f"Video Chunk added successfully with video_chunk_id: {video_chunk_id}")
+            except sqlite3.IntegrityError:
+                # Frame already exists, get the existing frame_id
+                cursor.execute('''
+                    SELECT id FROM frames
+                    WHERE path = ?
+                ''', (path))
+                video_chunk_id= cursor.fetchone()[0]
+                print(f"Video Chunk already exists with video_chunk_id: {video_chunk_id}")
+            
+            return video_chunk_id
 
     @with_lock
     def insert_ocr_results(self, frame_id, ocr_results):
@@ -275,7 +316,7 @@ class HindsightDB:
             df = pd.read_sql_query(query, conn)
             return set(df['application'])
         
-    def get_screenshots(self, frame_ids=None, impute_applications=True, application_alias=True):
+    def get_screenshots(self, frame_ids=None, impute_applications=False, application_alias=True):
         """Select frames with associated OCR results."""
         with self.get_connection() as conn:
             excluded_apps = ("frontCamera", "backCamera")
@@ -302,21 +343,27 @@ class HindsightDB:
                 df['application'] = df['application'].fillna(df['application_org'])
             return df
 
-    def get_frames(self, frame_ids=None, impute_applications=True, application_alias=True, applications=None):
+    def get_frames(self, frame_ids=None, impute_applications=False, application_alias=True, applications=None, add_video_chunks=False):
         """Select frames with associated OCR results."""
         with self.get_connection() as conn:
             # Query to get frames
-            query = '''SELECT * FROM frames'''
+            query = '''SELECT 
+                            frames.*, 
+                            video_chunks.path as video_chunk_path
+                            FROM frames LEFT JOIN video_chunks ON frames.video_chunk_id = video_chunks.id'''
             params = tuple()
             if applications:
                 placeholders = ','.join(['?'] * len(applications))  # Create placeholders for the query
-                query += f" WHERE application IN ({placeholders})"
+                query += f" WHERE frames.application IN ({placeholders})"
                 params += tuple(applications)
 
             if frame_ids:
                 placeholders = ','.join(['?'] * len(frame_ids))  # Create placeholders for the query
-                query += f" WHERE id IN ({placeholders})"
+                query += f" WHERE frames.id IN ({placeholders})"
                 params += tuple(frame_ids)
+
+            if add_video_chunks:
+                query += " LEFT JOIN ON video_chunks "
             
             # Use pandas to read the SQL query result into a DataFrame
             df = pd.read_sql_query(query, conn, params=params if len(params) > 0 else None)
@@ -330,6 +377,12 @@ class HindsightDB:
                 id_to_alias = utils.get_identifiers_to_alias()
                 df['application'] = df['application'].map(id_to_alias)
                 df['application'] = df['application'].fillna(df['application_org'])
+            return df
+        
+    def get_video_chunks(self):
+        with self.get_connection() as conn:
+            query = '''SELECT * FROM video_chunks'''
+            df = pd.read_sql(query, conn)
             return df
     
     def get_ocr_results(self, frame_id=None):
@@ -358,7 +411,7 @@ class HindsightDB:
             df = pd.read_sql_query(query, conn)
             return df
 
-    def get_frames_with_ocr(self, frame_ids=None, impute_applications=True):
+    def get_frames_with_ocr(self, frame_ids=None, impute_applications=False):
         """Select frames with associated OCR results."""
         if frame_ids is not None and len(frame_ids) == 0:
             return pd.DataFrame()
@@ -379,7 +432,7 @@ class HindsightDB:
                 df = utils.impute_applications(df)
             return df
     
-    def search(self, text=None, start_date=None, end_date=None, apps=None, n_seconds=None, impute_applications=True):
+    def search(self, text=None, start_date=None, end_date=None, apps=None, n_seconds=None, impute_applications=False):
         """Search for frames with OCR results containing the specified text.
         Args:
             text (str): text to search for
@@ -519,7 +572,7 @@ class HindsightDB:
             except sqlite3.Error as e:
                 print(f"An error occurred while updating chromadb_processed: {e}")
 
-    def get_non_chromadb_processed_frames_with_ocr(self, frame_ids=None, impute_applications=True):
+    def get_non_chromadb_processed_frames_with_ocr(self, frame_ids=None, impute_applications=False):
         """Select frames that have not been processed but chromadb but have associated OCR results."""
         with self.get_connection() as conn:
             # Query to get the frames with OCR results
@@ -685,3 +738,28 @@ class HindsightDB:
         # Commit changes to the new database and close connections
         new_db_conn.commit()
         new_db_conn.close()
+
+    @with_lock
+    def update_video_chunk_info(self, video_chunk_id, frame_ids):
+        """
+        Updates the video_chunk_id and video_chunk_offset for a frame_id.
+        
+        Args:
+            video_chunk_id (int): The video chunk ID to assign.
+            frame_ids (list[int]): List of frame IDs in order of video compression.
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            try:
+                # Prepare the data for the executemany function
+                data_to_update = [(video_chunk_id, i, frame_id) for i, frame_id in enumerate(frame_ids)]
+                
+                cursor.executemany('''
+                    UPDATE frames
+                    SET video_chunk_id = ?, video_chunk_offset = ?
+                    WHERE id = ?
+                ''', data_to_update)
+                conn.commit()
+                print(f"Updated video_chunk_id and video_chunk_offset for {len(frame_ids)} frames.")
+            except sqlite3.Error as e:
+                print(f"An error occurred while updating video_chunk_id and video_chunk_offset: {e}")

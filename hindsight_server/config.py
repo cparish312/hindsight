@@ -10,6 +10,7 @@ HINDSIGHT_SERVER_DIR = HOME / ".hindsight_server"
 DATA_DIR = HINDSIGHT_SERVER_DIR / "data"
 SCREENSHOTS_TMP_DIR = DATA_DIR / "raw_screenshots_tmp"
 RAW_SCREENSHOTS_DIR = DATA_DIR / "raw_screenshots"
+VIDEO_FILES_DIR = DATA_DIR / "video_files"
 SERVER_LOG_FILE = DATA_DIR / "hindsight_server.log"
 ANDROID_IDENTIFIERS_ALIAS_FILE = DATA_DIR / "android_identifiers.json"
 

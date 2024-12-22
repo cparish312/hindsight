@@ -91,7 +91,8 @@ def check_all_frames_ingested():
             # Insert into db and run OCR
             db.insert_frame(timestamp, ms_path, application)
 
-    screenshots_missing_paths = set(frames['path']) - screenshot_paths
+    uncompressed_screenshots = frames.loc[frames['video_chunk_id'].isnull()]
+    screenshots_missing_paths = set(uncompressed_screenshots['path']) - screenshot_paths
     if len(screenshots_missing_paths) > 0:
         print(f"Screenshots missing path: {screenshots_missing_paths}")
 
