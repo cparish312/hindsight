@@ -92,7 +92,7 @@ def check_all_frames_ingested():
             db.insert_frame(timestamp, ms_path, application)
 
     uncompressed_screenshots = frames.loc[frames['video_chunk_id'].isnull()]
-    screenshots_missing_paths = set(uncompressed_screenshots['path']) - screenshot_paths
+    screenshots_missing_paths = set(uncompressed_screenshots['path']) - screenshot_paths - {"None"}
     if len(screenshots_missing_paths) > 0:
         print(f"Screenshots missing path: {screenshots_missing_paths}")
 
@@ -145,6 +145,6 @@ if __name__ == "__main__":
         if len(non_chromadb_processed_frames_df) > 0:
             chromadb_process_images(non_chromadb_processed_frames_df)
 
-        run_applications()
+        # run_applications()
             
         time.sleep(10)
