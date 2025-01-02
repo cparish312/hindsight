@@ -92,7 +92,7 @@ def check_all_frames_ingested():
             db.insert_frame(timestamp, ms_path, application)
 
     uncompressed_screenshots = frames.loc[frames['video_chunk_id'].isnull()]
-    screenshots_missing_paths = set(uncompressed_screenshots['path']) - screenshot_paths
+    screenshots_missing_paths = set(uncompressed_screenshots['path']) - screenshot_paths - {"None"}
     if len(screenshots_missing_paths) > 0:
         print(f"Screenshots missing path: {screenshots_missing_paths}")
 

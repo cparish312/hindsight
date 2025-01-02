@@ -601,6 +601,20 @@ class HindsightDB:
                 df = utils.impute_applications(df)
             return df
         
+    def get_last_frame_id(self, source=None):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            if source is not None:
+                query = "SELECT MAX(source_id) FROM frames WHERE source = ?"
+                cursor.execute(query, (source,))
+            else:
+                query = "SELECT MAX(id) FROM frames"
+                cursor.execute(query)
+
+            # Fetch the result
+            max_id = cursor.fetchone()[0]
+            return max_id
+        
     def get_last_timestamp(self, table):
         """Returns the most recent timestamp in the table provided."""
         with self.get_connection() as conn:

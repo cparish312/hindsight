@@ -101,13 +101,26 @@ def get_last_timestamp():
     
     try:
         last_timestamp = db.get_last_timestamp(table)
+
     except:
         return jsonify({"status": "error", "message": f"Couldn't retrieve last timestamp for table {table}"}), 400
     
-    print(f"Successfully sent last timestamp for {table}.")
+    print(f"Successfully sent last timestamp {last_timestamp} for {table}.")
     return jsonify({"last_timestamp": last_timestamp})
 
-de
+@main_app.route('/get_last_frame_id', methods=['GET'])
+def get_last_frame_id():
+    if not verify_api_key():
+        abort(401)
+
+    source = request.args.get("source")
+    try:
+        last_frame_id = db.get_last_frame_id(source)
+    except:
+        return jsonify({"status": "error", "message": f"Couldn't retrieve last frame_id for source {source}"}), 400
+    
+    print(f"Successfully sent last frame_id for {source}")
+    return jsonify({"last_frame_id": last_frame_id})
 
 @main_app.route('/sync_db', methods=['POST'])
 def sync_db():
@@ -119,8 +132,11 @@ def sync_db():
     
     annotations = data.get('annotations', [])
     locations = data.get('locations', [])
-    content_updates = data.get('content')
-    
+    content_updates = data.get('content', [])
+
+    source = data.get("source", "not_provided")
+    frames = data.get("frames", [])
+
     try:
         ingested_annotations_timestamps = set(db.get_annotations()['timestamp'])
         annotations = [a for a in annotations if a['timestamp'] not in ingested_annotations_timestamps]
@@ -133,12 +149,25 @@ def sync_db():
         db.insert_locations(locations)
 
         from_app_update_content(content_sync_list=content_updates)
+
+        if frames is not None:
+            for frame in frames:
+                if frame is None:
+                    continue
+                frame_id = db.insert_frame(timestamp=frame['timestamp'], path="None", application=frame['application'],
+                                        source=source, source_id=frame['id'])
+
+                converted_ocr_results = list()
+                for ocr_result in frame['ocr_results']:
+                    converted_ocr_results.append((ocr_result['x'], ocr_result['y'], ocr_result['width'],
+                                                ocr_result['height'], ocr_result['text'], ocr_result['confidence'], ocr_result['blockNum'], -1))
+                db.insert_ocr_results(frame_id=frame_id, ocr_results=converted_ocr_results)
     except:
-        return jsonify({'status': 'error', 'message': 'Failed annotations or locations ingestion'}), 400
+        return jsonify({'status': 'error', 'message': 'Failed Database sync'}), 400
 
     return jsonify({'status': 'success', 'message': 'Database successfully synced'})
 
-@main_app.route('/add_frames', methos=['POST'])
+@main_app.route('/add_frames', methods=['POST'])
 def add_frames():
     if not verify_api_key():
         abort(401)
