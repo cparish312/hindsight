@@ -333,14 +333,17 @@ class HindsightDB:
         with self.get_connection() as conn:
             excluded_apps = ("frontCamera", "backCamera")
             # Query to get frames
-            query = 'SELECT * FROM frames WHERE application NOT IN (?, ?)'
+            query = '''SELECT frames.*, 
+                            video_chunks.path as video_chunk_path
+                            FROM frames LEFT JOIN video_chunks ON frames.video_chunk_id = video_chunks.id
+                            WHERE application NOT IN (?, ?)'''
             params = excluded_apps
 
             # Extend the query to filter by frame_ids if provided
             if frame_ids:
                 placeholders = ','.join(['?'] * len(frame_ids))
                 query += f" AND id IN ({placeholders})"
-                params = excluded_apps + tuple(frame_ids)
+                params += tuple(frame_ids)
             
             # Use pandas to read the SQL query result into a DataFrame
             df = pd.read_sql_query(query, conn, params=params)
@@ -355,7 +358,7 @@ class HindsightDB:
                 df['application'] = df['application'].fillna(df['application_org'])
             return df
 
-    def get_frames(self, frame_ids=None, impute_applications=False, application_alias=True, applications=None, add_video_chunks=False):
+    def get_frames(self, frame_ids=None, impute_applications=False, application_alias=True, applications=None):
         """Select frames with associated OCR results."""
         with self.get_connection() as conn:
             # Query to get frames
@@ -373,9 +376,6 @@ class HindsightDB:
                 placeholders = ','.join(['?'] * len(frame_ids))  # Create placeholders for the query
                 query += f" WHERE frames.id IN ({placeholders})"
                 params += tuple(frame_ids)
-
-            if add_video_chunks:
-                query += " LEFT JOIN ON video_chunks "
             
             # Use pandas to read the SQL query result into a DataFrame
             df = pd.read_sql_query(query, conn, params=params if len(params) > 0 else None)

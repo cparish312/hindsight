@@ -4,6 +4,7 @@ import cv2
 import tzlocal
 from zoneinfo import ZoneInfo
 import pandas as pd
+import numpy as np
 import tkinter as tk
 from tkinter import ttk
 from datetime import timedelta
@@ -16,6 +17,7 @@ sys.path.insert(0, "./")
 
 import utils
 from db import HindsightDB
+from hindsight_server.utils import get_ids_to_images
 from chromadb_tools import get_chroma_collection, query_chroma
 from timeline_view import Screenshot, TimelineViewer
 
@@ -48,6 +50,7 @@ class SearchViewer:
         images_df = self.db.get_frames()
         images_df['datetime_utc'] = pd.to_datetime(images_df['timestamp'] / 1000, unit='s', utc=True)
         images_df['datetime_local'] = images_df['datetime_utc'].apply(lambda x: x.replace(tzinfo=video_timezone).astimezone(local_timezone))
+        images_df = images_df.dropna(subset=['video_chunk_path'])
         return images_df.sort_values(by='datetime_local', ascending=False)
 
     def calculate_num_images_per_row(self):
@@ -156,7 +159,12 @@ class SearchViewer:
             selected_apps.add(self.app_list.get(i))
         selected_apps = utils.get_aliases_identifiers(selected_apps) if len(selected_apps) > 0 else None
         search_results = self.db.search(text=search_text, start_date=start_date, end_date=end_date, apps=selected_apps, n_seconds=500)
-        self.search_results = search_results.iloc[:self.max_results]
+
+        result_frame_ids = [int(i) for i in search_results['id']]
+
+        self.search_results = self.images_df[self.images_df['id'].isin(result_frame_ids)]
+
+        self.search_results = self.search_results.iloc[:self.max_results]
         self.display_frames()
 
     def convert_date_to_utc_milliseconds(self, date):
@@ -207,7 +215,7 @@ class SearchViewer:
         row = 0
         col = 0
         for i, im_row in self.search_results.iterrows():
-            screenshot = self.get_screenshot(im_row)
+            screenshot = self.get_screenshot(im_row['id'])
             self.display_frame(screenshot, im_row, row, col)
             col += 1
             if col >= self.num_images_per_row:
@@ -234,8 +242,17 @@ class SearchViewer:
             screenshot.image = cv2.resize(screenshot.image, new_size, interpolation=cv2.INTER_AREA)
         return screenshot
 
-    def get_screenshot(self, im_row):
-        image = cv2.imread(im_row['path'])
+    def get_screenshot(self, frame_id):
+        im_df = self.images_df.loc[self.images_df['id'] == frame_id]
+        try:
+            id_to_images = get_ids_to_images(im_df)
+            image = list(id_to_images.values())[0]
+            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        except:
+            image = np.zeros((500, 500, 3), dtype=np.uint8)
+            image[:] = [0, 255, 255]
+        im_row = im_df.iloc[0]
+        # image = Image.fromarray(image_array)
         screenshot = Screenshot(image=image, text_df=None, timestamp=im_row['datetime_local'])
         screenshot_resized = self.resize_screenshot(screenshot, self.max_width // self.num_images_per_row, self.max_height // self.num_images_per_row)
         return screenshot_resized
@@ -264,11 +281,12 @@ class SearchViewer:
 
     def open_timeline_view(self, frame_id):
         """Opens timeline view at the clicked frame"""
+        print("Opening", frame_id)
         if self.timeline_viewer is not None:
             self.timeline_viewer.master.destroy()
         
         timeline_window = tk.Toplevel(self.master)
-        self.timeline_viewer = TimelineViewer(timeline_window, frame_id=frame_id)
+        self.timeline_viewer = TimelineViewer(timeline_window, database=self.db, frame_id=frame_id)
 
     def on_window_close(self):
         self.master.destroy()
