@@ -210,6 +210,7 @@ def get_ids_to_images(frames_df):
 
             # Read the frame
             ret, frame = cap.read()
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             if ret:
                 # Add the frame to the dictionary
                 id_to_image[frame_id] = frame

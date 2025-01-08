@@ -16,6 +16,7 @@ from zoneinfo import ZoneInfo
 from dataclasses import dataclass
 
 from hindsight_server.db import HindsightDB
+from hindsight_server.utils import get_ids_to_images
 
 @dataclass
 class Screenshot:
@@ -30,7 +31,8 @@ timeline_scrollbar_height = 50
 def get_images_df(db: HindsightDB, front_camera):
     """Gets a DataFrame of all images at the time of inititation"""
     if front_camera is None:
-        images_df = db.get_screenshots()
+        images_df = db.get_screenshots(impute_applications=False)
+        images_df = images_df.dropna(subset=['video_chunk_path'])
     elif front_camera:
         images_df = db.get_frames(applications=["frontCamera"])
     else:
@@ -181,15 +183,19 @@ class TimelineViewer:
 
     def get_screenshot(self, i):
         """Loads and resizes the screenshot."""
-        im_row = self.images_df.iloc[i]
+        im_df = self.images_df.iloc[[i]]
+        id_to_images = get_ids_to_images(im_df)
+        im_row = im_df.iloc[0]
+        image_array = list(id_to_images.values())[0]
+        image = Image.fromarray(image_array)
         # image = cv2.imread(im_row['path'])
-        image = Image.open(im_row['path'])
+        # image = Image.open(im_row['path'])
         text_df = self.db.get_ocr_results(frame_id=im_row['id'])
         if set(text_df['text']) == {None}:
             text_df = None
 
         if self.annotations is not None:
-            frame_annotations = self.annotations.loc[self.annotations['frame_id'] == im_row['id']]
+            frame_annotations = self.annotations.loc[self.annotations['frame_id'] == im_df['id']]
             if len(frame_annotations) > 0:
                 font = ImageFont.load_default()
 
