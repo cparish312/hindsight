@@ -110,7 +110,7 @@ class TimelineViewer:
         if frame_id is None:
             self.scroll_frame_num = 0 # lower index is most recent, index is 0 - based
         else:
-            self.scroll_frame_num = self.images_df.index.get_loc(self.images_df[self.images_df['id'] == frame_id].index[0]) # does this even work??
+            self.scroll_frame_num = self.images_df.index.get_loc(self.images_df[self.images_df['id'] == frame_id].index[0])
         
         self.frame_timestamp = StringVar(master=self.master, value='--------------')
 

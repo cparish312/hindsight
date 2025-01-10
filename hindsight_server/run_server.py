@@ -43,6 +43,7 @@ def verify_api_key():
 
 @main_app.route('/upload_image', methods=['POST'])
 def upload_image():
+    """Saves images to SCREENSHOTS_TMP_DIR"""
     if not verify_api_key():
         abort(401)
     if 'file' not in request.files:
@@ -110,6 +111,7 @@ def get_last_timestamp():
 
 @main_app.route('/get_last_frame_id', methods=['GET'])
 def get_last_frame_id():
+    """Get's the last frame_id for a given source (device)"""
     if not verify_api_key():
         abort(401)
 
@@ -124,6 +126,7 @@ def get_last_frame_id():
 
 @main_app.route('/sync_db', methods=['POST'])
 def sync_db():
+    """Endpoint for syncing annotations, locations, content updates, and frames from a device to the Hindsight server."""
     if not verify_api_key():
         abort(401)
     data = request.get_json()
@@ -148,8 +151,10 @@ def sync_db():
         # Insert locations
         db.insert_locations(locations)
 
+        # Sync content updates (viewed, rankings, etc...)
         from_app_update_content(content_sync_list=content_updates)
 
+        # Ingest frames and OCR results from a device
         if frames is not None:
             for frame in frames:
                 if frame is None:
@@ -166,29 +171,10 @@ def sync_db():
         return jsonify({'status': 'error', 'message': 'Failed Database sync'}), 400
 
     return jsonify({'status': 'success', 'message': 'Database successfully synced'})
-
-@main_app.route('/add_frames', methods=['POST'])
-def add_frames():
-    if not verify_api_key():
-        abort(401)
-    data = request.get_json()
-    if not data:
-        return jsonify({'status': 'error', 'message': 'No data provided'}), 400
-    
-    source = data.get("source", "not_provided")
-    frames = data.get("frames", [])
-    for frame in frames:
-        frame_id = db.insert_frame(timestamp=frame['timestamp'], path="None", application=frame['application'],
-                                   source=source, source_id=frame['id'])
-
-        converted_ocr_results = list()
-        for ocr_result in frame['ocr_results']:
-            converted_ocr_results.append((ocr_result['x'], ocr_result['y'], ocr_result['width'],
-                                          ocr_result['height'], ocr_result['text'], ocr_result['confidence'], ocr_result['blockNum'], -1))
-        db.insert_ocr_results(frame_id=frame_id, ocr_results=converted_ocr_results)
     
 @main_app.route('/get_new_content', methods=['GET'])
 def get_new_content():
+    """Fetch all new unviewed content and content updates since provided last_sync_timestamp"""
     if not verify_api_key():
         abort(401)
 
@@ -224,7 +210,6 @@ def ping_server():
 
 app = create_app()
 if __name__ == '__main__':
-    # app.run(debug=True, host='0.0.0.0', port=6000, ssl_context=(SSL_CERT, SSL_KEY))
     http_server = WSGIServer(('0.0.0.0', 6000), app, keyfile=SSL_KEY, certfile=SSL_CERT)
     http_server.serve_forever()
     
