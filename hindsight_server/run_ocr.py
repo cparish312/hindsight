@@ -20,6 +20,7 @@ video_timezone = ZoneInfo("UTC")
 db = HindsightDB()
 
 def run_ocr(frames, doctr_model):
+    """Uses doctr to pull text from the frames provided."""
     frame_ids = list(frames['id'])
     img_docs = DocumentFile.from_images(list(frames['path']))
     ocr_res = doctr_model(img_docs)

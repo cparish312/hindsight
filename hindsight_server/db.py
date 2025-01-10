@@ -20,14 +20,11 @@ video_timezone = ZoneInfo("UTC")
 
 DB_FILE = os.path.join(DATA_DIR, "hindsight.db")
 
-demo_apps = {'android', 'com-connor-hindsight', 'com-android-phone', 'com-android-pixeldisplayservice', 'com-android-settings',  'com-github-android', 'com-reddit-frontpage', 'com-soundcloud-android', 'com-spotify-music'}
-
 class HindsightDB:
     def __init__(self, db_file=DB_FILE):
         self.db_file = db_file
         self.lock_file = db_file + '.lock'
         self.create_tables()
-        self.create_lock_table()
 
     def get_connection(self):
         """Get a new connection every time for thread safety."""
@@ -67,31 +64,6 @@ class HindsightDB:
                     UNIQUE (timestamp, path)
                 )
             ''')
-
-            # Add the 'chromadb_processed' column if it does not exist
-            cursor.execute('''
-                PRAGMA table_info(frames)
-            ''')
-            columns = [row[1] for row in cursor.fetchall()]
-            if 'video_chunk_id' not in columns:
-                cursor.execute('''
-                    ALTER TABLE frames
-                    ADD COLUMN video_chunk_id INTEGER
-                ''')
-                cursor.execute('''
-                    ALTER TABLE frames
-                    ADD COLUMN video_chunk_offset INTEGER
-                ''')
-
-            if "source" not in columns:
-                cursor.execute('''
-                    ALTER TABLE frames
-                    ADD COLUMN source TEXT
-                ''')
-                cursor.execute('''
-                    ALTER TABLE frames
-                    ADD COLUMN source_id INTEGER
-                ''')
             
             # Create the "ocr_results" table if it doesn't exist
             cursor.execute('''
@@ -110,25 +82,6 @@ class HindsightDB:
                 )
             ''')
 
-            # Add the 'chromadb_processed' column if it does not exist
-            cursor.execute('''
-                PRAGMA table_info(ocr_results)
-            ''')
-            columns = [row[1] for row in cursor.fetchall()]
-            if 'block_num' not in columns:
-                cursor.execute('''
-                    ALTER TABLE ocr_results
-                    ADD COLUMN block_num INTEGER
-                ''')
-                cursor.execute('''
-                    ALTER TABLE ocr_results
-                    ADD COLUMN line_num INTEGER
-                ''')
-
-            # cursor.execute('''
-            #     DROP TABLE IF EXISTS queries
-            # ''')
-
             # Tables for handling queries
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS queries (
@@ -144,17 +97,6 @@ class HindsightDB:
                     context_applications TEXT
                 )
             ''')
-
-            # Add the 'chromadb_processed' column if it does not exist
-            # cursor.execute('''
-            #     PRAGMA table_info(queries)
-            # ''')
-            # columns = [row[1] for row in cursor.fetchall()]
-            # if 'finished_timestamp' not in columns:
-            #     cursor.execute('''
-            #         ALTER TABLE queries
-            #         ADD COLUMN finished_timestamp INTEGER
-            #     ''')
 
             # Create locations table
             cursor.execute('''
@@ -192,62 +134,6 @@ class HindsightDB:
             ''')
 
             # Commit the changes and close the connection
-            conn.commit()
-
-    @with_lock
-    def create_lock_table(self):
-        """Table for handling db based locks."""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS db_locks (
-                    lock_name TEXT PRIMARY KEY,
-                    is_locked INTEGER NOT NULL DEFAULT false
-                )
-            ''')
-            # Ensure necessary locks are available in the table
-            cursor.execute('''
-                INSERT OR IGNORE INTO db_locks (lock_name, is_locked)
-                VALUES ('db', false), ('chromadb', false)
-            ''')
-            conn.commit()
-
-    def acquire_lock(self, lock_name):
-        """Attempt to acquire a lock by name."""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            # Check if the lock is currently available
-            cursor.execute('''
-                SELECT is_locked FROM db_locks WHERE lock_name = ?
-            ''', (lock_name,))
-            if cursor.fetchone()[0] == 0:
-                # Lock is available, acquire it
-                cursor.execute('''
-                    UPDATE db_locks SET is_locked = 1 WHERE lock_name = ?
-                ''', (lock_name,))
-                conn.commit()
-                return True
-            return False
-        
-    def check_lock(self, lock_name):
-        """Checks the value of a lock without acquiring it."""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            # Check if the lock is currently available
-            cursor.execute('''
-                SELECT is_locked FROM db_locks WHERE lock_name = ?
-            ''', (lock_name,))
-            if cursor.fetchone()[0] == 0:
-                return True
-            return False
-
-    def release_lock(self, lock_name):
-        """Release a lock by name."""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                UPDATE db_locks SET is_locked = 0 WHERE lock_name = ?
-            ''', (lock_name,))
             conn.commit()
 
     @with_lock
@@ -294,7 +180,7 @@ class HindsightDB:
             except sqlite3.IntegrityError:
                 # Frame already exists, get the existing frame_id
                 cursor.execute('''
-                    SELECT id FROM frames
+                    SELECT id FROM video_chunks
                     WHERE path = ?
                 ''', (path))
                 video_chunk_id= cursor.fetchone()[0]
@@ -347,7 +233,6 @@ class HindsightDB:
             
             # Use pandas to read the SQL query result into a DataFrame
             df = pd.read_sql_query(query, conn, params=params)
-            # df = df.loc[df['application'].isin(demo_apps)]
             if impute_applications:
                 df = utils.impute_applications(df)
 
@@ -379,7 +264,6 @@ class HindsightDB:
             
             # Use pandas to read the SQL query result into a DataFrame
             df = pd.read_sql_query(query, conn, params=params if len(params) > 0 else None)
-            # df = df.loc[df['application'].isin(demo_apps)]
 
             df['application_org'] = df['application'].copy()
             if impute_applications:
@@ -396,6 +280,31 @@ class HindsightDB:
             query = '''SELECT * FROM video_chunks'''
             df = pd.read_sql(query, conn)
             return df
+        
+    @with_lock
+    def update_video_chunk_info(self, video_chunk_id, frame_ids):
+        """
+        Updates the video_chunk_id and video_chunk_offset for a frame_id.
+        
+        Args:
+            video_chunk_id (int): The video chunk ID to assign.
+            frame_ids (list[int]): List of frame IDs in order of video compression.
+        """
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            try:
+                # Prepare the data for the executemany function
+                data_to_update = [(video_chunk_id, i, frame_id) for i, frame_id in enumerate(frame_ids)]
+                
+                cursor.executemany('''
+                    UPDATE frames
+                    SET video_chunk_id = ?, video_chunk_offset = ?
+                    WHERE id = ?
+                ''', data_to_update)
+                conn.commit()
+                print(f"Updated video_chunk_id and video_chunk_offset for {len(frame_ids)} frames.")
+            except sqlite3.Error as e:
+                print(f"An error occurred while updating video_chunk_id and video_chunk_offset: {e}")
     
     def get_ocr_results(self, frame_id=None):
         """Gets ocr results for a single frame_id."""
@@ -495,7 +404,6 @@ class HindsightDB:
 
             # Sort by timestamp
             df = df.sort_values(by='datetime_utc', ascending=False)
-            # df = df.loc[df['application'].isin(demo_apps)]
 
             if n_seconds is None:
                 return df
@@ -514,7 +422,12 @@ class HindsightDB:
             return result_df
         
     def insert_query(self, query, context_start_timestamp=None, context_end_timestamp=None, context_applications=None):
-        """Inserts query into queries table"""
+        """Inserts query into queries table
+        Args:
+            query (str): LLM query
+            context_start_timestamp (int): the earliest screenshot timestamp to use for context
+            context_end_timestamp (int): the latest screenshot timestamp to use for context
+            context_applications (list[str]): a list of applications to use as potential context. If None all will be used."""
         query_timestamp = int(time.time() * 1000) # UTC in milliseconds
         with self.get_connection() as conn:
             cursor = conn.cursor()
@@ -549,7 +462,7 @@ class HindsightDB:
 
 
     def get_active_queries(self):
-        """Returns all active queries"""
+        """Returns all active queries. This inlcudes for completed and currently running queries."""
         with self.get_connection() as conn:
             query = f'''SELECT * FROM queries WHERE active = true'''
             df = pd.read_sql_query(query, conn)
@@ -602,6 +515,7 @@ class HindsightDB:
             return df
         
     def get_last_frame_id(self, source=None):
+        """Returns the largest frame_id from a given source"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             if source is not None:
@@ -670,6 +584,7 @@ class HindsightDB:
         
     @with_lock
     def add_label(self, frame_id, label, value=None):
+        """Adds a label to the labels table for a given frame."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(f'''INSERT INTO labels (frame_id, label, value)
@@ -679,6 +594,7 @@ class HindsightDB:
 
     @with_lock
     def get_frames_with_label(self, label, value=None):
+        """Returns all frame_ids with the associated label."""
         with self.get_connection() as conn:
             query = f"""SELECT frame_id FROM labels WHERE label = '{label}'
                     AND value = '{value}'"""
@@ -747,45 +663,7 @@ class HindsightDB:
                     INSERT INTO frames (id, timestamp, path, application, chromadb_processed)
                     VALUES (?, ?, ?, ?, ?)
                 ''', (frame_id, timestamp, new_path, application, chromadb_processed))
-            
-            # # Also handle copying OCR results if necessary
-            # ocr_ids = [frame[0] for frame in frames]
-            # cursor.execute('''
-            #     SELECT * FROM ocr_results WHERE frame_id IN ({})
-            # '''.format(','.join('?' for _ in ocr_ids)), ocr_ids)
-            # ocr_results = cursor.fetchall()
-
-            # for ocr_result in ocr_results:
-            #     new_cursor.execute('''
-            #         INSERT INTO ocr_results (frame_id, x, y, w, h, text, conf)
-            #         VALUES (?, ?, ?, ?, ?, ?, ?)
-            #     ''', ocr_result)
 
         # Commit changes to the new database and close connections
         new_db_conn.commit()
         new_db_conn.close()
-
-    @with_lock
-    def update_video_chunk_info(self, video_chunk_id, frame_ids):
-        """
-        Updates the video_chunk_id and video_chunk_offset for a frame_id.
-        
-        Args:
-            video_chunk_id (int): The video chunk ID to assign.
-            frame_ids (list[int]): List of frame IDs in order of video compression.
-        """
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            try:
-                # Prepare the data for the executemany function
-                data_to_update = [(video_chunk_id, i, frame_id) for i, frame_id in enumerate(frame_ids)]
-                
-                cursor.executemany('''
-                    UPDATE frames
-                    SET video_chunk_id = ?, video_chunk_offset = ?
-                    WHERE id = ?
-                ''', data_to_update)
-                conn.commit()
-                print(f"Updated video_chunk_id and video_chunk_offset for {len(frame_ids)} frames.")
-            except sqlite3.Error as e:
-                print(f"An error occurred while updating video_chunk_id and video_chunk_offset: {e}")

@@ -152,6 +152,7 @@ def get_context_around_frame_id(frame_id, frames_df, db, context_buffer=5):
     return text_split_str.join(text_list)
 
 def get_identifiers_to_alias():
+    """Returns a dict of android package ids to application aliases"""
     if not os.path.exists(ANDROID_IDENTIFIERS_ALIAS_FILE):
         return {}
     
@@ -167,6 +168,7 @@ def get_identifiers_to_alias():
     return id_to_alias_cleaned
 
 def get_aliases_identifiers(aliases):
+    """Returns a dict of Android package ids to aliases"""
     id_to_alias = get_identifiers_to_alias()
     identifiers = set()
     for i, a in id_to_alias.items():
@@ -192,6 +194,7 @@ def hash_file(f_path):
     return md5.hexdigest()
 
 def get_ids_to_images(frames_df):
+    """For a given frames_df returns a dict of frame_ids to image arrays."""
     id_to_image = {}
     for video_file_path in frames_df.video_chunk_path.unique():
         video_chunk_df = frames_df.loc[frames_df['video_chunk_path'] == video_file_path]
@@ -221,18 +224,23 @@ def get_ids_to_images(frames_df):
 
     return id_to_image
 
-# def get_next_frame(frame_id):
+def get_previous_frame_id(db, frame_id):
+    """Returns the previous frame id sorted by timestamp."""
+    frames = db.get_frames(impute_applications=False).sort_values(by="timestamp", ascending=True).reset_index(drop=False)
+    frame_index = frames.index.get_loc(frames[frames['id'] == frame_id].index[0])
+    return frames.iloc[frame_index -1].id
 
-
-# def get_previous_frame(frame_id):
-
+def get_next_frame_id(db, frame_id):
+    """Returns the next frame id sorted by timestamp."""
+    frames = db.get_frames(impute_applications=False).sort_values(by="timestamp", ascending=True).reset_index(drop=False)
+    frame_index = frames.index.get_loc(frames[frames['id'] == frame_id].index[0])
+    return frames.iloc[frame_index + 1].id
 
 def save_images_to_dir(df, save_dir):
+    """Saves images from a frames df to the provided directory."""
     os.makedirs(save_dir, exist_ok=True)
     ids_to_images = get_ids_to_images(df)
     df = df.sort_values(by="timestamp", ascending=True)
     for i, row in df.iterrows():
         save_f = os.path.join(save_dir, f"""{row["application_org"]}_{row['timestamp']}.png""")
         cv2.imwrite(save_f, ids_to_images[row['id']])
-
-    
