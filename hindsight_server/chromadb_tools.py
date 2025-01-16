@@ -137,7 +137,7 @@ def run_chroma_ingest(db, df, chroma_collection, ocr_results_df):
     db.update_chromadb_processed(frame_ids=set(df['id']))
     print(f"Successfully added {len(documents)} documents to chromadb")
 
-def run_chroma_ingest_batched(db: HindsightDB, df: pd.DataFrame, chroma_collection: chromadb.collection, batch_size=1000):
+def run_chroma_ingest_batched(db: HindsightDB, df: pd.DataFrame, chroma_collection: chromadb.Collection, batch_size=1000):
     """Runs chromadb ingest in a batched fashion to balance efficiency and reliability.
     Args:
         db: a Hindsight database object
