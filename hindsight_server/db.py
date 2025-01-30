@@ -683,3 +683,41 @@ class HindsightDB:
         # Commit changes to the new database and close connections
         new_db_conn.commit()
         new_db_conn.close()
+
+    def convert_source_ids_to_hindsight_ids(self, table: str, source: str, source_ids: list[int]) -> list[int]:
+        """
+        Converts a list of source_ids to hindsight database ids in the same order.
+
+        Args:
+            table (str): The table to query (e.g., "frames" or "video_chunks").
+            source_ids (list[int]): A list of source-specific IDs to look up.
+            source (str): The source name associated with these IDs.
+
+        Returns:
+            list[int]: A list of corresponding Hindsight DB IDs, maintaining the order of source_ids.
+        """
+        if not source_ids:
+            return []
+
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            
+            # Convert list to tuple format for SQL query
+            placeholders = ','.join(['?'] * len(source_ids))
+            query = f"""
+                SELECT source_id, id
+                FROM {table}
+                WHERE source_id IN ({placeholders}) AND source = ?
+            """
+            
+            # Execute the query and fetch results
+            cursor.execute(query, (*source_ids, source))
+            rows = cursor.fetchall()
+
+            # Convert results into a dictionary {source_id: hindsight_id}
+            source_to_hindsight_map = {source_id: hindsight_id for source_id, hindsight_id in rows}
+
+            # Map input source_ids to their corresponding hindsight IDs while maintaining order
+            hindsight_ids = [source_to_hindsight_map.get(sid, None) for sid in source_ids]
+
+            return hindsight_ids
