@@ -109,20 +109,22 @@ def get_last_timestamp():
     print(f"Successfully sent last timestamp {last_timestamp} for {table}.")
     return jsonify({"last_timestamp": last_timestamp})
 
-@main_app.route('/get_last_frame_id', methods=['GET'])
-def get_last_frame_id():
+@main_app.route('/get_last_id', methods=['GET'])
+def get_last_id():
     """Get's the last frame_id for a given source (device)"""
     if not verify_api_key():
         abort(401)
 
     source = request.args.get("source")
+    table = request.args.get("table", "frames")
+
     try:
-        last_frame_id = db.get_last_id(source=source, table="frames")
+        last_id = db.get_last_id(source=source, table=table)
     except:
-        return jsonify({"status": "error", "message": f"Couldn't retrieve last frame_id for source {source}"}), 400
+        return jsonify({"status": "error", "message": f"Couldn't retrieve last id for table {table} source {source}"}), 400
     
-    print(f"Successfully sent last frame_id for {source}")
-    return jsonify({"last_frame_id": last_frame_id})
+    print(f"Successfully sent last id for table {table} source {source}")
+    return jsonify({"last_id": last_id})
 
 @main_app.route('/sync_db', methods=['POST'])
 def sync_db():
@@ -172,8 +174,8 @@ def sync_db():
 
     return jsonify({'status': 'success', 'message': 'Database successfully synced'})
 
-@main_app.route('/upload_video', methods=['Post'])
-def upload_videos():
+@main_app.route('/upload_video', methods=['POST'])
+def upload_video():
     """Upload a video and update frames video_chunk_id and video_chunk_offset"""
     if not verify_api_key():
         abort(401)
@@ -184,11 +186,15 @@ def upload_videos():
     if file.filename == '':
         return jsonify({"status": "error", "message": "No selected file"}), 400
     
-    data = request.get_json()
-    source = data.get("source", "not_provided")
-    source_id = data.get("video_chunk_id", 0)
+    source = request.form.get("source", "not_provided")
+    source_id = int(request.form.get("video_chunk_id", 0))
+    frame_ids = request.form.get("frame_ids", "")
 
-    frame_ids = data.get("frame_ids", list())
+    # Convert frame_ids to list of integers
+    frame_ids_list = list(map(int, frame_ids.split(","))) if frame_ids else []
+
+    # Convert the source_ids to the correct ids in the hindsight db
+    hindsight_frame_ids = db.convert_source_ids_to_hindsight_ids(table="frames", source=source, source_ids=frame_ids_list)
 
     if file:
         filename = secure_filename(file.filename)
@@ -202,12 +208,11 @@ def upload_videos():
             return jsonify({"status": "error", "message": "Failed to save video"}), 500
         
         video_chunk_id = db.insert_video_chunk(path=video_file_path, source=source, source_id=source_id)
-        db.update_video_chunk_info(video_chunk_id=video_chunk_id, frame_ids=frame_ids)
+        db.update_video_chunk_info(video_chunk_id=video_chunk_id, frame_ids=hindsight_frame_ids)
     
         return jsonify({"status": "success", "message": "Video file successfully uploaded"}), 200
     
     return jsonify({"status": "error", "message": "No file"}), 400
-    
     
 @main_app.route('/get_new_content', methods=['GET'])
 def get_new_content():
