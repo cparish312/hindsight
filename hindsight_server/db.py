@@ -129,23 +129,39 @@ class HindsightDB:
                 CREATE TABLE IF NOT EXISTS video_chunks (
                     id INTEGER PRIMARY KEY,
                     path TEXT NOT NULL,
+                    source TEXT,
+                    source_id INTEGER,
                     UNIQUE (path)
                 )
             ''')
+
+            cursor.execute('''
+                PRAGMA table_info(video_chunks)
+            ''')
+            columns = [row[1] for row in cursor.fetchall()]
+            if 'source' not in columns:
+                cursor.execute('''
+                    ALTER TABLE video_chunks
+                    ADD COLUMN source TEXT
+                ''')
+                cursor.execute('''
+                    ALTER TABLE video_chunks
+                    ADD COLUMN source_id INTEGER
+                ''')
 
             # Commit the changes and close the connection
             conn.commit()
 
     @with_lock
-    def insert_frame(self, timestamp, path, application, source=None, source_id=None):
+    def insert_frame(self, timestamp, path, application, source=None, source_id=None, video_chunk_id=None, video_chunk_offset=None):
         """Insert frame into frames table and return frame_id."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             try:
                 cursor.execute('''
-                    INSERT INTO frames (timestamp, path, application, source, source_id)
-                    VALUES (?, ?, ?, ?, ?)
-                ''', (timestamp, path, application, source, source_id))
+                    INSERT INTO frames (timestamp, path, application, source, source_id, video_chunk_id, video_chunk_offset)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', (timestamp, path, application, source, source_id, video_chunk_id, video_chunk_offset))
                 
                 # Get the last inserted frame_id
                 frame_id = cursor.lastrowid
@@ -163,15 +179,15 @@ class HindsightDB:
             return frame_id
         
     @with_lock
-    def insert_video_chunk(self, path):
+    def insert_video_chunk(self, path, source=None, source_id=None):
         """Insert frame into frames table and return frame_id."""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             try:
                 cursor.execute('''
-                    INSERT INTO video_chunks (path)
-                    VALUES (?)
-                ''', (path,))
+                    INSERT INTO video_chunks (path, source, source_id)
+                    VALUES (?, ?, ?)
+                ''', (path, source, source_id,))
                 
                 # Get the last inserted frame_id
                 video_chunk_id = cursor.lastrowid
@@ -514,15 +530,15 @@ class HindsightDB:
                 df = utils.impute_applications(df)
             return df
         
-    def get_last_frame_id(self, source=None):
-        """Returns the largest frame_id from a given source"""
+    def get_last_id(self, source=None, table="frames"):
+        """Returns the largest id from a given source and table"""
         with self.get_connection() as conn:
             cursor = conn.cursor()
             if source is not None:
-                query = "SELECT MAX(source_id) FROM frames WHERE source = ?"
+                query = f"SELECT MAX(source_id) FROM {table} WHERE source = ?"
                 cursor.execute(query, (source,))
             else:
-                query = "SELECT MAX(id) FROM frames"
+                query = f"SELECT MAX(id) FROM {table}"
                 cursor.execute(query)
 
             # Fetch the result
