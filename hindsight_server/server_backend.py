@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from db import HindsightDB
 from chromadb_tools import get_chroma_collection, run_chroma_ingest_batched
 from config import RAW_SCREENSHOTS_DIR, SCREENSHOTS_TMP_DIR, RUNNING_PLATFORM
+from rem_integration import ingest_rem
 import hindsight_server.query.query as query
 import utils
 import run_ocr
@@ -52,6 +53,7 @@ def ingest_image(tmp_image_path):
 def run_grouped_ocr():
     """Run OCR on all frames without OCR results"""
     frames_without_ocr = db.get_frames_without_ocr()
+    frames_without_ocr = frames_without_ocr.loc[frames_without_ocr['path'] != "None"]
     if len(frames_without_ocr) == 0:
         return
     
@@ -142,9 +144,12 @@ if __name__ == "__main__":
         run_grouped_ocr() # Run OCR on any frames missing ocr results
 
         non_chromadb_processed_frames_df = db.get_non_chromadb_processed_frames_with_ocr().sort_values(by='timestamp', ascending=True)
+        # Need to improve computer OCR text parsing 
+        non_chromadb_processed_frames_df = non_chromadb_processed_frames_df.loc[non_chromadb_processed_frames_df['source'] != "rem"]
         if len(non_chromadb_processed_frames_df) > 0:
             chromadb_process_images(non_chromadb_processed_frames_df)
-
+        
+        ingest_rem()
         # run_applications()
             
-        time.sleep(10)
+        time.sleep(20)

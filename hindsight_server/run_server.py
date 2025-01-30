@@ -9,7 +9,7 @@ from gevent.pywsgi import WSGIServer
 from gevent import monkey
 monkey.patch_all()
 
-from config import SERVER_LOG_FILE, SECRET_API_KEY, HINDSIGHT_SERVER_DIR, SCREENSHOTS_TMP_DIR
+from config import SERVER_LOG_FILE, SECRET_API_KEY, HINDSIGHT_SERVER_DIR, SCREENSHOTS_TMP_DIR, VIDEO_FILES_DIR
 import utils
 from db import HindsightDB
 
@@ -117,7 +117,7 @@ def get_last_frame_id():
 
     source = request.args.get("source")
     try:
-        last_frame_id = db.get_last_frame_id(source)
+        last_frame_id = db.get_last_id(source=source, table="frames")
     except:
         return jsonify({"status": "error", "message": f"Couldn't retrieve last frame_id for source {source}"}), 400
     
@@ -171,6 +171,43 @@ def sync_db():
         return jsonify({'status': 'error', 'message': 'Failed Database sync'}), 400
 
     return jsonify({'status': 'success', 'message': 'Database successfully synced'})
+
+@main_app.route('/upload_video', methods=['Post'])
+def upload_videos():
+    """Upload a video and update frames video_chunk_id and video_chunk_offset"""
+    if not verify_api_key():
+        abort(401)
+
+    if 'file' not in request.files:
+        return jsonify({"status": "error", "message": "No file part"}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"status": "error", "message": "No selected file"}), 400
+    
+    data = request.get_json()
+    source = data.get("source", "not_provided")
+    source_id = data.get("video_chunk_id", 0)
+
+    frame_ids = data.get("frame_ids", list())
+
+    if file:
+        filename = secure_filename(file.filename)
+        video_file_path = os.path.join(VIDEO_FILES_DIR, filename)
+        try:
+            with open(video_file_path, 'wb') as outfile:
+                file.save(outfile)
+            print("Saved", filename)
+        except Exception as e:
+            print(f"Error saving file: {e}")
+            return jsonify({"status": "error", "message": "Failed to save video"}), 500
+        
+        video_chunk_id = db.insert_video_chunk(path=video_file_path, source=source, source_id=source_id)
+        db.update_video_chunk_info(video_chunk_id=video_chunk_id, frame_ids=frame_ids)
+    
+        return jsonify({"status": "success", "message": "Video file successfully uploaded"}), 200
+    
+    return jsonify({"status": "error", "message": "No file"}), 400
+    
     
 @main_app.route('/get_new_content', methods=['GET'])
 def get_new_content():

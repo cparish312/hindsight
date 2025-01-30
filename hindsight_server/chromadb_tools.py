@@ -157,6 +157,8 @@ def run_chroma_ingest_batched(db: HindsightDB, df: pd.DataFrame, chroma_collecti
 if __name__ == "__main__":
     db = HindsightDB()
     frames_df = db.get_non_chromadb_processed_frames_with_ocr().sort_values(by='timestamp', ascending=True)
+    # Need to create a better OCR parsing for computer data
+    frames_df = frames_df.loc[frames_df['source'] != "rem"]
     frame_ids = set(frames_df['id'])
     print("Total frames to ingest", len(frame_ids))
     if len(frame_ids) > 0:
