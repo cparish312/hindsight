@@ -186,8 +186,11 @@ def upload_video():
     if file.filename == '':
         return jsonify({"status": "error", "message": "No selected file"}), 400
     
-    source = request.form.get("source", "not_provided")
-    source_id = int(request.form.get("video_chunk_id", 0))
+    source = request.form.get("source", "")
+    source_id = int(request.form.get("video_chunk_id", -1))
+    if source == "" or source_id == -1:
+        return jsonify({"status": "error", "message": "Must provide source and source_id"}), 400
+    
     frame_ids = request.form.get("frame_ids", "")
 
     # Convert frame_ids to list of integers
