@@ -1,4 +1,5 @@
 import sys
+import cv2
 import sqlite3
 import pandas as pd
 
@@ -10,6 +11,22 @@ from hindsight_server.db import HindsightDB
 
 source_name = "rem"
 rem_db_path = "/Users/connorparish/Library/Containers/today.jason.rem/Data/Library/Application Support/today.jason.rem/db.sqlite3"
+
+def get_video_dimensions(video_path):
+    """
+    Extracts video dimensions (width, height) from a video file.
+    """
+    try:
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            return None, None
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        cap.release()
+        return width, height
+    except Exception as e:
+        print(f"Error retrieving dimensions for {video_path}: {e}")
+        return None, None
 
 def get_ocr_res(frame_ids, conn):
     """Gets all ocr results for given frame_ids from the REM frames_text table."""
@@ -54,6 +71,7 @@ def ingest_rem():
         video_batch_ocr_res = get_ocr_res(frame_ids=list(video_chunk_frames['id']), conn=rem_conn)
         for _, video_row in video_chunks_batch.iterrows():
             print(video_row['id'])
+            width, height = get_video_dimensions(video_row['filePath'])
             video_frames = video_chunk_frames.loc[video_chunk_frames['chunkId'] == video_row['id']]
             video_chunk_id = hindsight_db.insert_video_chunk(video_row["filePath"], source=source_name, source_id=video_row['id'])
             # The video chunk id from the rem video_chunks table
@@ -63,6 +81,11 @@ def ingest_rem():
                 
                 # The frame id from the rem frames table
                 frame_ocr_res = video_batch_ocr_res.loc[video_batch_ocr_res['frameId'] == frame_row["id"]]
+                # Convert normalized ocr results to pixel based
+                frame_ocr_res["x"] = frame_ocr_res["x"] * width
+                frame_ocr_res["w"] = frame_ocr_res["w"] * width
+                frame_ocr_res["y"] = frame_ocr_res["y"] * height
+                frame_ocr_res["h"] = frame_ocr_res["h"] * height
                 converted_ocr_results = list()
                 for _, ocr_result in frame_ocr_res.iterrows():
                     converted_ocr_results.append((ocr_result['x'], ocr_result['y'], ocr_result['w'],
