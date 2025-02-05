@@ -203,13 +203,17 @@ def get_ids_to_images(frames_df):
         if not cap.isOpened():
             print(f"Error: Unable to open video file {video_file_path}")
             continue
+        
+        offset_multiplier = 1
+        if frames_df.iloc[0].source == "hindsightmobile":
+            offset_multiplier = 2
 
         for _, row in video_chunk_df.iterrows():
             frame_id = row['id'] 
             frame_offset = row['video_chunk_offset'] 
             
             # Set the video capture to the specific frame
-            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_offset)
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_offset*offset_multiplier)
 
             # Read the frame
             ret, frame = cap.read()

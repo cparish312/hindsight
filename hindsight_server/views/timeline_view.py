@@ -37,6 +37,9 @@ def get_images_df(db: HindsightDB, front_camera):
         images_df = db.get_frames(applications=["frontCamera"])
     else:
         images_df = db.get_frames(applications=["backCamera"])
+
+    images_df = images_df.loc[images_df['source'] != "rem"].reset_index(drop=True)
+    # images_df = images_df.loc[images_df['source'].isnull()].reset_index(drop=True)
     images_df['datetime_utc'] = pd.to_datetime(images_df['timestamp'] / 1000, unit='s', utc=True)
     images_df['datetime_local'] = images_df['datetime_utc'].apply(lambda x: x.replace(tzinfo=video_timezone).astimezone(local_timezone))
     return images_df.sort_values(by='datetime_local', ascending=False)
@@ -76,6 +79,11 @@ def resize_screenshot(screenshot: Screenshot, max_width: int, max_height: int):
     
     return screenshot
 
+def get_ocr_results(db: HindsightDB, images_df: pd.DataFrame):
+    """Get's a df with ocr_results for the first 1000 frames in the images_df"""
+    retrieve_ocr_frame_ids = list(images_df.iloc[0:1000]['id'])
+    return db.get_frames_with_ocr(frame_ids=retrieve_ocr_frame_ids)
+
 def rectangles_overlap(rect1, rect2):
     """Check if two rectangles overlap. Rectangles are defined as (x1, y1, x2, y2)."""
     x1, y1, x2, y2 = rect1
@@ -99,6 +107,7 @@ class TimelineViewer:
         self.db = database
         self.annotations = annotations
         self.images_df = get_images_df(self.db, front_camera) if images_df is None else images_df
+        self.ocr_results = get_ocr_results(self.db, self.images_df)
         self.max_frames_index = int(max(self.images_df.index)) # cast to int to ensure we have the right datatype
         self.app_color_map = get_app_color_map(self.images_df)
         self.max_width = max_width
@@ -190,9 +199,11 @@ class TimelineViewer:
         image = Image.fromarray(image_array)
         # image = cv2.imread(im_row['path'])
         # image = Image.open(im_row['path'])
-        text_df = self.db.get_ocr_results(frame_id=im_row['id'])
-        if set(text_df['text']) == {None}:
+        text_df = self.ocr_results.loc[self.ocr_results["frame_id"] == im_row['id']]
+        # text_df = self.db.get_ocr_results(frame_id=im_row['id'])
+        if set(text_df['text']) == {None} or len(text_df) == 0:
             text_df = None
+        print("Number of OCR results for frame", len(text_df))
 
         if self.annotations is not None:
             frame_annotations = self.annotations.loc[self.annotations['frame_id'] == im_df['id']]
