@@ -165,6 +165,8 @@ def get_identifiers_to_alias():
             id_to_alias_cleaned[k] = k
         else:
             id_to_alias_cleaned[k] = v
+            id_to_alias_cleaned[k.replace("-", ".")] = v
+    
     return id_to_alias_cleaned
 
 def get_aliases_identifiers(aliases):
