@@ -203,7 +203,6 @@ class TimelineViewer:
         # text_df = self.db.get_ocr_results(frame_id=im_row['id'])
         if set(text_df['text']) == {None} or len(text_df) == 0:
             text_df = None
-        print("Number of OCR results for frame", len(text_df))
 
         if self.annotations is not None:
             frame_annotations = self.annotations.loc[self.annotations['frame_id'] == im_df['id']]
